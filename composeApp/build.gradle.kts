@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,6 +5,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    id("com.google.gms.google-services")
 }
 
 kotlin {
@@ -76,5 +76,7 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+
+    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
 }
 
