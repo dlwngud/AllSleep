@@ -13,14 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import allsleep.composeapp.generated.resources.Res
-import allsleep.composeapp.generated.resources.character_cloud
+import allsleep.composeapp.generated.resources.*
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.cos
@@ -32,14 +30,112 @@ import kotlin.math.sin
  */
 @Composable
 fun HomeScreen() {
+    var selectedTab by remember { mutableStateOf(0) }
+    
+    Scaffold(
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                // 홈
+                NavigationBarItem(
+                    icon = { 
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_home),
+                            contentDescription = "홈"
+                        )
+                    },
+                    label = { Text("홈") },
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                
+                // 통계
+                NavigationBarItem(
+                    icon = { 
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_analytics),
+                            contentDescription = "통계"
+                        )
+                    },
+                    label = { Text("통계") },
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                
+                // 알람
+                NavigationBarItem(
+                    icon = { 
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_alarm),
+                            contentDescription = "알람"
+                        )
+                    },
+                    label = { Text("알람") },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                
+                // 설정
+                NavigationBarItem(
+                    icon = { 
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_more),
+                            contentDescription = "설정"
+                        )
+                    },
+                    label = { Text("설정") },
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        }
+    ) { paddingValues ->
+        when (selectedTab) {
+            0 -> HomeContent(Modifier.padding(paddingValues))
+            1 -> StatsPlaceholder(Modifier.padding(paddingValues))
+            2 -> AlarmPlaceholder(Modifier.padding(paddingValues))
+            3 -> SettingsPlaceholder(Modifier.padding(paddingValues))
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // 상단 바
-        TopBar()
-        
         // 중앙 궤도 영역
         Box(
             modifier = Modifier
@@ -56,28 +152,50 @@ fun HomeScreen() {
 }
 
 @Composable
-private fun TopBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+private fun StatsPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
     ) {
-        IconButton(onClick = { /* TODO: 메뉴 */ }) {
-            Text("☰", fontSize = 28.sp, color = MaterialTheme.colorScheme.onSurface)
-        }
-        
         Text(
-            text = "AllSleep",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            text = "통계 화면\n(준비 중)",
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
-        
-        IconButton(onClick = { /* TODO: 설정 */ }) {
-            Text("⚙️", fontSize = 24.sp)
-        }
+    }
+}
+
+@Composable
+private fun AlarmPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "알람 화면\n(준비 중)",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun SettingsPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "설정 화면\n(준비 중)",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
