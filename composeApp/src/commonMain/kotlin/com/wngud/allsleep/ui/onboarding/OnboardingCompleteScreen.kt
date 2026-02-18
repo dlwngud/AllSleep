@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,8 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wngud.allsleep.ui.auth.login.LoginViewModel
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * 온보딩 5번 화면: 준비 완료
@@ -23,11 +27,19 @@ import com.wngud.allsleep.ui.theme.*
 @Composable
 fun OnboardingCompleteScreen(
     onStart: () -> Unit,
-    userName: String = "사용자",
-    email: String = "로컬 모드",
     bedtime: String = "23:00",
-    wakeTime: String = "07:00"
+    wakeTime: String = "07:00",
+    viewModel: LoginViewModel = koinViewModel()
 ) {
+    val state by viewModel.state.collectAsState()
+    
+    // 사용자 이름 결정
+    val userName = if (state.user != null) {
+        state.user?.displayName ?: state.user?.email?.split("@")?.get(0) ?: "사용자"
+    } else {
+        "사용자" // 로컬 모드
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -99,8 +111,8 @@ fun OnboardingCompleteScreen(
                 
                 InfoRow(
                     icon = "👤",
-                    label = "계정",
-                    value = email
+                    label = "이름",
+                    value = userName
                 )
                 
                 InfoRow(
@@ -192,15 +204,4 @@ private fun calculateSleepHours(bedtime: String, wakeTime: String): Int {
     } else {
         24 - bedHour + wakeHour
     }
-}
-
-@Preview
-@Composable
-fun OnboardingCompleteScreenPreview() {
-    OnboardingCompleteScreen(
-        onStart = {},
-        email = "user@example.com",
-        bedtime = "23:00",
-        wakeTime = "07:00"
-    )
 }
