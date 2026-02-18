@@ -2,10 +2,8 @@ package com.wngud.allsleep.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
+import androidx.navigation.compose.*
 import com.wngud.allsleep.ui.home.HomeScreen
-import com.wngud.allsleep.ui.onboarding.OnboardingScreen
 
 /**
  * 메인 네비게이션 그래프
@@ -20,22 +18,26 @@ fun AppNavigation(
         startDestination = startDestination
     ) {
         // 온보딩
-        composable(Screen.Onboarding.route) {
-            OnboardingScreen(
-                onComplete = {
-                    navController.navigate(Screen.Home.route) {
-                        // 온보딩 화면을 백스택에서 제거
-                        popUpTo(Screen.Onboarding.route) {
-                            inclusive = true
-                        }
-                    }
-                }
-            )
+        onboardingGraph(navController)
+        
+        // 홈 (메인 쉘 역할을 수행할 수 있도록 HomeScreen 수정 필요)
+        composable(Screen.Home.route) {
+            HomeScreen(navController)
         }
         
-        // 홈
-        composable(Screen.Home.route) {
-            HomeScreen()
+        // 통계
+        composable(Screen.Stats.route) {
+            HomeScreen(navController, initialTab = 1)
+        }
+        
+        // 알람
+        composable(Screen.Alarm.route) {
+            HomeScreen(navController, initialTab = 2)
+        }
+        
+        // 설정
+        composable(Screen.Settings.route) {
+            HomeScreen(navController, initialTab = 3)
         }
     }
 }
