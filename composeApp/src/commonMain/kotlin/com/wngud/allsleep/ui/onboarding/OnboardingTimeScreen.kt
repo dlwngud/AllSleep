@@ -22,12 +22,17 @@ import com.wngud.allsleep.ui.theme.*
  */
 @Composable
 fun OnboardingTimeScreen(
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    bedtime: String = "23:00",
+    wakeTime: String = "07:00",
+    onBedtimeChange: (String) -> Unit = {},
+    onWakeTimeChange: (String) -> Unit = {}
 ) {
-    var bedtimeHour by remember { mutableStateOf(23) }
-    var bedtimeMinute by remember { mutableStateOf(0) }
-    var wakeHour by remember { mutableStateOf(7) }
-    var wakeMinute by remember { mutableStateOf(0) }
+    // String "HH:mm" -> Int parsed
+    val bedtimeHour = remember(bedtime) { bedtime.split(":")[0].toInt() }
+    val bedtimeMinute = remember(bedtime) { bedtime.split(":")[1].toInt() }
+    val wakeHour = remember(wakeTime) { wakeTime.split(":")[0].toInt() }
+    val wakeMinute = remember(wakeTime) { wakeTime.split(":")[1].toInt() }
     
     Column(
         modifier = Modifier
@@ -91,8 +96,8 @@ fun OnboardingTimeScreen(
                 label = "취침 시간",
                 hour = bedtimeHour,
                 minute = bedtimeMinute,
-                onHourChange = { bedtimeHour = it },
-                onMinuteChange = { bedtimeMinute = it }
+                onHourChange = { onBedtimeChange(String.format("%02d:%02d", it, bedtimeMinute)) },
+                onMinuteChange = { onBedtimeChange(String.format("%02d:%02d", bedtimeHour, it)) }
             )
             
             // 기상 시간
@@ -100,8 +105,8 @@ fun OnboardingTimeScreen(
                 label = "기상 시간",
                 hour = wakeHour,
                 minute = wakeMinute,
-                onHourChange = { wakeHour = it },
-                onMinuteChange = { wakeMinute = it }
+                onHourChange = { onWakeTimeChange(String.format("%02d:%02d", it, wakeMinute)) },
+                onMinuteChange = { onWakeTimeChange(String.format("%02d:%02d", wakeHour, it)) }
             )
         }
         

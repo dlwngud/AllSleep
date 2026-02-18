@@ -15,10 +15,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wngud.allsleep.ui.auth.login.LoginViewModel
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
-import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * 온보딩 5번 화면: 준비 완료
@@ -29,16 +27,8 @@ fun OnboardingCompleteScreen(
     onStart: () -> Unit,
     bedtime: String = "23:00",
     wakeTime: String = "07:00",
-    viewModel: LoginViewModel = koinViewModel()
+    userName: String = "사용자"
 ) {
-    val state by viewModel.state.collectAsState()
-    
-    // 사용자 이름 결정
-    val userName = if (state.user != null) {
-        state.user?.displayName ?: state.user?.email?.split("@")?.get(0) ?: "사용자"
-    } else {
-        "사용자" // 로컬 모드
-    }
 
     Column(
         modifier = Modifier
