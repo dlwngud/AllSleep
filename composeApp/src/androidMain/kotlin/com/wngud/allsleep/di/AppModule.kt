@@ -62,4 +62,8 @@ val appModule = module {
     viewModel { 
         OnboardingViewModel(get(), get()) 
     }
+    
+    viewModel {
+        com.wngud.allsleep.ui.home.HomeViewModel()
+    }
 }

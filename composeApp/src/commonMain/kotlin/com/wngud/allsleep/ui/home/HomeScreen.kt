@@ -16,9 +16,14 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.*
 import allsleep.composeapp.generated.resources.*
+import com.wngud.allsleep.navigation.Screen
+import com.wngud.allsleep.ui.stats.StatsScreen
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.cos
@@ -29,8 +34,66 @@ import kotlin.math.sin
  * Stitch 디자인: 궤도 애니메이션 + 캐릭터 중심
  */
 @Composable
-fun HomeScreen() {
-    var selectedTab by remember { mutableStateOf(0) }
+fun HomeScreen(
+    navController: NavHostController,
+    initialTab: Int = 0,
+    viewModel: com.wngud.allsleep.ui.home.HomeViewModel = org.koin.compose.viewmodel.koinViewModel()
+) {
+    val state by viewModel.state.collectAsState()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // 초기 탭 설정 (필요시)
+    LaunchedEffect(initialTab) {
+        if (state.selectedTab != initialTab) {
+             viewModel.handleIntent(com.wngud.allsleep.ui.home.HomeIntent.SelectTab(initialTab))
+        }
+    }
+
+    // 네비게이션 동기화: 현재 Route에 따라 탭 상태 업데이트
+    LaunchedEffect(currentRoute) {
+        val tabIndex = when (currentRoute) {
+            Screen.Home.route -> 0
+            Screen.Stats.route -> 1
+            Screen.Alarm.route -> 2
+            Screen.Settings.route -> 3
+            else -> -1
+        }
+        if (tabIndex != -1 && tabIndex != state.selectedTab) {
+            viewModel.handleIntent(com.wngud.allsleep.ui.home.HomeIntent.SelectTab(tabIndex))
+        }
+    }
+    
+    // 탭 선택 핸들러
+    val onTabSelected: (Int) -> Unit = { index ->
+        viewModel.handleIntent(com.wngud.allsleep.ui.home.HomeIntent.SelectTab(index))
+        when (index) {
+            0 -> if (currentRoute != Screen.Home.route) {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            1 -> if (currentRoute != Screen.Stats.route) {
+                navController.navigate(Screen.Stats.route) {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            2 -> if (currentRoute != Screen.Alarm.route) {
+                navController.navigate(Screen.Alarm.route) {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            3 -> if (currentRoute != Screen.Settings.route) {
+                navController.navigate(Screen.Settings.route) {
+                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
     
     Scaffold(
         bottomBar = {
@@ -47,8 +110,8 @@ fun HomeScreen() {
                         )
                     },
                     label = { Text("홈") },
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    selected = state.selectedTab == 0,
+                    onClick = { onTabSelected(0) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.primary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -67,8 +130,8 @@ fun HomeScreen() {
                         )
                     },
                     label = { Text("통계") },
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    selected = state.selectedTab == 1,
+                    onClick = { onTabSelected(1) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.primary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -87,8 +150,8 @@ fun HomeScreen() {
                         )
                     },
                     label = { Text("알람") },
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    selected = state.selectedTab == 2,
+                    onClick = { onTabSelected(2) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.primary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -107,8 +170,8 @@ fun HomeScreen() {
                         )
                     },
                     label = { Text("설정") },
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    selected = state.selectedTab == 3,
+                    onClick = { onTabSelected(3) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.primary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -120,11 +183,14 @@ fun HomeScreen() {
             }
         }
     ) { paddingValues ->
-        when (selectedTab) {
-            0 -> HomeContent(Modifier.padding(paddingValues))
-            1 -> StatsPlaceholder(Modifier.padding(paddingValues))
-            2 -> AlarmPlaceholder(Modifier.padding(paddingValues))
-            3 -> SettingsPlaceholder(Modifier.padding(paddingValues))
+        when (state.selectedTab) {
+            0 -> HomeContent(modifier = Modifier.padding(paddingValues))
+            1 -> StatsScreen(
+                onBack = { navController.popBackStack() },
+                modifier = Modifier.padding(paddingValues)
+            )
+            2 -> AlarmPlaceholder(modifier = Modifier.padding(paddingValues))
+            3 -> SettingsPlaceholder(modifier = Modifier.padding(paddingValues))
         }
     }
 }
@@ -134,7 +200,6 @@ private fun HomeContent(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
     ) {
         // 중앙 궤도 영역
         Box(
@@ -152,49 +217,33 @@ private fun HomeContent(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun StatsPlaceholder(modifier: Modifier = Modifier) {
+fun AlarmPlaceholder(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "통계 화면\n(준비 중)",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun AlarmPlaceholder(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "알람 화면\n(준비 중)",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun SettingsPlaceholder(modifier: Modifier = Modifier) {
+fun SettingsPlaceholder(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "설정 화면\n(준비 중)",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
         )
     }
 }
