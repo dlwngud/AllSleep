@@ -65,17 +65,27 @@ actual fun OnboardingLoginScreen(
     // 로그인 성공 시 다음 화면으로
     LaunchedEffect(state.user) {
         if (state.user != null) {
+            android.util.Log.d("OnboardingLoginScreen", "✅ 로그인 성공 감지! 다음 화면으로 이동")
+            android.util.Log.d("OnboardingLoginScreen", "   - User: ${state.user?.email}")
             onNext()
         }
     }
     
-    // 에러 발생 시 Snackbar 표시
+    // 에러 발생 시 Snackbar 표시 (사용자 취소는 제외)
     LaunchedEffect(state.error) {
         state.error?.let { error ->
-            snackbarHostState.showSnackbar(
-                message = error,
-                duration = SnackbarDuration.Short
-            )
+            android.util.Log.d("OnboardingLoginScreen", "⚠️ 에러 감지: $error")
+            
+            // 사용자가 취소한 경우는 Snackbar 표시하지 않음
+            if (!error.contains("취소")) {
+                android.util.Log.d("OnboardingLoginScreen", "   - Snackbar 표시")
+                snackbarHostState.showSnackbar(
+                    message = error,
+                    duration = SnackbarDuration.Short
+                )
+            } else {
+                android.util.Log.d("OnboardingLoginScreen", "   - 사용자 취소 (Snackbar 표시 안 함)")
+            }
             viewModel.handleIntent(LoginIntent.DismissError)
         }
     }

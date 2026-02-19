@@ -58,15 +58,14 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                 navController.getBackStackEntry(Screen.Onboarding.route)
             }
             val viewModel: OnboardingViewModel = koinViewModel(viewModelStoreOwner = parentEntry)
-            val bedtime by viewModel.bedtime.collectAsState()
-            val wakeTime by viewModel.wakeTime.collectAsState()
+            val state by viewModel.state.collectAsState()
             
             OnboardingTimeScreen(
                 onNext = { navController.navigate(Screen.Onboarding.Login.route) },
-                bedtime = bedtime,
-                wakeTime = wakeTime,
-                onBedtimeChange = viewModel::updateBedtime,
-                onWakeTimeChange = viewModel::updateWakeTime
+                bedtime = state.bedtime,
+                wakeTime = state.wakeTime,
+                onBedtimeChange = { viewModel.handleIntent(com.wngud.allsleep.ui.onboarding.OnboardingIntent.UpdateBedtime(it)) },
+                onWakeTimeChange = { viewModel.handleIntent(com.wngud.allsleep.ui.onboarding.OnboardingIntent.UpdateWakeTime(it)) }
             )
         }
         
@@ -92,26 +91,23 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                 navController.getBackStackEntry(Screen.Onboarding.route)
             }
             val viewModel: OnboardingViewModel = koinViewModel(viewModelStoreOwner = parentEntry)
-            val bedtime by viewModel.bedtime.collectAsState()
-            val wakeTime by viewModel.wakeTime.collectAsState()
-            val userName by viewModel.userName.collectAsState()
+            val state by viewModel.state.collectAsState()
             
             // 화면 진입 시 사용자 정보 갱신
-            // (LaunchedEffect를 사용하는 것이 더 안전함)
             androidx.compose.runtime.LaunchedEffect(Unit) {
-                viewModel.fetchCurrentUser()
+                viewModel.handleIntent(com.wngud.allsleep.ui.onboarding.OnboardingIntent.LoadCurrentUser)
             }
             
             OnboardingCompleteScreen(
                 onStart = {
-                    viewModel.completeOnboarding()
+                    viewModel.handleIntent(com.wngud.allsleep.ui.onboarding.OnboardingIntent.CompleteOnboarding)
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 },
-                bedtime = bedtime,
-                wakeTime = wakeTime,
-                userName = userName
+                bedtime = state.bedtime,
+                wakeTime = state.wakeTime,
+                userName = state.userName
             )
         }
     }
