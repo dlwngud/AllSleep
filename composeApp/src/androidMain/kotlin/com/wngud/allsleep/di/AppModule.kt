@@ -19,8 +19,12 @@ val appModule = module {
     
     // Data Layer - Android 구현체
     single<AuthRepositoryImpl> { AuthRepositoryImpl() }
+    
+    // DataStore 인스턴스 (싱글톤)
+    single { com.wngud.allsleep.data.source.local.createDataStore() }
+    
     single<com.wngud.allsleep.domain.repository.SleepSettingsRepository> { 
-        com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl() 
+        com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl(get()) 
     }
 
     // AuthRepository를 싱글톤으로 제공 (Params 없이 주입 가능하도록)
