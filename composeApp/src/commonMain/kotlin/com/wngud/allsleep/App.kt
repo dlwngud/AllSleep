@@ -1,5 +1,7 @@
 package com.wngud.allsleep
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.navigation.compose.rememberNavController
 import com.wngud.allsleep.navigation.AppNavigation
@@ -8,12 +10,15 @@ import org.koin.compose.KoinContext
 
 @Composable
 fun App() {
-    // ✅ Koin Context 설정 (Warning 제거)
     KoinContext {
         val navController = rememberNavController()
-        
+
         AllSleepTheme {
-            AppNavigation(navController = navController)
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background
+            ) { innerPadding ->
+                AppNavigation(navController = navController)
+            }
         }
     }
 }
