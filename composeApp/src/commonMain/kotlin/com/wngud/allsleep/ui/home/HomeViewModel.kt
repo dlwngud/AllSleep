@@ -1,14 +1,13 @@
 package com.wngud.allsleep.ui.home
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
- * 홈 ViewModel (MVI 패턴)
+ * 홈 탭 ViewModel
+ * 홈 탭 내부의 비즈니스 로직과 상태만 관리합니다.
+ * 탭 전환은 NavController(Nav2)가 담당하므로 ViewModel에서 처리하지 않습니다.
  */
 class HomeViewModel : ViewModel() {
 
@@ -17,19 +16,13 @@ class HomeViewModel : ViewModel() {
 
     fun handleIntent(intent: HomeIntent) {
         when (intent) {
-            is HomeIntent.SelectTab -> selectTab(intent.tabIndex)
             is HomeIntent.StartSleep -> startSleep()
             is HomeIntent.Refresh -> refreshData()
         }
     }
 
-    private fun selectTab(index: Int) {
-        _state.update { it.copy(selectedTab = index) }
-    }
-
     private fun startSleep() {
         // TODO: 수면 시작 로직 (Repository 호출 등)
-        android.util.Log.d("HomeViewModel", "Sleep started!")
     }
 
     private fun refreshData() {
