@@ -2,12 +2,19 @@ package com.wngud.allsleep.di
 
 import android.app.Activity
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
+import com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl
+import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
+import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.LoginWithGoogleUseCase
 import com.wngud.allsleep.platform.auth.GoogleAuthService
+import com.wngud.allsleep.ui.alarm.AlarmViewModel
 import com.wngud.allsleep.ui.auth.login.LoginViewModel
+import com.wngud.allsleep.ui.home.HomeViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.parameter.parametersOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
@@ -21,10 +28,10 @@ val appModule = module {
     single<AuthRepositoryImpl> { AuthRepositoryImpl() }
     
     // DataStore 인스턴스 (싱글톤)
-    single { com.wngud.allsleep.data.source.local.createDataStore() }
+    single { createDataStore() }
     
-    single<com.wngud.allsleep.domain.repository.SleepSettingsRepository> { 
-        com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl(get()) 
+    single<SleepSettingsRepository> {
+        SleepSettingsRepositoryImpl(get())
     }
 
     // AuthRepository를 싱글톤으로 제공 (Params 없이 주입 가능하도록)
@@ -38,7 +45,7 @@ val appModule = module {
     
     // Domain Layer - Repository 인터페이스
     // GoogleAuthService를 파라미터로 받아서 AuthRepository 구현
-    factory<AuthRepository>(org.koin.core.qualifier.named("google_login")) { (googleAuthService: GoogleAuthService) ->
+    factory<AuthRepository>(named("google_login")) { (googleAuthService: GoogleAuthService) ->
         object : AuthRepository {
             private val authRepositoryImpl: AuthRepositoryImpl = get()
             
@@ -52,14 +59,14 @@ val appModule = module {
     // Domain Layer - Use Cases
     // GoogleAuthService를 파라미터로 받아서 AuthRepository 생성
     factory { (googleAuthService: GoogleAuthService) ->
-        val authRepository: AuthRepository = get(org.koin.core.qualifier.named("google_login")) { org.koin.core.parameter.parametersOf(googleAuthService) }
+        val authRepository: AuthRepository = get(named("google_login")) { parametersOf(googleAuthService) }
         LoginWithGoogleUseCase(authRepository)
     }
     
     // Presentation Layer - ViewModels
     // GoogleAuthService를 파라미터로 받아서 UseCase 생성
     viewModel { (googleAuthService: GoogleAuthService) ->
-        val loginWithGoogleUseCase: LoginWithGoogleUseCase = get { org.koin.core.parameter.parametersOf(googleAuthService) }
+        val loginWithGoogleUseCase: LoginWithGoogleUseCase = get { parametersOf(googleAuthService) }
         LoginViewModel(loginWithGoogleUseCase)
     }
     
@@ -68,6 +75,10 @@ val appModule = module {
     }
     
     viewModel {
-        com.wngud.allsleep.ui.home.HomeViewModel()
+        HomeViewModel()
+    }
+
+    viewModel {
+        AlarmViewModel()
     }
 }
