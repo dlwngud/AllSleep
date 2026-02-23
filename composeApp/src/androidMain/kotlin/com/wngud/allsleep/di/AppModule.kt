@@ -81,4 +81,8 @@ val appModule = module {
     viewModel {
         AlarmViewModel()
     }
+
+    viewModel {
+        com.wngud.allsleep.ui.settings.SettingsViewModel()
+    }
 }

@@ -8,8 +8,8 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.wngud.allsleep.ui.home.HomeScreen
-import com.wngud.allsleep.ui.home.SettingsPlaceholder
 import com.wngud.allsleep.ui.alarm.AlarmScreen
+import com.wngud.allsleep.ui.settings.SettingsScreen
 import com.wngud.allsleep.ui.stats.StatsScreen
 
 /**
@@ -51,7 +51,7 @@ fun AppNavigation(
 
         // 설정 탭
         composable(Screen.Settings.route) {
-            SettingsPlaceholder(modifier = Modifier.padding(contentPadding))
+            SettingsScreen(contentPadding = contentPadding)
         }
     }
 }
