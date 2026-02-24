@@ -14,8 +14,8 @@ enum class AppTheme { DARK, LIGHT, SYSTEM }
 enum class AppLanguage { KOREAN, ENGLISH }
 
 data class SettingsState(
-    val userName: String = "사용자님",
-    val userEmail: String = "user@example.com",
+    val isPremium: Boolean = false, // 프리미엄 구독 여부
+
     // 수면 설정
     val isNotificationEnabled: Boolean = true,
     val isDndEnabled: Boolean = true,
@@ -28,7 +28,8 @@ data class SettingsState(
 )
 
 sealed interface SettingsIntent {
-    data object EditProfile : SettingsIntent
+    data object UpgradePremium : SettingsIntent
+    data object ManageSubscription : SettingsIntent
     data object NavigateSleepTime : SettingsIntent
     data object NavigateWakeTime : SettingsIntent
     data class ToggleNotification(val enabled: Boolean) : SettingsIntent

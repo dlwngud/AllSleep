@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
+import com.wngud.allsleep.ui.theme.*
 
 /**
  * 알람 탭 화면
@@ -44,6 +46,19 @@ fun AlarmScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    AlarmScreenContent(
+        contentPadding = contentPadding,
+        state = state,
+        onIntent = viewModel::handleIntent
+    )
+}
+
+@Composable
+fun AlarmScreenContent(
+    contentPadding: PaddingValues,
+    state: AlarmState,
+    onIntent: (AlarmIntent) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,8 +74,8 @@ fun AlarmScreen(
             label = "취침 시간",
             alarm = state.sleepAlarm,
             isAm = false,
-            onToggle = { viewModel.handleIntent(AlarmIntent.ToggleSleepAlarm(it)) },
-            onDayToggle = { viewModel.handleIntent(AlarmIntent.ToggleSleepDay(it)) }
+            onToggle = { onIntent(AlarmIntent.ToggleSleepAlarm(it)) },
+            onDayToggle = { onIntent(AlarmIntent.ToggleSleepDay(it)) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -71,8 +86,8 @@ fun AlarmScreen(
             label = "기상 시간",
             alarm = state.wakeAlarm,
             isAm = true,
-            onToggle = { viewModel.handleIntent(AlarmIntent.ToggleWakeAlarm(it)) },
-            onDayToggle = { viewModel.handleIntent(AlarmIntent.ToggleWakeDay(it)) }
+            onToggle = { onIntent(AlarmIntent.ToggleWakeAlarm(it)) },
+            onDayToggle = { onIntent(AlarmIntent.ToggleWakeDay(it)) }
         )
 
         // 추가 알람 목록
@@ -81,7 +96,7 @@ fun AlarmScreen(
             state.extraAlarms.forEach { alarm ->
                 ExtraAlarmItem(
                     alarm = alarm,
-                    onToggle = { viewModel.handleIntent(AlarmIntent.ToggleExtraAlarm(alarm.id)) }
+                    onToggle = { onIntent(AlarmIntent.ToggleExtraAlarm(alarm.id)) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -91,7 +106,7 @@ fun AlarmScreen(
 
         // 새로운 알람 추가 버튼
         Button(
-            onClick = { viewModel.handleIntent(AlarmIntent.AddAlarm) },
+            onClick = { onIntent(AlarmIntent.AddAlarm) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
@@ -352,5 +367,19 @@ private fun ExtraAlarmItem(
                 checkedTrackColor = MaterialTheme.colorScheme.primary
             )
         )
+    }
+}
+
+@Preview
+@Composable
+fun AlarmScreenPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface {
+            AlarmScreenContent(
+                contentPadding = PaddingValues(),
+                state = AlarmState(),
+                onIntent = {}
+            )
+        }
     }
 }

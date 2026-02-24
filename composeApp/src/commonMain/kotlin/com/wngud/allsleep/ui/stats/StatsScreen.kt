@@ -18,27 +18,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.wngud.allsleep.ui.theme.*
+import androidx.compose.ui.tooling.preview.Preview
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun StatsScreen(
-    onBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    contentPadding: PaddingValues = PaddingValues(),
+    viewModel: StatsViewModel = koinViewModel()
+) {
+    val state by viewModel.state.collectAsState()
+
+    StatsScreenContent(
+        contentPadding = contentPadding,
+        state = state,
+        onIntent = viewModel::handleIntent
+    )
+}
+
+@Composable
+fun StatsScreenContent(
+    contentPadding: PaddingValues,
+    state: StatsState,
+    onIntent: (StatsIntent) -> Unit
 ) {
     Scaffold(
-        modifier = modifier,
         containerColor = Color.Transparent // 투명으로 설정하여 배경 일관성 유지
-    ) { paddingValues ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(contentPadding) // 외부(네비게이션 바) 패딩 적용
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-            PeriodSelector()
+            PeriodSelector(
+                selectedIndex = state.timePeriodIndex,
+                onSelect = { onIntent(StatsIntent.SelectTimePeriod(it)) }
+            )
             
             Spacer(modifier = Modifier.height(20.dp))
             KeyMetricsRow()
@@ -60,8 +79,10 @@ fun StatsScreen(
 
 
 @Composable
-private fun PeriodSelector() {
-    var selectedIndex by remember { mutableStateOf(0) }
+private fun PeriodSelector(
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
     val periods = listOf("주", "월", "년", "전체")
     
     Row(
@@ -79,7 +100,7 @@ private fun PeriodSelector() {
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (selectedIndex == index) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    .clickable { selectedIndex = index },
+                    .clickable { onSelect(index) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -402,6 +423,20 @@ private fun AIInsightCard() {
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun StatsScreenPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface {
+            StatsScreenContent(
+                contentPadding = PaddingValues(),
+                state = StatsState(),
+                onIntent = {}
             )
         }
     }
