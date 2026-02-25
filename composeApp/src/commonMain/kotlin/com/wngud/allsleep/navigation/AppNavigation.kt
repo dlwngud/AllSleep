@@ -41,7 +41,7 @@ fun AppNavigation(
 
         // 통계 탭
         composable(Screen.Stats.route) {
-            StatsScreen(modifier = Modifier.padding(contentPadding))
+            StatsScreen(contentPadding = contentPadding)
         }
 
         // 알람 탭

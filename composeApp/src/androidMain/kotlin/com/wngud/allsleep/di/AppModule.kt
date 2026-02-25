@@ -85,4 +85,8 @@ val appModule = module {
     viewModel {
         com.wngud.allsleep.ui.settings.SettingsViewModel()
     }
+
+    viewModel {
+        com.wngud.allsleep.ui.stats.StatsViewModel()
+    }
 }
