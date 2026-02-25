@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,8 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -24,12 +25,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import allsleep.composeapp.generated.resources.*
 import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.cos
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import com.wngud.allsleep.ui.theme.IndicatorSynced
+
 
 /**
  * 홈 탭 화면
@@ -55,6 +59,7 @@ fun HomeScreenContent(
     state: HomeState,
     onStartSleep: () -> Unit
 ) {
+    var showDeviceSheet by remember { mutableStateOf(false) }
     // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
         modifier = Modifier
@@ -68,17 +73,17 @@ fun HomeScreenContent(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 1. 최상단: 현재 연결 상태 (기기 맵핑)
-            TopConnectionStatus()
-
-            // 2. 중앙 영역: 거대한 동기화 링(Sync Ring)과 상태 메시지
+            // 1. 중앙 영역: 거대한 동기화 링(Sync Ring)과 상태 메시지
+            // (위성 배치 로직으로 통합됨, 기기 탭 시 바텀시트 활성화)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                OrbitalSyncHub()
+                OrbitalSyncHub(
+                    onDeviceClick = { showDeviceSheet = true }
+                )
             }
 
             // 3. 하단 슬라이더: 무의식적인 탭 방지, 의도적인 수면 시작
@@ -87,60 +92,130 @@ fun HomeScreenContent(
                 onStartSleep = onStartSleep
             )
         }
+
+        if (showDeviceSheet) {
+            DeviceBottomSheet(
+                onDismiss = { showDeviceSheet = false }
+            )
+        }
     }
 }
 
+// 더미 기기 데이터
+private data class DummyDevice(val icon: DrawableResource, val name: String, val isSynced: Boolean)
+
+private val dummyDevices = listOf(
+    DummyDevice(Res.drawable.ic_mobile, "iPhone", true),
+    DummyDevice(Res.drawable.ic_tablet, "MacBook Pro", true),
+    DummyDevice(Res.drawable.ic_tablet, "iPad Pro", true),
+    DummyDevice(Res.drawable.ic_mobile, "Apple Watch", true)
+)
+
+    // TopConnectionStatus 제거 (OrbitalSyncHub의 위성으로 통합)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopConnectionStatus() {
-    Box(
-        modifier = Modifier
-            .background(Color(0xFF131821), RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0xFF1C2431), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+private fun DeviceBottomSheet(onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF131821),
+        scrimColor = Color.Black.copy(alpha = 0.6f),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 16.dp)
+                    .size(width = 40.dp, height = 4.dp)
+                    .background(Color(0xFF1C2431), CircleShape)
+            )
+        }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
         ) {
-            IconTextWithStatus("📱", "iPhone")
-            Text("·", color = Color.White.copy(alpha = 0.3f))
-            IconTextWithStatus("💻", "Mac")
+            Text(
+                text = "동기화된 기기",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            
+            dummyDevices.forEach { device ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Icon Box
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color(0xFF0B0C10), CircleShape)
+                            .border(1.dp, Color(0xFF1C2431), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(device.icon),
+                            contentDescription = device.name,
+                            tint = if (device.isSynced) MaterialTheme.colorScheme.primary else Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    // 연결 상태 표시 (Dot + 텍스트)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    color = if (device.isSynced) IndicatorSynced else Color.Gray,
+                                    shape = CircleShape
+                                )
+                        )
+                        Text(
+                            text = if (device.isSynced) "Ready" else "Offline",
+                            color = if (device.isSynced) IndicatorSynced else Color.Gray,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun IconTextWithStatus(icon: String, name: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = icon, fontSize = 14.sp)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(modifier = Modifier.width(6.dp))
-        Box(
-            modifier = Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape) // 초록색 연결 점
-        )
-    }
-}
-
-@Composable
-private fun OrbitalSyncHub() {
+private fun OrbitalSyncHub(onDeviceClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition()
 
-    // 기기 궤도를 천천히 회전 (평온한 대기 상태)
-    val rotation1 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart)
-    )
-    val rotation2 by infiniteTransition.animateFloat(
-        initialValue = 120f, targetValue = 480f,
-        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart)
-    )
-    val rotation3 by infiniteTransition.animateFloat(
-        initialValue = 240f, targetValue = 600f,
-        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart)
+    // 궤도 무한 회전 애니메이션용 반지름 관리
+    val orbitRadius = 140.dp.value
+    // 기기 개수에 따른 궤도 간격
+    val deviceCount = dummyDevices.size
+    val angleStep = if (deviceCount > 0) 360f / deviceCount else 0f
+
+    // 2초 간격으로 빛이 깜빡이는(숨쉬는) 펄스 애니메이션
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
     )
 
     Column(
+        modifier = Modifier.clickable(onClick = onDeviceClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(40.dp)
     ) {
@@ -176,10 +251,25 @@ private fun OrbitalSyncHub() {
                 )
             }
 
-            val orbitRadius = 140.dp.value
-            DeviceIcon("📱", rotation1, orbitRadius)
-            DeviceIcon("💻", rotation2, orbitRadius)
-            DeviceIcon("⌚", rotation3, orbitRadius)
+            // 연결된 기기 위성(Satellite) 애니메이션 리스트
+            dummyDevices.forEachIndexed { index, device ->
+                // 각 기기마다의 고유 시작 각도
+                val startAngle = index * angleStep
+                // 360도 회전 애니메이션
+                val rotation by infiniteTransition.animateFloat(
+                    initialValue = startAngle,
+                    targetValue = startAngle + 360f,
+                    animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart)
+                )
+                
+                DeviceIcon(
+                    icon = device.icon,
+                    rotation = rotation,
+                    orbitRadius = orbitRadius,
+                    isSynced = device.isSynced,
+                    pulseAlpha = pulseAlpha
+                )
+            }
         }
 
         // 중앙 상태 메시지
@@ -203,20 +293,62 @@ private fun OrbitalSyncHub() {
 }
 
 @Composable
-private fun DeviceIcon(icon: String, rotation: Float, orbitRadius: Float) {
+private fun DeviceIcon(
+    icon: DrawableResource,
+    rotation: Float,
+    orbitRadius: Float,
+    isSynced: Boolean,
+    pulseAlpha: Float
+) {
     val radians = rotation * PI / 180.0
     val x = (orbitRadius * cos(radians)).dp
     val y = (orbitRadius * sin(radians)).dp
 
+    // 테마 메인 색상(보라색) 롤백 및 하이라이트 투명도 최대로 올려 쨍하게
+    val activeColor = MaterialTheme.colorScheme.primary
+    val iconColor = if (isSynced) activeColor else Color.Gray
+
     Box(
         modifier = Modifier
             .offset(x = x, y = y)
-            .size(44.dp)
-            .background(Color(0xFF0B0C10), CircleShape)
-            .border(1.dp, Color(0xFF3BA5F5).copy(alpha = 0.3f), CircleShape),
+            .size(56.dp), // 아우라(Glow) 효과가 밖으로 퍼질 수 있는 충분한 공간 확보
         contentAlignment = Alignment.Center
     ) {
-        Text(text = icon, fontSize = 20.sp, modifier = Modifier.alpha(0.8f))
+        // 활성화된 경우에만 뒤에 흐릿한 네온 글로우 이펙트(Blur) 깔기
+        if (isSynced) {
+            Box(
+                modifier = Modifier
+                    .size(68.dp) // 아우라 범위를 넉넉하게
+                    // blur(12.dp)의 박스 한계로 사각형 잘림(Clipping)이 발생하는 것을 방지하기 위해 
+                    // 중앙부터 바깥으로 부드럽게 완전 투명(Transparent)해지는 진짜 원형(Circle) 파장 브러시 사용
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                activeColor.copy(alpha = pulseAlpha), // 안쪽: 빛의 중심지
+                                activeColor.copy(alpha = 0f)          // 바깥쪽: 완전 투명하게 발산
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        // 실제 하드웨어 칩 (내부 컨테이너)
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                // 활성화 시 보라색(Primary) 틴트를 아주 살짝 섞어서 럭셔리한 느낌 추가
+                .background(if (isSynced) activeColor.copy(alpha = 0.1f) else Color(0xFF131821), CircleShape)
+                .border(1.5.dp, if (isSynced) activeColor.copy(alpha = 0.3f) else Color(0xFF1C2431), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
@@ -231,7 +363,7 @@ private fun BottomSwipeArea(sleepGoal: String, onStartSleep: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 목표 텍스트
-        Text("이번 밤 목표: $sleepGoal", fontSize = 13.sp, color = Color(0xFF3BA5F5))
+        Text("이번 밤 목표: $sleepGoal", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
 
         // 슬라이더 버튼
         SwipeToSleepButton(onSwipeComplete = onStartSleep)
@@ -273,7 +405,7 @@ private fun SwipeToSleepButton(
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .padding(4.dp)
                 .size(48.dp)
-                .background(Color(0xFF3BA5F5), CircleShape)
+                .background(MaterialTheme.colorScheme.primary, CircleShape)
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
