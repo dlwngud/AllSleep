@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import allsleep.composeapp.generated.resources.Res
-import allsleep.composeapp.generated.resources.character_cloud
+import allsleep.composeapp.generated.resources.character_tablet
 import androidx.compose.ui.tooling.preview.Preview
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
@@ -46,7 +46,7 @@ fun OnboardingProblemScreen(
         
         // 캐릭터 이미지
         Image(
-            painter = painterResource(Res.drawable.character_cloud),
+            painter = painterResource(Res.drawable.character_tablet),
             contentDescription = "Sleep Character",
             modifier = Modifier.size(240.dp)
         )

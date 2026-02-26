@@ -1,15 +1,15 @@
 package com.wngud.allsleep.ui.onboarding
 
+import allsleep.composeapp.generated.resources.Res
+import allsleep.composeapp.generated.resources.character_sleep
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 온보딩 5번 화면: 준비 완료
@@ -47,23 +48,11 @@ fun OnboardingCompleteScreen(
         )
         
         Spacer(modifier = Modifier.weight(0.2f))
-        
-        // 성공 아이콘
-        Text(
-            text = "✨",
-            fontSize = FontSize.iconHuge
-        )
-        
-        Spacer(modifier = Modifier.height(Spacing.large))
-        
-        // 타이틀
-        Text(
-            text = "준비 완료!",
-            fontSize = FontSize.headlineLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            lineHeight = LineHeight.extraLoose
+
+        Image(
+            painter = painterResource(Res.drawable.character_sleep),
+            contentDescription = "Sleep Character",
+            modifier = Modifier.size(240.dp)
         )
         
         // 서브타이틀
@@ -193,5 +182,18 @@ private fun calculateSleepHours(bedtime: String, wakeTime: String): Int {
         wakeHour - bedHour
     } else {
         24 - bedHour + wakeHour
+    }
+}
+
+@Preview
+@Composable
+fun OnboardingCompleteScreenPreview() {
+    AllSleepTheme(darkTheme = true) {
+        OnboardingCompleteScreen(
+            onStart = {},
+            bedtime = "23:00",
+            wakeTime = "07:00",
+            userName = "테스터"
+        )
     }
 }
