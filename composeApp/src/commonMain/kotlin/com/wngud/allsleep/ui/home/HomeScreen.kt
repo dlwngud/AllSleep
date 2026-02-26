@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -23,7 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import allsleep.composeapp.generated.resources.*
+import allsleep.composeapp.generated.resources.Res
+import allsleep.composeapp.generated.resources.charachter_no_phone
+import allsleep.composeapp.generated.resources.character_phone
+import allsleep.composeapp.generated.resources.ic_mobile
+import allsleep.composeapp.generated.resources.ic_tablet
 import androidx.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -60,6 +63,8 @@ fun HomeScreenContent(
     onStartSleep: () -> Unit
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
+    var isSleepModeActive by remember { mutableStateOf(false) }
+    
     // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
         modifier = Modifier
@@ -82,6 +87,7 @@ fun HomeScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 OrbitalSyncHub(
+                    isSleepModeActive = isSleepModeActive,
                     onDeviceClick = { showDeviceSheet = true }
                 )
             }
@@ -89,7 +95,10 @@ fun HomeScreenContent(
             // 3. 하단 슬라이더: 무의식적인 탭 방지, 의도적인 수면 시작
             BottomSwipeArea(
                 sleepGoal = state.sleepGoal,
-                onStartSleep = onStartSleep
+                onStartSleep = {
+                    isSleepModeActive = true
+                    onStartSleep()
+                }
             )
         }
 
@@ -195,7 +204,7 @@ private fun DeviceBottomSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun OrbitalSyncHub(onDeviceClick: () -> Unit) {
+private fun OrbitalSyncHub(isSleepModeActive: Boolean, onDeviceClick: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition()
 
     // 궤도 무한 회전 애니메이션용 반지름 관리
@@ -230,23 +239,20 @@ private fun OrbitalSyncHub(onDeviceClick: () -> Unit) {
                     .border(1.dp, Color(0xFF3BA5F5).copy(alpha = 0.15f), CircleShape)
             )
 
-            // 중앙 허브 애니메이션 (구름/달 캐릭터 유지)
+            // 중앙 허브 애니메이션 (구름/달 캐릭터 등)
             Box(
                 modifier = Modifier
-                    .size(160.dp)
+                    .size(280.dp)
                     .background(Color(0xFF3BA5F5).copy(alpha = 0.05f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(50.dp)
-                        .background(Color(0xFF3BA5F5).copy(alpha = 0.15f), CircleShape)
-                )
                 Image(
-                    painter = painterResource(Res.drawable.character_cloud),
+                    painter = painterResource(
+                        if (isSleepModeActive) Res.drawable.charachter_no_phone
+                        else Res.drawable.character_phone
+                    ),
                     contentDescription = "Sleep Sync Center",
-                    modifier = Modifier.size(120.dp),
+                    modifier = Modifier.size(200.dp),
                     contentScale = ContentScale.Fit
                 )
             }
