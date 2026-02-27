@@ -38,3 +38,4 @@ val TextTertiary = Color(0xFF64748B)  // 3차 텍스트
 // Indicator Colors
 val IndicatorActive = Color(0xFF4A3AFF)  // 활성 인디케이터
 val IndicatorInactive = Color(0x4D94A3B8)  // 비활성 인디케이터 (30% opacity)
+val IndicatorSynced = Color(0xFF13EC5B)  // 기기 동기화 (초록색) 인디케이터
