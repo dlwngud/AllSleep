@@ -2,7 +2,9 @@ package com.wngud.allsleep.ui.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wngud.allsleep.ui.components.PageIndicator
+import com.wngud.allsleep.ui.components.WheelTimePicker
 import com.wngud.allsleep.ui.theme.*
 
 /**
@@ -38,6 +41,7 @@ fun OnboardingTimeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -96,8 +100,7 @@ fun OnboardingTimeScreen(
                 label = "취침 시간",
                 hour = bedtimeHour,
                 minute = bedtimeMinute,
-                onHourChange = { onBedtimeChange(String.format("%02d:%02d", it, bedtimeMinute)) },
-                onMinuteChange = { onBedtimeChange(String.format("%02d:%02d", bedtimeHour, it)) }
+                onTimeChange = { h, m -> onBedtimeChange(String.format("%02d:%02d", h, m)) }
             )
             
             // 기상 시간
@@ -105,8 +108,7 @@ fun OnboardingTimeScreen(
                 label = "기상 시간",
                 hour = wakeHour,
                 minute = wakeMinute,
-                onHourChange = { onWakeTimeChange(String.format("%02d:%02d", it, wakeMinute)) },
-                onMinuteChange = { onWakeTimeChange(String.format("%02d:%02d", wakeHour, it)) }
+                onTimeChange = { h, m -> onWakeTimeChange(String.format("%02d:%02d", h, m)) }
             )
         }
         
@@ -115,10 +117,12 @@ fun OnboardingTimeScreen(
         // 수면 시간 뱃지
         SleepDurationBadge(
             bedtimeHour = bedtimeHour,
-            wakeHour = wakeHour
+            bedtimeMinute = bedtimeMinute,
+            wakeHour = wakeHour,
+            wakeMinute = wakeMinute
         )
         
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(32.dp))
         
         // 다음 버튼
         Button(
@@ -146,8 +150,7 @@ private fun TimePickerCard(
     label: String,
     hour: Int,
     minute: Int,
-    onHourChange: (Int) -> Unit,
-    onMinuteChange: (Int) -> Unit
+    onTimeChange: (Int, Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -171,30 +174,11 @@ private fun TimePickerCard(
             
             Spacer(modifier = Modifier.height(Spacing.medium))
             
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = String.format("%02d", hour),
-                    fontSize = FontSize.iconExtraLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = ":",
-                    fontSize = FontSize.iconExtraLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = OnSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                Text(
-                    text = String.format("%02d", minute),
-                    fontSize = FontSize.iconExtraLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            WheelTimePicker(
+                initialHour = hour,
+                initialMinute = minute,
+                onTimeChange = { h, m -> onTimeChange(h, m) }
+            )
         }
     }
 }
@@ -202,17 +186,24 @@ private fun TimePickerCard(
 @Composable
 private fun SleepDurationBadge(
     bedtimeHour: Int,
-    wakeHour: Int
+    bedtimeMinute: Int,
+    wakeHour: Int,
+    wakeMinute: Int
 ) {
-    val duration = if (wakeHour > bedtimeHour) {
-        wakeHour - bedtimeHour
+    val bedtimeTotal = bedtimeHour * 60 + bedtimeMinute
+    val wakeTotal = wakeHour * 60 + wakeMinute
+    val durationMinutes = if (wakeTotal > bedtimeTotal) {
+        wakeTotal - bedtimeTotal
     } else {
-        24 - bedtimeHour + wakeHour
+        1440 - bedtimeTotal + wakeTotal
     }
-    
+    val hours = durationMinutes / 60
+    val minutes = durationMinutes % 60
+    val durationText = if (minutes > 0) "${hours}시간 ${minutes}분" else "${hours}시간"
+
     Surface(
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(CornerRadius.medium2)  // 20dp
+        shape = RoundedCornerShape(CornerRadius.medium2)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -224,7 +215,7 @@ private fun SleepDurationBadge(
                 fontSize = FontSize.bodyLarge
             )
             Text(
-                text = "수면 시간: ${duration}시간",
+                text = "수면 시간: $durationText",
                 fontSize = FontSize.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
