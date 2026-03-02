@@ -107,11 +107,11 @@ fun OnboardingCompleteScreen(
                 )
                 
                 // 수면 시간 계산
-                val sleepHours = calculateSleepHours(bedtime, wakeTime)
+                val sleepDuration = calculateSleepDuration(bedtime, wakeTime)
                 InfoRow(
                     icon = "💤",
                     label = "수면 시간",
-                    value = "${sleepHours}시간"
+                    value = sleepDuration
                 )
             }
         }
@@ -174,15 +174,18 @@ private fun InfoRow(
     }
 }
 
-private fun calculateSleepHours(bedtime: String, wakeTime: String): Int {
-    val bedHour = bedtime.split(":")[0].toInt()
-    val wakeHour = wakeTime.split(":")[0].toInt()
-    
-    return if (wakeHour > bedHour) {
-        wakeHour - bedHour
-    } else {
-        24 - bedHour + wakeHour
-    }
+private fun calculateSleepDuration(bedtime: String, wakeTime: String): String {
+    val parts = { s: String -> s.split(":").map { it.toInt() } }
+    val (bedHour, bedMin) = parts(bedtime)
+    val (wakeHour, wakeMin) = parts(wakeTime)
+
+    val bedTotal = bedHour * 60 + bedMin
+    val wakeTotal = wakeHour * 60 + wakeMin
+    val durationMin = if (wakeTotal > bedTotal) wakeTotal - bedTotal else 1440 - bedTotal + wakeTotal
+
+    val hours = durationMin / 60
+    val minutes = durationMin % 60
+    return if (minutes > 0) "${hours}시간 ${minutes}분" else "${hours}시간"
 }
 
 @Preview
