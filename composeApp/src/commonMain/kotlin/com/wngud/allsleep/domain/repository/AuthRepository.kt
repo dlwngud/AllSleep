@@ -9,9 +9,13 @@ import com.wngud.allsleep.domain.model.User
 interface AuthRepository {
     /**
      * Google 로그인
-     * @return Result<User> 성공 시 사용자 정보, 실패 시 에러
      */
     suspend fun loginWithGoogle(): Result<User>
+
+    /**
+     * 카카오 로그인
+     */
+    suspend fun loginWithKakao(): Result<User>
     
     /**
      * 로그아웃

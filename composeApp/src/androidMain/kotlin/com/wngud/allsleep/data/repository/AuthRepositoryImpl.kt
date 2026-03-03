@@ -3,6 +3,7 @@ package com.wngud.allsleep.data.repository
 import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
+import com.wngud.allsleep.platform.auth.KakaoAuthService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
@@ -11,19 +12,22 @@ import kotlinx.coroutines.tasks.await
  * Android 구현 (actual)
  * Firebase Android SDK 사용
  */
-class AuthRepositoryImpl : AuthRepository {
+class AuthRepositoryImpl(
+    private val kakaoAuthService: KakaoAuthService
+) : AuthRepository {
     
     private val firebaseAuth = FirebaseAuth.getInstance()
     
     override suspend fun loginWithGoogle(): Result<User> {
         return try {
-            // 이 부분은 MainActivity에서 Google Sign-In Intent를 통해
-            // idToken을 받아온 후 호출됩니다
-            // 실제 구현은 GoogleAuthService에서 처리
             throw NotImplementedError("Use GoogleAuthService in MainActivity")
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override suspend fun loginWithKakao(): Result<User> {
+        return kakaoAuthService.signIn()
     }
     
     /**

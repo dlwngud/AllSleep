@@ -1,3 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AllSleep</string>
+    <!-- Google Sign-In Web Client ID -->
+    <string name="default_web_client_id">599205333340-l382t1s450tmlinpqhm67njr4tcrqiee.apps.googleusercontent.com</string>
+    <!-- 카카오 네이티브 앱 키 (카카오 개발자 콘솔에서 발급 후 교체) -->
+    <string name="kakao_app_key">c8924c995fe54b4b67404bb682347b95</string>
 </resources>

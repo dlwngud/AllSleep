@@ -30,6 +30,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.datastore.preferences)
+            // 카카오 SDK (Android 전용)
+            implementation("com.kakao.sdk:v2-user:2.20.6")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -66,6 +68,8 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        // 카카오 로그인 콜백 scheme 주입 (kakao + 네이티브앱키)
+        manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
     }
     packaging {
         resources {
@@ -88,6 +92,7 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-functions")  // Cloud Functions 클라이언트
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")

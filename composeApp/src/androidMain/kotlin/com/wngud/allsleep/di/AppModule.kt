@@ -7,7 +7,9 @@ import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.LoginWithGoogleUseCase
+import com.wngud.allsleep.domain.usecase.LoginWithKakaoUseCase
 import com.wngud.allsleep.platform.auth.GoogleAuthService
+import com.wngud.allsleep.platform.auth.KakaoAuthService
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
 import com.wngud.allsleep.ui.auth.login.LoginViewModel
 import com.wngud.allsleep.ui.home.HomeViewModel
@@ -25,7 +27,8 @@ import org.koin.dsl.module
 val appModule = module {
     
     // Data Layer - Android 구현체
-    single<AuthRepositoryImpl> { AuthRepositoryImpl() }
+    single { (context: android.content.Context) -> KakaoAuthService(context) }
+    single<AuthRepositoryImpl> { AuthRepositoryImpl(get { parametersOf(get<android.content.Context>()) }) }
     
     // DataStore 인스턴스 (싱글톤)
     single { createDataStore() }
@@ -43,13 +46,12 @@ val appModule = module {
         GoogleAuthService(activity, get())
     }
     
-    // Domain Layer - Repository 인터페이스
-    // GoogleAuthService를 파라미터로 받아서 AuthRepository 구현
     factory<AuthRepository>(named("google_login")) { (googleAuthService: GoogleAuthService) ->
         object : AuthRepository {
             private val authRepositoryImpl: AuthRepositoryImpl = get()
-            
+
             override suspend fun loginWithGoogle() = googleAuthService.signIn()
+            override suspend fun loginWithKakao() = get<AuthRepositoryImpl>().loginWithKakao()
             override suspend fun logout() = authRepositoryImpl.logout()
             override suspend fun getCurrentUser() = authRepositoryImpl.getCurrentUser()
             override fun isLoggedIn() = authRepositoryImpl.isLoggedIn()
@@ -67,7 +69,8 @@ val appModule = module {
     // GoogleAuthService를 파라미터로 받아서 UseCase 생성
     viewModel { (googleAuthService: GoogleAuthService) ->
         val loginWithGoogleUseCase: LoginWithGoogleUseCase = get { parametersOf(googleAuthService) }
-        LoginViewModel(loginWithGoogleUseCase)
+        val loginWithKakaoUseCase: LoginWithKakaoUseCase = LoginWithKakaoUseCase(get<AuthRepositoryImpl>())
+        LoginViewModel(loginWithGoogleUseCase, loginWithKakaoUseCase)
     }
     
     viewModel { 
