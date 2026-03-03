@@ -2,7 +2,9 @@ package com.wngud.allsleep.ui.auth.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.domain.usecase.LoginWithGoogleUseCase
+import com.wngud.allsleep.domain.usecase.LoginWithKakaoUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +16,8 @@ import kotlinx.coroutines.launch
  * 플랫폼 공통 로직
  */
 class LoginViewModel(
-    private val loginWithGoogleUseCase: LoginWithGoogleUseCase
+    private val loginWithGoogleUseCase: LoginWithGoogleUseCase,
+    private val loginWithKakaoUseCase: LoginWithKakaoUseCase
 ) : ViewModel() {
     
     private val _state = MutableStateFlow(LoginState())
@@ -23,14 +26,32 @@ class LoginViewModel(
     fun handleIntent(intent: LoginIntent) {
         when (intent) {
             is LoginIntent.LoginWithGoogle -> loginWithGoogle()
+            is LoginIntent.LoginWithKakao -> loginWithKakao()
             is LoginIntent.DismissError -> dismissError()
         }
     }
     
+    private fun loginWithKakao() {
+        viewModelScope.launch {
+            android.util.Log.d("LoginViewModel", "🚀 카카오 로그인 시작")
+            _state.update { it.copy(loadingProvider = AuthProvider.KAKAO, error = null) }
+
+            loginWithKakaoUseCase()
+                .onSuccess { user ->
+                    android.util.Log.d("LoginViewModel", "✅ 카카오 로그인 성공! uid=${user.uid}")
+                    _state.update { it.copy(loadingProvider = null, user = user, error = null) }
+                }
+                .onFailure { error ->
+                    android.util.Log.e("LoginViewModel", "❌ 카카오 로그인 실패: ${error.message}", error)
+                    _state.update { it.copy(loadingProvider = null, error = error.message ?: "카카오 로그인 실패") }
+                }
+        }
+    }
+
     private fun loginWithGoogle() {
         viewModelScope.launch {
             android.util.Log.d("LoginViewModel", "🚀 Google 로그인 시작")
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(loadingProvider = AuthProvider.GOOGLE, error = null) }
             
             loginWithGoogleUseCase()
                 .onSuccess { user ->
@@ -41,7 +62,7 @@ class LoginViewModel(
                     
                     _state.update { 
                         it.copy(
-                            isLoading = false, 
+                            loadingProvider = null, 
                             user = user,
                             error = null
                         ) 
@@ -52,7 +73,7 @@ class LoginViewModel(
                     
                     _state.update { 
                         it.copy(
-                            isLoading = false, 
+                            loadingProvider = null, 
                             error = error.message ?: "로그인 실패"
                         ) 
                     }

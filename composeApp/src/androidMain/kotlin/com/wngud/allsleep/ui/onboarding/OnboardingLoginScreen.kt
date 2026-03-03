@@ -24,6 +24,7 @@ import allsleep.composeapp.generated.resources.ic_kakao_logo
 import allsleep.composeapp.generated.resources.ic_google_logo
 import allsleep.composeapp.generated.resources.ic_apple_logo
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
+import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.platform.auth.GoogleAuthService
 import com.wngud.allsleep.ui.auth.login.LoginIntent
 import com.wngud.allsleep.ui.auth.login.LoginViewModel
@@ -51,9 +52,10 @@ actual fun OnboardingLoginScreen(
     // Activity context 가져오기
     val activity = LocalContext.current as Activity
     
-    // GoogleAuthService 생성 (Activity context 필요)
+    // GoogleAuthService 생성 (Activity context 필요, KakaoAuthService는 Koin이 제공)
     val googleAuthService = remember(activity) {
-        GoogleAuthService(activity, AuthRepositoryImpl())
+        val kakaoService = com.wngud.allsleep.platform.auth.KakaoAuthService(activity)
+        GoogleAuthService(activity, com.wngud.allsleep.data.repository.AuthRepositoryImpl(kakaoService))
     }
     
     // ✅ Koin에서 ViewModel 주입 (GoogleAuthService 파라미터로 전달)
@@ -66,7 +68,7 @@ actual fun OnboardingLoginScreen(
     LaunchedEffect(state.user) {
         if (state.user != null) {
             android.util.Log.d("OnboardingLoginScreen", "✅ 로그인 성공 감지! 다음 화면으로 이동")
-            android.util.Log.d("OnboardingLoginScreen", "   - User: ${state.user?.email}")
+            android.util.Log.d("OnboardingLoginScreen", "   - User: ${state.user}")
             onNext()
         }
     }
@@ -152,36 +154,50 @@ actual fun OnboardingLoginScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // 1. 카카오 로그인
+                val isKakaoLoading = state.loadingProvider == AuthProvider.KAKAO
+                val isAnyLoading = state.loadingProvider != null
                 Button(
-                    onClick = { onNext() },
+                    onClick = { viewModel.handleIntent(LoginIntent.LoginWithKakao) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(ButtonSize.heightMedium),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFEE500),
-                        contentColor = Color(0xFF000000)
+                        contentColor = Color(0xFF000000),
+                        disabledContainerColor = Color(0xFFFEE500),
+                        disabledContentColor = Color(0xFF000000)
                     ),
-                    shape = RoundedCornerShape(CornerRadius.medium)
+                    shape = RoundedCornerShape(CornerRadius.medium),
+                    enabled = !isAnyLoading
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(Res.drawable.ic_kakao_logo),
-                            contentDescription = "Kakao Logo",
-                            modifier = Modifier.size(32.dp)
+                    if (isKakaoLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color(0xFF000000),
+                            strokeWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.width(Spacing.small))
-                        Text(
-                            text = "카카오로 계속하기",
-                            fontSize = FontSize.labelMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.ic_kakao_logo),
+                                contentDescription = "Kakao Logo",
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.small))
+                            Text(
+                                text = "카카오로 계속하기",
+                                fontSize = FontSize.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
                 
                 // 2. Google 로그인
+                val isGoogleLoading = state.loadingProvider == AuthProvider.GOOGLE
                 OutlinedButton(
                     onClick = {
                         viewModel.handleIntent(LoginIntent.LoginWithGoogle)
@@ -198,9 +214,9 @@ actual fun OnboardingLoginScreen(
                         MaterialTheme.colorScheme.outline
                     ),
                     shape = RoundedCornerShape(CornerRadius.medium),
-                    enabled = !state.isLoading
+                    enabled = !isAnyLoading
                 ) {
-                    if (state.isLoading) {
+                    if (isGoogleLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             color = Color.White,
