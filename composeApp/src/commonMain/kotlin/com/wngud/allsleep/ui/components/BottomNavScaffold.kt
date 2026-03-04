@@ -13,13 +13,6 @@ import com.wngud.allsleep.navigation.Screen
 import com.wngud.allsleep.navigation.navigateToTab
 import org.jetbrains.compose.resources.painterResource
 
-/**
- * 바텀 네비게이션 공통 쉘 (BottomBar Scaffold)
- *
- * NavController를 받아 Nav2 표준 방식으로 탭 전환을 처리합니다.
- * saveState/restoreState로 각 탭의 상태(스크롤 위치 등)를 보존합니다.
- * 각 탭의 실제 Content는 AppNavigation의 composable destination에서 렌더링됩니다.
- */
 @Composable
 fun BottomNavScaffold(
     navController: NavHostController,
@@ -44,12 +37,7 @@ fun BottomNavScaffold(
                 bottomNavItems.forEach { (route, icon, label) ->
                     val selected = currentDestination?.hierarchy?.any { it.route == route } == true
                     NavigationBarItem(
-                        icon = {
-                            Icon(
-                                painter = painterResource(icon),
-                                contentDescription = label
-                            )
-                        },
+                        icon = { Icon(painter = painterResource(icon), contentDescription = label) },
                         label = { Text(label) },
                         selected = selected,
                         onClick = { navController.navigateToTab(route) },
@@ -64,7 +52,5 @@ fun BottomNavScaffold(
                 }
             }
         }
-    ) { paddingValues ->
-        content(paddingValues)
-    }
+    ) { paddingValues -> content(paddingValues) }
 }

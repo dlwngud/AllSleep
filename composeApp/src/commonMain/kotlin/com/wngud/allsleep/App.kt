@@ -27,11 +27,8 @@ fun App() {
         val showBottomNav = currentRoute in bottomNavRoutes
 
         AllSleepTheme {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background
-            ) { _ ->
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { _ ->
                 if (showBottomNav) {
-                    // 탭 화면: BottomNavScaffold → AppNavigation으로 paddingValues 전달
                     BottomNavScaffold(navController = navController) { paddingValues ->
                         AppNavigation(
                             navController = navController,
@@ -40,7 +37,6 @@ fun App() {
                         )
                     }
                 } else {
-                    // 온보딩 등 바텀바 없는 화면
                     AppNavigation(navController = navController)
                 }
             }

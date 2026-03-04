@@ -1,6 +1,5 @@
 package com.wngud.allsleep.ui.onboarding
 
-import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,23 +22,20 @@ import allsleep.composeapp.generated.resources.Res
 import allsleep.composeapp.generated.resources.ic_kakao_logo
 import allsleep.composeapp.generated.resources.ic_google_logo
 import allsleep.composeapp.generated.resources.ic_apple_logo
-import com.wngud.allsleep.data.repository.AuthRepositoryImpl
 import com.wngud.allsleep.domain.model.AuthProvider
-import com.wngud.allsleep.platform.auth.GoogleAuthService
-import com.wngud.allsleep.ui.auth.login.LoginIntent
-import com.wngud.allsleep.ui.auth.login.LoginViewModel
+import com.wngud.allsleep.ui.auth.login.AuthIntent
+import com.wngud.allsleep.ui.auth.login.AuthViewModel
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
+import com.wngud.allsleep.platform.PlatformContext
 
 /**
  * 온보딩 4번 화면: 로그인
- * "설정을 저장하고 모든 기기를 연결하세요"
- * 
- * ✅ ViewModel은 koinViewModel()로 직접 주입
- * ✅ Activity context는 LocalContext에서 가져옴
+ *
+ * ✅ ViewModel은 Koin이 자동 주입 (parametersOf 불필요)
+ * ✅ Activity는 버튼 클릭 시점에 LoginIntent로 전달 (생성자 주입 X)
  */
 @Composable
 actual fun OnboardingLoginScreen(
@@ -49,21 +45,11 @@ actual fun OnboardingLoginScreen(
     onAppleLogin: () -> Unit,
     onEmailLogin: () -> Unit
 ) {
-    // Activity context 가져오기
-    val activity = LocalContext.current as Activity
-    
-    // GoogleAuthService 생성 (Activity context 필요, KakaoAuthService는 Koin이 제공)
-    val googleAuthService = remember(activity) {
-        val kakaoService = com.wngud.allsleep.platform.auth.KakaoAuthService(activity)
-        GoogleAuthService(activity, com.wngud.allsleep.data.repository.AuthRepositoryImpl(kakaoService))
-    }
-    
-    // ✅ Koin에서 ViewModel 주입 (GoogleAuthService 파라미터로 전달)
-    val viewModel = koinViewModel<LoginViewModel> { parametersOf(googleAuthService) }
-    
+    val activity = LocalContext.current as PlatformContext
+    val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     // 로그인 성공 시 다음 화면으로
     LaunchedEffect(state.user) {
         if (state.user != null) {
@@ -72,23 +58,17 @@ actual fun OnboardingLoginScreen(
             onNext()
         }
     }
-    
-    // 에러 발생 시 Snackbar 표시 (사용자 취소는 제외)
+
+    // 에러 발생 시 Snackbar 표시
     LaunchedEffect(state.error) {
         state.error?.let { error ->
-            android.util.Log.d("OnboardingLoginScreen", "⚠️ 에러 감지: $error")
-            
-            // 사용자가 취소한 경우는 Snackbar 표시하지 않음
             if (!error.contains("취소")) {
-                android.util.Log.d("OnboardingLoginScreen", "   - Snackbar 표시")
                 snackbarHostState.showSnackbar(
                     message = error,
                     duration = SnackbarDuration.Short
                 )
-            } else {
-                android.util.Log.d("OnboardingLoginScreen", "   - 사용자 취소 (Snackbar 표시 안 함)")
             }
-            viewModel.handleIntent(LoginIntent.DismissError)
+            viewModel.handleIntent(AuthIntent.DismissError)
         }
     }
 
@@ -105,28 +85,17 @@ actual fun OnboardingLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
-            
-            // 페이지 인디케이터 (상단)
-            PageIndicator(
-                currentPage = 3,
-                totalPages = 5
-            )
-            
+
+            PageIndicator(currentPage = 3, totalPages = 5)
+
             Spacer(modifier = Modifier.height(Spacing.extraLarge))
-            
-            // 타이틀 & 서브타이틀
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 앱 로고
-                Text(
-                    text = "💤",
-                    fontSize = FontSize.iconExtraLarge
-                )
-                
+                Text(text = "💤", fontSize = FontSize.iconExtraLarge)
                 Spacer(modifier = Modifier.height(Spacing.small))
-                
                 Text(
                     text = "설정을 저장하고\n모든 기기를 연결하세요",
                     fontSize = FontSize.headlineSmall,
@@ -135,7 +104,6 @@ actual fun OnboardingLoginScreen(
                     textAlign = TextAlign.Center,
                     lineHeight = LineHeight.loose
                 )
-                
                 Text(
                     text = "로그인하면 방금 설정한 시간이\n모든 기기에 자동으로 적용됩니다",
                     fontSize = FontSize.bodyMedium,
@@ -145,22 +113,20 @@ actual fun OnboardingLoginScreen(
                     lineHeight = LineHeight.tight
                 )
             }
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
-            // 소셜 로그인 버튼들
+
+            val isAnyLoading = state.loadingProvider != null
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // 1. 카카오 로그인
                 val isKakaoLoading = state.loadingProvider == AuthProvider.KAKAO
-                val isAnyLoading = state.loadingProvider != null
                 Button(
-                    onClick = { viewModel.handleIntent(LoginIntent.LoginWithKakao) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(ButtonSize.heightMedium),
+                    onClick = { viewModel.handleIntent(AuthIntent.LoginWithKakao) },
+                    modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFEE500),
                         contentColor = Color(0xFF000000),
@@ -195,16 +161,12 @@ actual fun OnboardingLoginScreen(
                         }
                     }
                 }
-                
+
                 // 2. Google 로그인
                 val isGoogleLoading = state.loadingProvider == AuthProvider.GOOGLE
                 OutlinedButton(
-                    onClick = {
-                        viewModel.handleIntent(LoginIntent.LoginWithGoogle)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(ButtonSize.heightMedium),
+                    onClick = { viewModel.handleIntent(AuthIntent.LoginWithGoogle(activity)) },
+                    modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color.Black,
                         contentColor = Color.White
@@ -241,13 +203,11 @@ actual fun OnboardingLoginScreen(
                         }
                     }
                 }
-                
+
                 // 3. Apple 로그인
                 OutlinedButton(
                     onClick = { onNext() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(ButtonSize.heightMedium),
+                    modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color.Black,
                         contentColor = Color.White
@@ -275,12 +235,10 @@ actual fun OnboardingLoginScreen(
                         )
                     }
                 }
-                
+
                 // 구분선
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     HorizontalDivider(modifier = Modifier.weight(1f))
@@ -292,13 +250,11 @@ actual fun OnboardingLoginScreen(
                     )
                     HorizontalDivider(modifier = Modifier.weight(1f))
                 }
-                
+
                 // 건너뛰기 버튼
                 OutlinedButton(
                     onClick = onSkip,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(ButtonSize.heightMedium),
+                    modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color.Transparent,
                         contentColor = MaterialTheme.colorScheme.primary
@@ -315,16 +271,13 @@ actual fun OnboardingLoginScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                
-                // 안내 텍스트
+
                 Text(
                     text = "로컬 모드에서는 현재 기기만 잠글 수 있어요",
                     fontSize = FontSize.bodySmall,
                     color = OnSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 )
             }
         }

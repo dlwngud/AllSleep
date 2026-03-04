@@ -2,21 +2,16 @@ package com.wngud.allsleep.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 온보딩 ViewModel (MVI 패턴 적용)
- * - 단일 State 관리 (OnboardingState)
- * - Intent 처리 (OnboardingIntent)
- */
 class OnboardingViewModel(
     private val sleepSettingsRepository: SleepSettingsRepository,
-    private val authRepository: AuthRepository
+    private val getCurrentUserUseCase: GetCurrentUserUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingState())
@@ -34,29 +29,18 @@ class OnboardingViewModel(
     private fun loadCurrentUser() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            val user = authRepository.getCurrentUser()
+            val user = getCurrentUserUseCase()
             if (user != null) {
                 val displayName = user.displayName ?: user.email?.split("@")?.get(0) ?: "사용자"
-                _state.update { 
-                    it.copy(
-                        user = user,
-                        userName = displayName,
-                        isLoading = false
-                    ) 
-                }
+                _state.update { it.copy(user = user, userName = displayName, isLoading = false) }
             } else {
                 _state.update { it.copy(isLoading = false) }
             }
         }
     }
 
-    private fun updateBedtime(time: String) {
-        _state.update { it.copy(bedtime = time) }
-    }
-
-    private fun updateWakeTime(time: String) {
-        _state.update { it.copy(wakeTime = time) }
-    }
+    private fun updateBedtime(time: String) = _state.update { it.copy(bedtime = time) }
+    private fun updateWakeTime(time: String) = _state.update { it.copy(wakeTime = time) }
 
     private fun completeOnboarding() {
         viewModelScope.launch {
