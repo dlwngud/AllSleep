@@ -1,34 +1,19 @@
 package com.wngud.allsleep.domain.repository
 
 import com.wngud.allsleep.domain.model.User
+import com.wngud.allsleep.platform.PlatformContext
 
 /**
- * 인증 Repository 인터페이스
- * 플랫폼별 구현은 androidMain/iosMain에서 actual로 제공
+ * 인증 Repository 인터페이스 (commonMain)
+ *
+ * PlatformContext를 통해 플랫폼 의존성 추상화:
+ * Android: PlatformContext = Activity
+ * iOS:     PlatformContext = UIViewController
  */
 interface AuthRepository {
-    /**
-     * Google 로그인
-     */
-    suspend fun loginWithGoogle(): Result<User>
-
-    /**
-     * 카카오 로그인
-     */
     suspend fun loginWithKakao(): Result<User>
-    
-    /**
-     * 로그아웃
-     */
+    suspend fun loginWithGoogle(context: PlatformContext): Result<User>
     suspend fun logout(): Result<Unit>
-    
-    /**
-     * 현재 로그인된 사용자 가져오기
-     */
     suspend fun getCurrentUser(): User?
-    
-    /**
-     * 로그인 상태 확인
-     */
     fun isLoggedIn(): Boolean
 }
