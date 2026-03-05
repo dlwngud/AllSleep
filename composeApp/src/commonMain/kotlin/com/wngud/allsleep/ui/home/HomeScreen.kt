@@ -45,14 +45,24 @@ import com.wngud.allsleep.ui.theme.IndicatorSynced
 @Composable
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
-    viewModel: HomeViewModel = koinViewModel()
+    viewModel: HomeViewModel = koinViewModel(),
+    globalSleepViewModel: com.wngud.allsleep.ui.global.GlobalSleepViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val sleepState by globalSleepViewModel.sleepState.collectAsState()
 
     HomeScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onStartSleep = { viewModel.handleIntent(HomeIntent.StartSleep) }
+        isSleepModeActive = sleepState?.isSleeping ?: false,
+        onStartSleep = { 
+            viewModel.handleIntent(HomeIntent.StartSleep)
+            globalSleepViewModel.toggleSleepState(isSleeping = true)
+        },
+        onWakeUpTest = {
+            // [임시 테스트용] 강제 기상 버튼 콜백
+            globalSleepViewModel.toggleSleepState(isSleeping = false)
+        }
     )
 }
 
@@ -60,10 +70,11 @@ fun HomeScreen(
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     state: HomeState,
-    onStartSleep: () -> Unit
+    isSleepModeActive: Boolean,
+    onStartSleep: () -> Unit,
+    onWakeUpTest: () -> Unit
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
-    var isSleepModeActive by remember { mutableStateOf(false) }
     
     // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
@@ -95,10 +106,9 @@ fun HomeScreenContent(
             // 3. 하단 슬라이더: 무의식적인 탭 방지, 의도적인 수면 시작
             BottomSwipeArea(
                 sleepGoal = state.sleepGoal,
-                onStartSleep = {
-                    isSleepModeActive = true
-                    onStartSleep()
-                }
+                isSleepModeActive = isSleepModeActive,
+                onStartSleep = onStartSleep,
+                onWakeUpTest = onWakeUpTest
             )
         }
 
@@ -359,7 +369,12 @@ private fun DeviceIcon(
 }
 
 @Composable
-private fun BottomSwipeArea(sleepGoal: String, onStartSleep: () -> Unit) {
+private fun BottomSwipeArea(
+    sleepGoal: String, 
+    isSleepModeActive: Boolean,
+    onStartSleep: () -> Unit,
+    onWakeUpTest: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -371,8 +386,18 @@ private fun BottomSwipeArea(sleepGoal: String, onStartSleep: () -> Unit) {
         // 목표 텍스트
         Text("이번 밤 목표: $sleepGoal", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
 
-        // 슬라이더 버튼
-        SwipeToSleepButton(onSwipeComplete = onStartSleep)
+        // 슬라이더 버튼 (수면 상태에 따라 테스트용 해제 버튼으로도 변경 가능)
+        if (isSleepModeActive) {
+            Button(
+                onClick = onWakeUpTest,
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+            ) {
+                Text("임시: 잠금 해제 (Wake Up Test)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            SwipeToSleepButton(onSwipeComplete = onStartSleep)
+        }
     }
 }
 
@@ -452,7 +477,9 @@ fun HomeScreenPreview() {
         HomeScreenContent(
             contentPadding = PaddingValues(),
             state = HomeState(),
-            onStartSleep = {}
+            isSleepModeActive = false,
+            onStartSleep = {},
+            onWakeUpTest = {}
         )
     }
 }

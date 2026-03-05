@@ -145,8 +145,8 @@ private fun AlarmHeader(state: AlarmState) {
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-            val sleepTime = "%02d:%02d".format(state.sleepAlarm.hour, state.sleepAlarm.minute)
-            val wakeTime = "%02d:%02d".format(state.wakeAlarm.hour, state.wakeAlarm.minute)
+            val sleepTime = "${state.sleepAlarm.hour.toString().padStart(2, '0')}:${state.sleepAlarm.minute.toString().padStart(2, '0')}"
+            val wakeTime = "${state.wakeAlarm.hour.toString().padStart(2, '0')}:${state.wakeAlarm.minute.toString().padStart(2, '0')}"
             Text(
                 text = "$sleepTime ~ 기상 $wakeTime",
                 fontSize = 14.sp,
@@ -267,7 +267,7 @@ private fun ClockCircle(
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "%02d:%02d".format(hour, minute),
+                text = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isEnabled) MaterialTheme.colorScheme.onSurface
@@ -347,7 +347,7 @@ private fun ExtraAlarmItem(
     ) {
         Column {
             Text(
-                text = "%02d:%02d".format(alarm.hour, alarm.minute),
+                text = "${alarm.hour.toString().padStart(2, '0')}:${alarm.minute.toString().padStart(2, '0')}",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface

@@ -100,7 +100,7 @@ fun OnboardingTimeScreen(
                 label = "취침 시간",
                 hour = bedtimeHour,
                 minute = bedtimeMinute,
-                onTimeChange = { h, m -> onBedtimeChange(String.format("%02d:%02d", h, m)) }
+                onTimeChange = { h, m -> onBedtimeChange("${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}") }
             )
             
             // 기상 시간
@@ -108,7 +108,7 @@ fun OnboardingTimeScreen(
                 label = "기상 시간",
                 hour = wakeHour,
                 minute = wakeMinute,
-                onTimeChange = { h, m -> onWakeTimeChange(String.format("%02d:%02d", h, m)) }
+                onTimeChange = { h, m -> onWakeTimeChange("${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}") }
             )
         }
         

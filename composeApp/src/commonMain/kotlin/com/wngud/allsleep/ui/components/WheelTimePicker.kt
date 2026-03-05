@@ -180,7 +180,7 @@ private fun WheelPicker(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = String.format("%02d", value),
+                    text = value.toString().padStart(2, '0'),
                     fontSize = if (isCenter) 30.sp else 22.sp,
                     fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
                     color = if (isCenter) Color.White else Color.Gray,
