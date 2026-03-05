@@ -51,10 +51,20 @@ kotlin {
             
             // DataStore
             implementation(libs.datastore.preferences.core)
+            
+            // DateTime
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+    }
+}
+
+configurations.all {
+    exclude(group = "com.google.guava", module = "listenablefuture")
+    resolutionStrategy {
+        force("com.google.guava:guava:32.1.3-android")
     }
 }
 
@@ -92,6 +102,8 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     implementation("com.google.firebase:firebase-functions")  // Cloud Functions 클라이언트
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
