@@ -27,7 +27,7 @@ fun AppNavigation(
 
 fun NavHostController.navigateToTab(route: String) {
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        popUpTo(graph.findStartDestination().route!!) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
