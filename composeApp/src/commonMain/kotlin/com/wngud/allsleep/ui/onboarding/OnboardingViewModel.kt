@@ -2,7 +2,7 @@ package com.wngud.allsleep.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wngud.allsleep.data.repository.SleepSettingsRepository
+import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

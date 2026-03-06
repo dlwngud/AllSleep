@@ -1,7 +1,7 @@
 package com.wngud.allsleep.domain.usecase.sleep
 
 import com.wngud.allsleep.domain.model.UserSleepState
-import com.wngud.allsleep.data.repository.SleepSyncRepository
+import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import kotlinx.coroutines.flow.Flow
 
 class ObserveUserSleepStateUseCase(

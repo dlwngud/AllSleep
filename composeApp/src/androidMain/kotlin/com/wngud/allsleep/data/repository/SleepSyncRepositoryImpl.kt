@@ -3,7 +3,7 @@ package com.wngud.allsleep.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.wngud.allsleep.domain.model.DeviceState
 import com.wngud.allsleep.domain.model.UserSleepState
-import com.wngud.allsleep.data.repository.SleepSyncRepository
+import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

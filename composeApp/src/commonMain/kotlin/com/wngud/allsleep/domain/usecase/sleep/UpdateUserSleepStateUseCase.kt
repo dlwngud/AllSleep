@@ -1,6 +1,6 @@
 package com.wngud.allsleep.domain.usecase.sleep
 
-import com.wngud.allsleep.data.repository.SleepSyncRepository
+import com.wngud.allsleep.domain.repository.SleepSyncRepository
 
 class UpdateUserSleepStateUseCase(
     private val sleepSyncRepository: SleepSyncRepository

@@ -4,7 +4,7 @@ import com.wngud.allsleep.data.datasource.auth.FirebaseAuthDataSource
 import com.wngud.allsleep.data.datasource.auth.GoogleAuthDataSource
 import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.domain.model.User
-import com.wngud.allsleep.data.repository.AuthRepository
+import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.platform.PlatformContext
 
 class AuthRepositoryImpl(
