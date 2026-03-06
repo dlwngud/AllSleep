@@ -1,4 +1,4 @@
-package com.wngud.allsleep.domain.repository
+package com.wngud.allsleep.data.repository
 
 import kotlinx.coroutines.flow.Flow
 

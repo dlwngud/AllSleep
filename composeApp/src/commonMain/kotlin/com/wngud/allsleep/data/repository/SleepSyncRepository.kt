@@ -1,4 +1,4 @@
-package com.wngud.allsleep.domain.repository
+package com.wngud.allsleep.data.repository
 
 import com.wngud.allsleep.domain.model.DeviceState
 import com.wngud.allsleep.domain.model.UserSleepState

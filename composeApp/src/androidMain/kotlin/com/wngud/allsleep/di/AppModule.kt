@@ -6,8 +6,8 @@ import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
 import com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl
 import com.wngud.allsleep.data.source.local.createDataStore
-import com.wngud.allsleep.domain.repository.AuthRepository
-import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import com.wngud.allsleep.data.repository.AuthRepository
+import com.wngud.allsleep.data.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithGoogleUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithKakaoUseCase
@@ -30,7 +30,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import com.google.firebase.firestore.FirebaseFirestore
 import com.wngud.allsleep.data.repository.SleepSyncRepositoryImpl
-import com.wngud.allsleep.domain.repository.SleepSyncRepository
+import com.wngud.allsleep.data.repository.SleepSyncRepository
 
 val appModule = module {
 

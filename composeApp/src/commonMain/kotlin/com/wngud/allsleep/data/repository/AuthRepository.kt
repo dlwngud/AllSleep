@@ -1,4 +1,4 @@
-package com.wngud.allsleep.domain.repository
+package com.wngud.allsleep.data.repository
 
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.platform.PlatformContext
