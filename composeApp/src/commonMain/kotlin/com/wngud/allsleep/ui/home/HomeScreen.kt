@@ -50,10 +50,12 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val sleepState by globalSleepViewModel.sleepState.collectAsState()
+    val devices by globalSleepViewModel.registeredDevices.collectAsState()
 
     HomeScreenContent(
         contentPadding = contentPadding,
         state = state,
+        devices = devices,
         isSleepModeActive = sleepState?.isSleeping ?: false,
         onStartSleep = { 
             viewModel.handleIntent(HomeIntent.StartSleep)
@@ -70,6 +72,7 @@ fun HomeScreen(
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     state: HomeState,
+    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
     isSleepModeActive: Boolean,
     onStartSleep: () -> Unit,
     onWakeUpTest: () -> Unit
@@ -98,6 +101,7 @@ fun HomeScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 OrbitalSyncHub(
+                    devices = devices,
                     isSleepModeActive = isSleepModeActive,
                     onDeviceClick = { showDeviceSheet = true }
                 )
@@ -114,27 +118,32 @@ fun HomeScreenContent(
 
         if (showDeviceSheet) {
             DeviceBottomSheet(
+                devices = devices,
                 onDismiss = { showDeviceSheet = false }
             )
         }
     }
 }
 
-// 더미 기기 데이터
-private data class DummyDevice(val icon: DrawableResource, val name: String, val isSynced: Boolean)
-
-private val dummyDevices = listOf(
-    DummyDevice(Res.drawable.ic_mobile, "iPhone", true),
-    DummyDevice(Res.drawable.ic_tablet, "MacBook Pro", true),
-    DummyDevice(Res.drawable.ic_tablet, "iPad Pro", true),
-    DummyDevice(Res.drawable.ic_mobile, "Apple Watch", true)
-)
+// 기기 정보에 따른 아이콘 매핑 유틸리티
+@Composable
+private fun getDeviceIcon(platform: String): DrawableResource {
+    return when (platform.lowercase()) {
+        "android" -> Res.drawable.ic_mobile
+        "ios" -> Res.drawable.ic_mobile
+        "tablet" -> Res.drawable.ic_tablet
+        else -> Res.drawable.ic_mobile
+    }
+}
 
     // TopConnectionStatus 제거 (OrbitalSyncHub의 위성으로 통합)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeviceBottomSheet(onDismiss: () -> Unit) {
+private fun DeviceBottomSheet(
+    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
+    onDismiss: () -> Unit
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF131821),
@@ -162,14 +171,15 @@ private fun DeviceBottomSheet(onDismiss: () -> Unit) {
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             
-            dummyDevices.forEach { device ->
+            devices.forEach { device ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Icon Box
+                    val isSynced = true // Firestore에 존재한다는 것 자체가 현재 동기화 대상임을 의미
+                    val icon = getDeviceIcon(device.platform)
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -178,34 +188,42 @@ private fun DeviceBottomSheet(onDismiss: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(device.icon),
-                            contentDescription = device.name,
-                            tint = if (device.isSynced) MaterialTheme.colorScheme.primary else Color.Gray,
+                            painter = painterResource(icon),
+                            contentDescription = device.deviceName,
+                            tint = if (isSynced) MaterialTheme.colorScheme.primary else Color.Gray,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     
                     Spacer(modifier = Modifier.width(16.dp))
                     
-                    // 연결 상태 표시 (Dot + 텍스트)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    color = if (device.isSynced) IndicatorSynced else Color.Gray,
-                                    shape = CircleShape
-                                )
-                        )
+                    Column {
                         Text(
-                            text = if (device.isSynced) "Ready" else "Offline",
-                            color = if (device.isSynced) IndicatorSynced else Color.Gray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = device.deviceName,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
                         )
+                        // 연결 상태 표시 (Dot + 텍스트)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(
+                                        color = if (isSynced) IndicatorSynced else Color.Gray,
+                                        shape = CircleShape
+                                    )
+                            )
+                            Text(
+                                text = if (isSynced) "Ready" else "Offline",
+                                color = if (isSynced) IndicatorSynced else Color.Gray,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
                     }
                 }
             }
@@ -214,13 +232,17 @@ private fun DeviceBottomSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun OrbitalSyncHub(isSleepModeActive: Boolean, onDeviceClick: () -> Unit) {
+private fun OrbitalSyncHub(
+    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
+    isSleepModeActive: Boolean, 
+    onDeviceClick: () -> Unit
+) {
     val infiniteTransition = rememberInfiniteTransition()
 
     // 궤도 무한 회전 애니메이션용 반지름 관리
     val orbitRadius = 140.dp.value
     // 기기 개수에 따른 궤도 간격
-    val deviceCount = dummyDevices.size
+    val deviceCount = devices.size
     val angleStep = if (deviceCount > 0) 360f / deviceCount else 0f
 
     // 2초 간격으로 빛이 깜빡이는(숨쉬는) 펄스 애니메이션
@@ -268,7 +290,7 @@ private fun OrbitalSyncHub(isSleepModeActive: Boolean, onDeviceClick: () -> Unit
             }
 
             // 연결된 기기 위성(Satellite) 애니메이션 리스트
-            dummyDevices.forEachIndexed { index, device ->
+            devices.forEachIndexed { index, device ->
                 // 각 기기마다의 고유 시작 각도
                 val startAngle = index * angleStep
                 // 360도 회전 애니메이션
@@ -279,10 +301,10 @@ private fun OrbitalSyncHub(isSleepModeActive: Boolean, onDeviceClick: () -> Unit
                 )
                 
                 DeviceIcon(
-                    icon = device.icon,
+                    icon = getDeviceIcon(device.platform),
                     rotation = rotation,
                     orbitRadius = orbitRadius,
-                    isSynced = device.isSynced,
+                    isSynced = true,
                     pulseAlpha = pulseAlpha
                 )
             }
@@ -477,6 +499,7 @@ fun HomeScreenPreview() {
         HomeScreenContent(
             contentPadding = PaddingValues(),
             state = HomeState(),
+            devices = emptyList(),
             isSleepModeActive = false,
             onStartSleep = {},
             onWakeUpTest = {}

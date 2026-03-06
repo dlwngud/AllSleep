@@ -2,6 +2,7 @@ package com.wngud.allsleep.domain.repository
 
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.platform.PlatformContext
+import kotlinx.coroutines.flow.Flow
 
 /**
  * 인증 Repository 인터페이스 (commonMain)
@@ -16,4 +17,5 @@ interface AuthRepository {
     suspend fun logout(): Result<Unit>
     suspend fun getCurrentUser(): User?
     fun isLoggedIn(): Boolean
+    fun observeUser(): Flow<User?>
 }

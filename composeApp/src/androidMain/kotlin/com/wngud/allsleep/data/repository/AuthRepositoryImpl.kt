@@ -6,6 +6,7 @@ import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.platform.PlatformContext
+import kotlinx.coroutines.flow.Flow
 
 class AuthRepositoryImpl(
     private val kakaoAuthDataSource: KakaoAuthDataSource,
@@ -28,4 +29,7 @@ class AuthRepositoryImpl(
 
     override fun isLoggedIn(): Boolean =
         firebaseAuthDataSource.isLoggedIn()
+
+    override fun observeUser(): Flow<User?> =
+        firebaseAuthDataSource.observeUser()
 }

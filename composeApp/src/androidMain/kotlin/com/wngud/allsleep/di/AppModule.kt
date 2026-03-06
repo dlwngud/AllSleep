@@ -10,11 +10,17 @@ import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.domain.usecase.auth.ObserveUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithGoogleUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithKakaoUseCase
 import com.wngud.allsleep.domain.usecase.auth.SignOutUseCase
+import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
+import com.wngud.allsleep.domain.usecase.onboarding.CompleteOnboardingUseCase
+import com.wngud.allsleep.domain.usecase.onboarding.ObserveOnboardingCompletedUseCase
+import com.wngud.allsleep.domain.usecase.sleep.ObserveRegisteredDevicesUseCase
 import com.wngud.allsleep.domain.usecase.sleep.ObserveUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RegisterDeviceUseCase
+import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
 import com.wngud.allsleep.ui.auth.login.AuthViewModel
@@ -62,10 +68,16 @@ val appModule = module {
     factoryOf(::LoginWithKakaoUseCase)
     factoryOf(::LoginWithGoogleUseCase)
     factoryOf(::GetCurrentUserUseCase)
+    factoryOf(::ObserveUserUseCase)
+    factoryOf(::UpdateUserProfileUseCase)
     factoryOf(::SignOutUseCase)
     factoryOf(::ObserveUserSleepStateUseCase)
     factoryOf(::UpdateUserSleepStateUseCase)
     factoryOf(::RegisterDeviceUseCase)
+    factoryOf(::UnregisterDeviceUseCase)
+    factoryOf(::ObserveRegisteredDevicesUseCase)
+    factoryOf(::ObserveOnboardingCompletedUseCase)
+    factoryOf(::CompleteOnboardingUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
     viewModelOf(::GlobalSleepViewModel)
