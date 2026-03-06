@@ -6,6 +6,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.wngud.allsleep.ui.alarm.AlarmScreen
+import com.wngud.allsleep.ui.auth.login.GlobalLoginScreen
 import com.wngud.allsleep.ui.home.HomeScreen
 import com.wngud.allsleep.ui.settings.SettingsScreen
 import com.wngud.allsleep.ui.stats.StatsScreen
@@ -22,6 +23,14 @@ fun AppNavigation(
         composable(Screen.Stats.route) { StatsScreen(contentPadding = contentPadding) }
         composable(Screen.Alarm.route) { AlarmScreen(contentPadding = contentPadding) }
         composable(Screen.Settings.route) { SettingsScreen(contentPadding = contentPadding) }
+        
+        composable(Screen.Auth.Login.route) {
+            GlobalLoginScreen(onLoginSuccess = {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Auth.Login.route) { inclusive = true }
+                }
+            })
+        }
     }
 }
 
