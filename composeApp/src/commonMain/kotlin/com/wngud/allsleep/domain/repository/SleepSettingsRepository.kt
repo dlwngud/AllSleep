@@ -11,9 +11,15 @@ interface SleepSettingsRepository {
     
     // 기상 시간 (HH:mm)
     val wakeTime: Flow<String>
+
+    // 온보딩 완료 여부
+    val isOnboardingCompleted: Flow<Boolean>
     
     // 설정 저장
     suspend fun saveSleepSchedule(bedtime: String, wakeTime: String)
+
+    // 온보딩 완료 상태 저장
+    suspend fun saveOnboardingCompleted(completed: Boolean)
     
     // 초기화 (로그아웃 시 등)
     suspend fun clear()

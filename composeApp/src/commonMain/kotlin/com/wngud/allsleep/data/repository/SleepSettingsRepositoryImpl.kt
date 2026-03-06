@@ -2,6 +2,7 @@ package com.wngud.allsleep.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
@@ -19,6 +20,7 @@ class SleepSettingsRepositoryImpl(
     companion object {
         private val KEY_BEDTIME = stringPreferencesKey("bedtime")
         private val KEY_WAKE_TIME = stringPreferencesKey("wake_time")
+        private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         
         private const val DEFAULT_BEDTIME = "23:00"
         private const val DEFAULT_WAKE_TIME = "07:00"
@@ -32,10 +34,20 @@ class SleepSettingsRepositoryImpl(
         preferences[KEY_WAKE_TIME] ?: DEFAULT_WAKE_TIME
     }
 
+    override val isOnboardingCompleted: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[KEY_ONBOARDING_COMPLETED] ?: false
+    }
+
     override suspend fun saveSleepSchedule(bedtime: String, wakeTime: String) {
         dataStore.edit { preferences ->
             preferences[KEY_BEDTIME] = bedtime
             preferences[KEY_WAKE_TIME] = wakeTime
+        }
+    }
+
+    override suspend fun saveOnboardingCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_ONBOARDING_COMPLETED] = completed
         }
     }
 
