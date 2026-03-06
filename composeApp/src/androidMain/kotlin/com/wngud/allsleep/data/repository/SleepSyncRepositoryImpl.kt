@@ -56,8 +56,22 @@ class SleepSyncRepositoryImpl(
             .await()
     }
 
+    override suspend fun updateUserProfile(user: com.wngud.allsleep.domain.model.User): Result<Unit> = runCatching {
+        val data = mutableMapOf<String, Any>(
+            "uid" to user.uid,
+            "provider" to user.provider.name,
+            "lastLoginAt" to System.currentTimeMillis()
+        )
+        user.email?.let { data["email"] = it }
+        user.displayName?.let { data["displayName"] = it }
+        user.photoUrl?.let { data["photoUrl"] = it }
+        
+        usersCollection.document(user.uid)
+            .set(data, com.google.firebase.firestore.SetOptions.merge())
+            .await()
+    }
+
     override suspend fun registerDevice(uid: String, deviceState: DeviceState): Result<Unit> {
-        val sanitizedUid = uid.replace(":", "_")
         
         return try {
             val data = hashMapOf(
@@ -69,7 +83,7 @@ class SleepSyncRepositoryImpl(
                 "isMainAlarmDevice" to deviceState.isMainAlarmDevice
             )
             
-            usersCollection.document(sanitizedUid).collection("devices").document(deviceState.deviceId)
+            usersCollection.document(uid).collection("devices").document(deviceState.deviceId)
                 .set(data)
                 .await()
                 
@@ -81,8 +95,7 @@ class SleepSyncRepositoryImpl(
     }
 
     override suspend fun getRegisteredDevices(uid: String): Result<List<DeviceState>> = runCatching {
-        val sanitizedUid = uid.replace(":", "_")
-        val snapshot = usersCollection.document(sanitizedUid).collection("devices").get().await()
+        val snapshot = usersCollection.document(uid).collection("devices").get().await()
         
         snapshot.documents.map { doc ->
             DeviceState(
@@ -107,5 +120,38 @@ class SleepSyncRepositoryImpl(
                 batch.update(doc.reference, "isMainAlarmDevice", isTarget)
             }
         }.await()
+    }
+
+    override suspend fun unregisterDevice(uid: String, deviceId: String): Result<Unit> = runCatching {
+        usersCollection.document(uid).collection("devices").document(deviceId)
+            .delete()
+            .await()
+    }
+
+    override fun observeRegisteredDevices(uid: String): Flow<List<DeviceState>> = callbackFlow {
+        val listenerRegistration = usersCollection.document(uid).collection("devices")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                
+                val devices = snapshot?.documents?.map { doc ->
+                    DeviceState(
+                        deviceId = doc.getString("deviceId") ?: "",
+                        deviceName = doc.getString("deviceName") ?: "",
+                        fcmToken = doc.getString("fcmToken") ?: "",
+                        platform = doc.getString("platform") ?: "Android",
+                        lastActiveForSleepLocking = doc.getLong("lastActiveForSleepLocking") ?: 0L,
+                        isMainAlarmDevice = doc.getBoolean("isMainAlarmDevice") ?: false
+                    )
+                } ?: emptyList()
+                
+                trySend(devices)
+            }
+        
+        awaitClose {
+            listenerRegistration.remove()
+        }
     }
 }

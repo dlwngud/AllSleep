@@ -27,6 +27,13 @@ interface SleepSyncRepository {
     ): Result<Unit>
 
     /**
+     * 2-1. 사용자 기본 프로필 정보 갱신/저장 (로그인 시)
+     * 부모 문서(users/{uid})가 비어있는 상태에서 
+     * 자식(기기)이 하나도 없으면 문서가 숨김 처리되는(가상경로) 현상 방지
+     */
+    suspend fun updateUserProfile(user: com.wngud.allsleep.domain.model.User): Result<Unit>
+
+    /**
      * 3. 현재 기기 정보 등록/갱신 (FCM 토큰 갱신 시 혹은 앱 구동 시)
      * users/{uid}/devices/{deviceId} 하위에 덮어쓰기
      */
@@ -41,4 +48,16 @@ interface SleepSyncRepository {
      * 5. 메인 기기 설정 변경 (알람이 울릴 Hub 기기)
      */
     suspend fun setMainAlarmDevice(uid: String, deviceId: String): Result<Unit>
+
+    /**
+     * 6. 현재 기기 등록 해제 (로그아웃 시)
+     * users/{uid}/devices/{deviceId} 문서 삭제
+     */
+    suspend fun unregisterDevice(uid: String, deviceId: String): Result<Unit>
+
+    /**
+     * 7. 등록된 기기 목록 실시간 구독
+     * users/{uid}/devices 서브 컬렉션의 변경을 감지함 (Flow)
+     */
+    fun observeRegisteredDevices(uid: String): Flow<List<DeviceState>>
 }
