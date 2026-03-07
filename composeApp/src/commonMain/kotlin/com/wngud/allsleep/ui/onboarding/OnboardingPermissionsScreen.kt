@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wngud.allsleep.platform.rememberPermissionRequester
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
 
@@ -21,6 +22,53 @@ fun OnboardingPermissionsScreen(
     onAllow: () -> Unit,
     onSkip: () -> Unit
 ) {
+    // 8. 거부 시 피드백 다이얼로그(우아한 기능 저하 안내) 표시 상태
+    var showDeniedDialog by remember { mutableStateOf(false) }
+
+    val permissionRequester = rememberPermissionRequester { isGranted ->
+        if (isGranted) {
+            // 승인됨: 정상적으로 다음 화면 진입
+            onAllow()
+        } else {
+            // 거부됨: 기능 성능 제약 안내 다이얼로그 표시
+            showDeniedDialog = true
+        }
+    }
+
+    // 기능 저하를 안내하는 다이얼로그 (Graceful Degradation)
+    if (showDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeniedDialog = false
+                onAllow() // 다이얼로그를 닫아도 다음 단계로 이동
+            },
+            title = {
+                Text(
+                    text = "알림 없이 진행할까요?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "알림 권한이 거부되어 수면 리포트 및 기상 알림을 받을 수 없습니다.\n나중에 시스템 설정에서 언제든 켤 수 있습니다.",
+                    fontSize = FontSize.bodyMedium,
+                    color = OnSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeniedDialog = false
+                    onAllow()
+                }) {
+                    Text("확인", fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +139,7 @@ fun OnboardingPermissionsScreen(
         Spacer(modifier = Modifier.height(48.dp))
         
         Button(
-            onClick = onAllow,
+            onClick = { permissionRequester.requestBasicPermissions() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(ButtonSize.heightLarge),
