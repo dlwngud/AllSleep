@@ -2,15 +2,15 @@ package com.wngud.allsleep.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.domain.usecase.onboarding.CompleteOnboardingUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class OnboardingViewModel(
-    private val sleepSettingsRepository: SleepSettingsRepository,
+    private val completeOnboardingUseCase: CompleteOnboardingUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase
 ) : ViewModel() {
 
@@ -45,7 +45,7 @@ class OnboardingViewModel(
     private fun completeOnboarding() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            sleepSettingsRepository.saveSleepSchedule(_state.value.bedtime, _state.value.wakeTime)
+            completeOnboardingUseCase()
             _state.update { it.copy(isLoading = false) }
         }
     }

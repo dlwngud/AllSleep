@@ -51,7 +51,7 @@ fun OnboardingTimeScreen(
         // 페이지 인디케이터 (상단)
         PageIndicator(
             currentPage = 2,
-            totalPages = 5
+            totalPages = 6
         )
         
         Spacer(modifier = Modifier.height(Spacing.extraLarge))

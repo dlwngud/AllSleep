@@ -13,6 +13,7 @@ import com.wngud.allsleep.ui.onboarding.OnboardingLoginScreen
 import com.wngud.allsleep.ui.onboarding.OnboardingProblemScreen
 import com.wngud.allsleep.ui.onboarding.OnboardingSolutionScreen
 import com.wngud.allsleep.ui.onboarding.OnboardingTimeScreen
+import com.wngud.allsleep.ui.onboarding.OnboardingPermissionsScreen
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -34,11 +35,23 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
             val viewModel: OnboardingViewModel = koinViewModel(viewModelStoreOwner = parentEntry)
             val state by viewModel.state.collectAsState()
             OnboardingTimeScreen(
-                onNext = { navController.navigate(Screen.Onboarding.Login.route) },
+                onNext = { navController.navigate(Screen.Onboarding.Permissions.route) },
                 bedtime = state.bedtime,
                 wakeTime = state.wakeTime,
                 onBedtimeChange = { viewModel.handleIntent(OnboardingIntent.UpdateBedtime(it)) },
                 onWakeTimeChange = { viewModel.handleIntent(OnboardingIntent.UpdateWakeTime(it)) }
+            )
+        }
+        composable(Screen.Onboarding.Permissions.route) {
+            OnboardingPermissionsScreen(
+                onAllow = {
+                    // TODO: 실제 권한 요청 액션 추가 (Phase 2-1)
+                    // 현재는 승인/거절 모두 다음 화면(Login)으로 넘어감
+                    navController.navigate(Screen.Onboarding.Login.route)
+                },
+                onSkip = {
+                    navController.navigate(Screen.Onboarding.Login.route)
+                }
             )
         }
         composable(Screen.Onboarding.Login.route) { backStackEntry ->
