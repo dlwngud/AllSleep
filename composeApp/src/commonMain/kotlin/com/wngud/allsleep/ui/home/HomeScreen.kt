@@ -35,6 +35,7 @@ import kotlin.math.cos
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import com.wngud.allsleep.platform.rememberOverlayPermissionRequester
 import com.wngud.allsleep.ui.theme.IndicatorSynced
 
 
@@ -78,6 +79,37 @@ fun HomeScreenContent(
     onWakeUpTest: () -> Unit
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    
+    val permissionRequester = rememberOverlayPermissionRequester { isGranted ->
+        if (isGranted) {
+            onStartSleep()
+        }
+    }
+
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("화면 잠금 권한 안내", fontWeight = FontWeight.Bold) },
+            text = { Text("수면 중 휴대폰 사용을 효과적으로 차단하기 위해 '다른 앱 위에 표시' 기능이 필수적입니다.\n\n설정 화면으로 이동하여 권한을 허용해 주세요.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    permissionRequester.requestPermission()
+                }) {
+                    Text("설정으로 이동", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("나중에 가기")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
     
     // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
@@ -111,7 +143,14 @@ fun HomeScreenContent(
             BottomSwipeArea(
                 sleepGoal = state.sleepGoal,
                 isSleepModeActive = isSleepModeActive,
-                onStartSleep = onStartSleep,
+                onStartSleep = {
+                    // 권한 점검 후 수면 시작 (권한 없으면 다이얼로그 표시)
+                    if (permissionRequester.isGranted()) {
+                        onStartSleep()
+                    } else {
+                        showPermissionDialog = true
+                    }
+                },
                 onWakeUpTest = onWakeUpTest
             )
         }
@@ -442,6 +481,17 @@ private fun SwipeToSleepButton(
 
         var offsetX by remember { mutableStateOf(0f) }
         var isSwiped by remember { mutableStateOf(false) }
+
+        // 수면 모드 진입이 취소되었을 때(예: 권한 거부) 버튼을 원래 상태로 복구
+        LaunchedEffect(isSwiped) {
+            if (isSwiped) {
+                kotlinx.coroutines.delay(500)
+                if (isSwiped) {
+                    isSwiped = false
+                    offsetX = 0f
+                }
+            }
+        }
 
         // 중앙 텍스트
         Text(
