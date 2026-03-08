@@ -10,8 +10,10 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.wngud.allsleep.platform.LockOverlayManagerImpl
 
 class SleepLockService : Service() {
+    private var overlayManager: LockOverlayManagerImpl? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null // 바인딩을 사용하지 않는 Started Service
@@ -38,8 +40,20 @@ class SleepLockService : Service() {
             e.printStackTrace()
         }
 
+        // 오버레이 UI 표시
+        if (overlayManager == null) {
+            overlayManager = LockOverlayManagerImpl(this)
+            overlayManager?.showOverlay()
+        }
+
         // 시스템에 의해 서비스가 종료되더라도 자동으로 다시 시작하도록 설정(불사조 옵션)
         return START_STICKY 
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        overlayManager?.hideOverlay()
+        overlayManager = null
     }
 
     private fun createNotificationChannel() {

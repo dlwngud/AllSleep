@@ -36,6 +36,7 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import com.wngud.allsleep.platform.rememberOverlayPermissionRequester
+import com.wngud.allsleep.platform.rememberSleepServiceController
 import com.wngud.allsleep.ui.theme.IndicatorSynced
 
 
@@ -81,9 +82,11 @@ fun HomeScreenContent(
     var showDeviceSheet by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     
+    val sleepServiceController = rememberSleepServiceController()
     val permissionRequester = rememberOverlayPermissionRequester { isGranted ->
         if (isGranted) {
             onStartSleep()
+            sleepServiceController.start()
         }
     }
 
@@ -147,11 +150,15 @@ fun HomeScreenContent(
                     // 권한 점검 후 수면 시작 (권한 없으면 다이얼로그 표시)
                     if (permissionRequester.isGranted()) {
                         onStartSleep()
+                        sleepServiceController.start()
                     } else {
                         showPermissionDialog = true
                     }
                 },
-                onWakeUpTest = onWakeUpTest
+                onWakeUpTest = {
+                    onWakeUpTest()
+                    sleepServiceController.stop()
+                }
             )
         }
 
