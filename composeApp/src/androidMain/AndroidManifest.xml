@@ -10,10 +10,6 @@
     <!-- 다른 앱 위에 표시 (수면 잠금 오버레이용) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- OOM Killer 방어 및 포그라운드 서비스 -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
     <application
         android:name=".AllSleepApp"
         android:allowBackup="true"
@@ -50,17 +46,6 @@
                     android:scheme="${kakaoScheme}" />
             </intent-filter>
         </activity>
-
-        <!-- 불사조 포그라운드 서비스 등록 (화면 덮기 유지용) -->
-        <service
-            android:name=".service.SleepLockService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="screen_lock_overlay" />
-        </service>
-
     </application>
 
 </manifest>
