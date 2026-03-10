@@ -34,6 +34,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @Composable
 fun SettingsScreen(
+    navController: androidx.navigation.NavController,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
@@ -42,15 +43,43 @@ fun SettingsScreen(
     SettingsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent
+        onIntent = viewModel::handleIntent,
+        onNavigateToAppBlocker = {
+            navController.navigate(com.wngud.allsleep.navigation.Screen.Settings.AppBlocker.route)
+        }
     )
+}
+
+@Composable
+fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            content()
+        }
+    }
 }
 
 @Composable
 fun SettingsScreenContent(
     contentPadding: PaddingValues,
     state: SettingsState,
-    onIntent: (SettingsIntent) -> Unit
+    onIntent: (SettingsIntent) -> Unit,
+    onNavigateToAppBlocker: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -79,6 +108,24 @@ fun SettingsScreenContent(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        // 수면 잠금 및 차단 (New Section)
+        SettingsSection(title = "차단 및 보안") {
+            SettingsRowArrow(
+                emoji = "🛡️",
+                label = "앱 블랙리스트 관리",
+                onClick = onNavigateToAppBlocker
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "🔑",
+                label = "접근성 권한 설정",
+                trailing = "준비 중",
+                onClick = { /* TODO: 접근성 설정 화면 이동 */ }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 수면 설정
         SettingsSection(title = "수면 설정") {
@@ -344,30 +391,6 @@ private fun PremiumActiveCard(
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Text(
-            text = title,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
 private fun SettingsRowArrow(
     emoji: String,
     label: String,
@@ -484,7 +507,8 @@ fun SettingsScreenPreview() {
             SettingsScreenContent(
                 contentPadding = PaddingValues(),
                 state = SettingsState(isPremium = true),
-                onIntent = {}
+                onIntent = {},
+                onNavigateToAppBlocker = {}
             )
         }
     }
