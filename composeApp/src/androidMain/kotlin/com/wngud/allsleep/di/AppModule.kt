@@ -4,6 +4,7 @@ import com.wngud.allsleep.data.datasource.auth.FirebaseAuthDataSource
 import com.wngud.allsleep.data.datasource.auth.GoogleAuthDataSource
 import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
+import com.wngud.allsleep.data.repository.AppBlockerRepositoryImpl
 import com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl
 import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
@@ -28,6 +29,7 @@ import com.wngud.allsleep.ui.home.HomeViewModel
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import com.wngud.allsleep.ui.settings.SettingsViewModel
+import com.wngud.allsleep.ui.settings.AppBlockerViewModel
 import com.wngud.allsleep.ui.stats.StatsViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModelOf
@@ -59,6 +61,7 @@ val appModule = module {
     // ── Repository (인터페이스 → 구현체, DIP) ─────────────────────
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::SleepSyncRepositoryImpl) bind SleepSyncRepository::class
+    singleOf(::AppBlockerRepositoryImpl) bind com.wngud.allsleep.domain.repository.AppBlockerRepository::class
 
     // ── DataStore ─────────────────────────────────────────────────
     single { createDataStore() }
@@ -87,4 +90,5 @@ val appModule = module {
     viewModelOf(::AlarmViewModel)
     viewModelOf(::SettingsViewModel)
     viewModelOf(::StatsViewModel)
+    viewModelOf(::AppBlockerViewModel)
 }
