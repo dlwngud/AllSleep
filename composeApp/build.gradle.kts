@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -9,11 +10,7 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
+    androidTarget()
     
     listOf(
         iosArm64(),
@@ -88,7 +85,22 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
+            // keystore.properties 파일 읽기
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                val props = Properties().apply {
+                    load(keystorePropertiesFile.inputStream())
+                }
+                signingConfig = signingConfigs.create("release") {
+                    storeFile = rootProject.file(props.getProperty("storeFile"))
+                    storePassword = props.getProperty("storePassword")
+                    keyAlias = props.getProperty("keyAlias")
+                    keyPassword = props.getProperty("keyPassword")
+                }
+            }
         }
     }
     compileOptions {
