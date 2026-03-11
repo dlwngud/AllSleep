@@ -69,6 +69,19 @@
                 android:value="screen_lock_overlay" />
         </service>
 
+        <!-- 접근성 기반 강력 차단 감시 서비스 (App Supervisor) -->
+        <service
+            android:name=".service.AppSupervisorService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
     </application>
 
 </manifest>
