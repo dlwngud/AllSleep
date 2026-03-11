@@ -29,7 +29,5 @@ sealed class Screen(val route: String) {
     data object Alarm : Screen("alarm")
     
     // 설정
-    data object Settings : Screen("settings") {
-        data object AppBlocker : Screen("settings/app_blocker")
-    }
+    data object Settings : Screen("settings")
 }

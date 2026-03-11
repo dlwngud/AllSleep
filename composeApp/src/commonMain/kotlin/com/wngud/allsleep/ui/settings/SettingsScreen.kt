@@ -43,10 +43,7 @@ fun SettingsScreen(
     SettingsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent,
-        onNavigateToAppBlocker = {
-            navController.navigate(com.wngud.allsleep.navigation.Screen.Settings.AppBlocker.route)
-        }
+        onIntent = viewModel::handleIntent
     )
 }
 
@@ -78,8 +75,7 @@ fun SettingsSection(
 fun SettingsScreenContent(
     contentPadding: PaddingValues,
     state: SettingsState,
-    onIntent: (SettingsIntent) -> Unit,
-    onNavigateToAppBlocker: () -> Unit
+    onIntent: (SettingsIntent) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -109,14 +105,8 @@ fun SettingsScreenContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 수면 잠금 및 차단 (New Section)
-        SettingsSection(title = "차단 및 보안") {
-            SettingsRowArrow(
-                emoji = "🛡️",
-                label = "앱 블랙리스트 관리",
-                onClick = onNavigateToAppBlocker
-            )
-            SettingsDivider()
+        // 보안
+        SettingsSection(title = "보안") {
             SettingsRowArrow(
                 emoji = "🔑",
                 label = "접근성 권한 설정",
@@ -507,8 +497,7 @@ fun SettingsScreenPreview() {
             SettingsScreenContent(
                 contentPadding = PaddingValues(),
                 state = SettingsState(isPremium = true),
-                onIntent = {},
-                onNavigateToAppBlocker = {}
+                onIntent = {}
             )
         }
     }

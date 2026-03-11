@@ -23,9 +23,6 @@ fun AppNavigation(
         composable(Screen.Stats.route) { StatsScreen(contentPadding = contentPadding) }
         composable(Screen.Alarm.route) { AlarmScreen(contentPadding = contentPadding) }
         composable(Screen.Settings.route) { SettingsScreen(navController = navController, contentPadding = contentPadding) }
-        composable(Screen.Settings.AppBlocker.route) { 
-            com.wngud.allsleep.ui.settings.AppBlockerSettingsScreen(onBack = { navController.popBackStack() }) 
-        }
         
         composable(Screen.Auth.Login.route) {
             GlobalLoginScreen(onLoginSuccess = {
