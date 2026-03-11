@@ -11,6 +11,9 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
                 // iOS는 추후 UNUserNotificationCenter 등을 통해 연동
                 onResult(true)
             }
+            override fun requestAccessibilityPermission() {
+                // iOS에서는 Accessibility 권한 모델이 다름
+            }
         }
     }
 }

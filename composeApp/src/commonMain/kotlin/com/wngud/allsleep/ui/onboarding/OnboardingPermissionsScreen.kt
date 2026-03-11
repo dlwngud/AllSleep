@@ -133,13 +133,21 @@ fun OnboardingPermissionsScreen(
                 title = "알람 및 타이머",
                 description = "정확한 기상 미션 실행"
             )
+            PermissionItem(
+                iconText = "🛡️",
+                title = "접근성 권한 (강제 잠금)",
+                description = "수면 중 사용자 앱 자동 차단"
+            )
         }
         
         Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.height(48.dp))
         
         Button(
-            onClick = { permissionRequester.requestBasicPermissions() },
+            onClick = { 
+                permissionRequester.requestBasicPermissions()
+                permissionRequester.requestAccessibilityPermission()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(ButtonSize.heightLarge),

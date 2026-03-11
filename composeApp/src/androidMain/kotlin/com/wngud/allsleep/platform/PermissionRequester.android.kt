@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.provider.Settings
 
 @Composable
 actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionRequester {
@@ -38,6 +40,13 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
                     // API 32 이하는 알림 권한이 설치 시 자동 부여됨
                     onResult(true)
                 }
+            }
+
+            override fun requestAccessibilityPermission() {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
             }
         }
     }
