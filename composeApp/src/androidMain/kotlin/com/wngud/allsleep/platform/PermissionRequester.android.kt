@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.content.Intent
 import android.provider.Settings
+import android.content.Context
+import android.os.PowerManager
 
 @Composable
 actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionRequester {
@@ -44,6 +46,19 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
 
             override fun requestAccessibilityPermission() {
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            }
+
+            override fun isIgnoringBatteryOptimizations(): Boolean {
+                val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+            }
+
+            override fun requestIgnoreBatteryOptimizations() {
+                // Method 2: 모든 앱의 배터리 최적화 목록으로 이동하는 방식 (Play Store 심사 안전)
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)

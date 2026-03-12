@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 interface PermissionRequester {
     fun requestBasicPermissions()
     fun requestAccessibilityPermission()
+    fun isIgnoringBatteryOptimizations(): Boolean
+    fun requestIgnoreBatteryOptimizations()
 }
 
 @Composable

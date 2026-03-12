@@ -14,6 +14,10 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
             override fun requestAccessibilityPermission() {
                 // iOS에서는 Accessibility 권한 모델이 다름
             }
+            override fun isIgnoringBatteryOptimizations(): Boolean = true
+            override fun requestIgnoreBatteryOptimizations() {
+                // iOS에서는 해당 설정이 필요 없음
+            }
         }
     }
 }
