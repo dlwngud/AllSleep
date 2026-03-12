@@ -1,11 +1,8 @@
 package com.wngud.allsleep.ui.home
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,9 +32,12 @@ import kotlin.math.cos
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import com.wngud.allsleep.platform.rememberPermissionRequester
 import com.wngud.allsleep.platform.rememberOverlayPermissionRequester
 import com.wngud.allsleep.platform.rememberSleepServiceController
 import com.wngud.allsleep.ui.theme.IndicatorSynced
+import com.wngud.allsleep.ui.theme.OnSurfaceVariant
+import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
 
 
 /**
@@ -81,6 +81,8 @@ fun HomeScreenContent(
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showBatteryGuideDialog by remember { mutableStateOf(false) }
+    var showForcedBatteryDialog by remember { mutableStateOf(false) }
     
     val sleepServiceController = rememberSleepServiceController()
     val permissionRequester = rememberOverlayPermissionRequester { isGranted ->
@@ -89,6 +91,9 @@ fun HomeScreenContent(
             sleepServiceController.start()
         }
     }
+
+    val batteryPermissionRequester = rememberPermissionRequester { /* Not used here directly */ }
+    val isBatteryOptimized = batteryPermissionRequester.isIgnoringBatteryOptimizations()
 
     if (showPermissionDialog) {
         AlertDialog(
@@ -113,6 +118,23 @@ fun HomeScreenContent(
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+
+    // 배터리 설정 가이드 다이얼로그 (Stitch 고수준 디자인 반영)
+    if (showBatteryGuideDialog || showForcedBatteryDialog) {
+        BatteryOptimizationGuideDialog(
+            isForced = showForcedBatteryDialog,
+            onDismissRequest = {
+                showBatteryGuideDialog = false
+                showForcedBatteryDialog = false
+            },
+            onConfirmClick = {
+                showBatteryGuideDialog = false
+                showForcedBatteryDialog = false
+                batteryPermissionRequester.requestIgnoreBatteryOptimizations()
+            }
+        )
+    }
+
     
     // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
@@ -125,7 +147,41 @@ fun HomeScreenContent(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            // Stage 2: 생존 배너 (Survival Banner)
+            if (!isBatteryOptimized && !isSleepModeActive) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable { showBatteryGuideDialog = true },
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("⚠️", fontSize = 16.sp)
+                        Text(
+                            text = "실시간 잠금을 위해 배터리 설정이 필요합니다.",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "설정하기",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 1. 중앙 영역: 거대한 동기화 링(Sync Ring)과 상태 메시지
             // (위성 배치 로직으로 통합됨, 기기 탭 시 바텀시트 활성화)
@@ -147,8 +203,10 @@ fun HomeScreenContent(
                 sleepGoal = state.sleepGoal,
                 isSleepModeActive = isSleepModeActive,
                 onStartSleep = {
-                    // 권한 점검 후 수면 시작 (권한 없으면 다이얼로그 표시)
-                    if (permissionRequester.isGranted()) {
+                    // Stage 3: 수면 시작 가드 (Force Guard)
+                    if (!batteryPermissionRequester.isIgnoringBatteryOptimizations()) {
+                        showForcedBatteryDialog = true
+                    } else if (permissionRequester.isGranted()) {
                         onStartSleep()
                         sleepServiceController.start()
                     } else {

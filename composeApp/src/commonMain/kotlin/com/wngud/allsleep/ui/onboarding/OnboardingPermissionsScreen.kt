@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.wngud.allsleep.platform.rememberPermissionRequester
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
+import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
 
 @Composable
 fun OnboardingPermissionsScreen(
@@ -24,6 +25,7 @@ fun OnboardingPermissionsScreen(
 ) {
     // 8. 거부 시 피드백 다이얼로그(우아한 기능 저하 안내) 표시 상태
     var showDeniedDialog by remember { mutableStateOf(false) }
+    var showBatteryGuide by remember { mutableStateOf(false) }
 
     val permissionRequester = rememberPermissionRequester { isGranted ->
         if (isGranted) {
@@ -66,6 +68,17 @@ fun OnboardingPermissionsScreen(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    // 배터리 최적화 설정을 위한 가이드 다이얼로그 (Stitch 디자인 반영)
+    if (showBatteryGuide) {
+        BatteryOptimizationGuideDialog(
+            onDismissRequest = { showBatteryGuide = false },
+            onConfirmClick = {
+                showBatteryGuide = false
+                permissionRequester.requestIgnoreBatteryOptimizations()
+            }
         )
     }
 
@@ -138,6 +151,11 @@ fun OnboardingPermissionsScreen(
                 title = "접근성 권한 (강제 잠금)",
                 description = "수면 중 사용자 앱 자동 차단"
             )
+            PermissionItem(
+                iconText = "🔋",
+                title = "배터리 최적화 예외",
+                description = "수면 중 서비스 강제 종료 방지"
+            )
         }
         
         Spacer(modifier = Modifier.weight(1f))
@@ -147,6 +165,11 @@ fun OnboardingPermissionsScreen(
             onClick = { 
                 permissionRequester.requestBasicPermissions()
                 permissionRequester.requestAccessibilityPermission()
+                
+                // 배터리 최적화가 되어있지 않으면 가이드 표시 후 이동
+                if (!permissionRequester.isIgnoringBatteryOptimizations()) {
+                    showBatteryGuide = true
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
