@@ -27,6 +27,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.datastore.preferences)
+            implementation(libs.androidx.lifecycle.process)
             // 카카오 SDK (Android 전용)
             implementation("com.kakao.sdk:v2-user:2.20.6")
         }
