@@ -93,7 +93,7 @@ fun HomeScreenContent(
     }
 
     val batteryPermissionRequester = rememberPermissionRequester { /* Not used here directly */ }
-    val isBatteryOptimized = batteryPermissionRequester.isIgnoringBatteryOptimizations()
+    val isBatteryOptimized by batteryPermissionRequester.isBatteryOptimized.collectAsState()
 
     if (showPermissionDialog) {
         AlertDialog(

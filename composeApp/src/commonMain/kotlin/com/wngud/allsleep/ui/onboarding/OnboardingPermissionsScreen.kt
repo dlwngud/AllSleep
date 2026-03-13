@@ -36,6 +36,8 @@ fun OnboardingPermissionsScreen(
             showDeniedDialog = true
         }
     }
+    
+    val isBatteryOptimized by permissionRequester.isBatteryOptimized.collectAsState()
 
     // 기능 저하를 안내하는 다이얼로그 (Graceful Degradation)
     if (showDeniedDialog) {
@@ -167,7 +169,7 @@ fun OnboardingPermissionsScreen(
                 permissionRequester.requestAccessibilityPermission()
                 
                 // 배터리 최적화가 되어있지 않으면 가이드 표시 후 이동
-                if (!permissionRequester.isIgnoringBatteryOptimizations()) {
+                if (!isBatteryOptimized) {
                     showBatteryGuide = true
                 }
             },
