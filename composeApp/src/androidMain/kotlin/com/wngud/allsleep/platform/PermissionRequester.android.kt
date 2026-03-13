@@ -14,32 +14,50 @@ import android.provider.Settings
 import android.content.Context
 import android.os.PowerManager
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+
 @Composable
 actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionRequester {
     val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        // 7. 사용자의 응답(승인/거부) 확인
         onResult(isGranted)
     }
 
     return remember(context) {
-        object : PermissionRequester {
+        object : PermissionRequester, DefaultLifecycleObserver {
+            private val _isBatteryOptimized = MutableStateFlow(isIgnoringBatteryOptimizationsInternal())
+            override val isBatteryOptimized: StateFlow<Boolean> = _isBatteryOptimized.asStateFlow()
+
+            init {
+                // 앱 전체 프로세스의 수명 주기를 관찰하여 ON_RESUME 시점에 상태 갱신
+                ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+            }
+
+            override fun onResume(owner: LifecycleOwner) {
+                _isBatteryOptimized.value = isIgnoringBatteryOptimizationsInternal()
+            }
+
+            private fun isIgnoringBatteryOptimizationsInternal(): Boolean {
+                val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+            }
+
             override fun requestBasicPermissions() {
-                // API 33 이상에서만 런타임 알림 권한 필요
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val permission = Manifest.permission.POST_NOTIFICATIONS
-                    // 4. 권한이 필요한 작업을 실행할 때마다 권한이 이미 있는지 확인 (플로우 핵심)
                     if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
-                        // 사용자가 이미 권한을 부여했다면 즉시 승인 처리
                         onResult(true)
                     } else {
-                        // 5 & 6. 권한 요청 (OnboardingPermissionsScreen 자체가 이미 교육용 Rationale UI 역할을 수행하고 있음)
                         permissionLauncher.launch(permission)
                     }
                 } else {
-                    // API 32 이하는 알림 권한이 설치 시 자동 부여됨
                     onResult(true)
                 }
             }
@@ -52,12 +70,10 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
             }
 
             override fun isIgnoringBatteryOptimizations(): Boolean {
-                val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                return _isBatteryOptimized.value
             }
 
             override fun requestIgnoreBatteryOptimizations() {
-                // Method 2: 모든 앱의 배터리 최적화 목록으로 이동하는 방식 (Play Store 심사 안전)
                 val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }

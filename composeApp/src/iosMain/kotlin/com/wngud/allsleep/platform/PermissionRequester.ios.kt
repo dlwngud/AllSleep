@@ -1,12 +1,13 @@
 package com.wngud.allsleep.platform
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionRequester {
     return remember {
         object : PermissionRequester {
+            override val isBatteryOptimized: StateFlow<Boolean> = MutableStateFlow(true)
             override fun requestBasicPermissions() {
                 // iOS는 추후 UNUserNotificationCenter 등을 통해 연동
                 onResult(true)
