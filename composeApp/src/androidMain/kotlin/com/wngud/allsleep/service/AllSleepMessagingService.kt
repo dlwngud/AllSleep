@@ -1,5 +1,7 @@
 package com.wngud.allsleep.service
 
+import com.wngud.allsleep.MainActivity
+
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -28,7 +30,7 @@ class AllSleepMessagingService : FirebaseMessagingService() {
         // 데이터 메시지가 포함되어 있는지 확인 (실제 수면 제어 명령용)
         if (remoteMessage.data.isNotEmpty()) {
             val command = remoteMessage.data["command"]
-            Log.d("AllSleepFCM", "Command Received: $command")
+            Log.d("AllSleepFCM", "Command Received: $command, Full Data: ${remoteMessage.data}")
             
             when (command) {
                 "START_SLEEP" -> {
@@ -79,9 +81,8 @@ class AllSleepMessagingService : FirebaseMessagingService() {
         }
 
         // 클릭 시 앱 실행을 위한 인텐트
-        val intent = android.content.Intent(this, com.wngud.allsleep.MainActivity::class.java).apply {
-            flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
+        val intent = android.content.Intent(applicationContext, com.wngud.allsleep.MainActivity::class.java)
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val pendingIntent = android.app.PendingIntent.getActivity(
             this, 0, intent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE

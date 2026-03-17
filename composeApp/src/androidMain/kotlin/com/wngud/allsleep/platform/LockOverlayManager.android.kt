@@ -229,8 +229,9 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
         try {
             windowManager.addView(composeView, params)
             isShowing = true
+            android.util.Log.d("LockOverlay", "Overlay ADDED successfully")
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("LockOverlay", "Failed to add view to WindowManager: ${e.message}", e)
         }
     }
 

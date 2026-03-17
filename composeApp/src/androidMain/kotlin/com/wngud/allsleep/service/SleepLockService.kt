@@ -37,7 +37,7 @@ class SleepLockService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("SleepLockService", "Foreground Service Start Failed: ${e.message}", e)
         }
 
         // 오버레이 UI 표시
