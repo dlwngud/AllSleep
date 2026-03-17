@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.os.Build
 import android.provider.Settings
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
 
 /**
  * Android 전용 기기 정보 제공자
@@ -29,4 +31,13 @@ actual object DeviceInfoProvider {
     actual fun getDeviceName(): String = Build.MODEL
 
     actual fun getPlatform(): String = "Android"
+
+    actual suspend fun getPushToken(): String {
+        return try {
+            FirebaseMessaging.getInstance().token.await()
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceInfoProvider", "Failed to get FCM token: ${e.message}")
+            ""
+        }
+    }
 }

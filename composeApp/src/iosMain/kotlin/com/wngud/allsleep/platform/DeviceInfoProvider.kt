@@ -10,4 +10,6 @@ actual object DeviceInfoProvider {
         UIDevice.currentDevice.name
 
     actual fun getPlatform(): String = "iOS"
+
+    actual suspend fun getPushToken(): String = "" // iOS FCM 및 APNS 연동 시 추후 구현
 }

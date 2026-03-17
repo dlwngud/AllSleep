@@ -84,7 +84,7 @@ class SleepSyncRepositoryImpl(
             )
             
             usersCollection.document(uid).collection("devices").document(deviceState.deviceId)
-                .set(data)
+                .set(data, com.google.firebase.firestore.SetOptions.merge())
                 .await()
                 
             Result.success(Unit)

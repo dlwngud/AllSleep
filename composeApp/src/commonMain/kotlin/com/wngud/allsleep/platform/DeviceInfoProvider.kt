@@ -9,4 +9,5 @@ expect object DeviceInfoProvider {
     fun getDeviceId(): String
     fun getDeviceName(): String
     fun getPlatform(): String
+    suspend fun getPushToken(): String
 }
