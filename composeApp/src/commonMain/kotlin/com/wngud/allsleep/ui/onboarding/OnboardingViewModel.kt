@@ -45,7 +45,10 @@ class OnboardingViewModel(
     private fun completeOnboarding() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            completeOnboardingUseCase()
+            completeOnboardingUseCase(
+                bedtime = _state.value.bedtime,
+                wakeTime = _state.value.wakeTime
+            )
             _state.update { it.copy(isLoading = false) }
         }
     }

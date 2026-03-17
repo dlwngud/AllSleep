@@ -39,7 +39,8 @@ class GlobalSleepViewModel(
     private val registerDeviceUseCase: RegisterDeviceUseCase,
     private val observeRegisteredDevicesUseCase: ObserveRegisteredDevicesUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
-    private val signOutUseCase: SignOutUseCase
+    private val signOutUseCase: SignOutUseCase,
+    private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository
 ) : ViewModel() {
 
     private val _sleepState = MutableStateFlow<UserSleepState?>(null)
@@ -81,7 +82,7 @@ class GlobalSleepViewModel(
             // 3. 기존 로그인된 유저가 온보딩 완료 값이 false라면 마이그레이션 (기기별 동기화)
             if (user != null && !initialOnboardingState) {
                 android.util.Log.d("GlobalSleepVM", "[init] 기존 로그인 유저 확인. 온보딩 완료 상태를 로컬 저장소에 갱신함")
-                completeOnboardingUseCase()
+                completeOnboardingUseCase(bedtime = "23:00", wakeTime = "07:00")
                 _isOnboardingCompleted.value = true
             }
             
@@ -107,7 +108,7 @@ class GlobalSleepViewModel(
                         currentUid = observedUser.uid
                         // 로그인 성공 시 "온보딩 완료"로 자동 간주하고 로컬 스토리지에 기록 (로그아웃해도 온보딩 안 뜨게)
                         if (!_isOnboardingCompleted.value) {
-                            completeOnboardingUseCase()
+                            completeOnboardingUseCase(bedtime = "23:00", wakeTime = "07:00")
                             _isOnboardingCompleted.value = true
                         }
                         launch { updateUserProfileUseCase(observedUser) }
@@ -124,6 +125,12 @@ class GlobalSleepViewModel(
             launch {
                 observeOnboardingCompletedUseCase().collect { completed ->
                     _isOnboardingCompleted.value = completed
+                    
+                    // 온보딩이 완료되는 시점에 로컬 설정을 Firestore로 최초 동기화 (Step 2.3 대응)
+                    if (completed && currentUid != null) {
+                        android.util.Log.d("GlobalSleepVM", "Onboarding completed, syncing initial schedule to Firestore")
+                        toggleSleepState(isSleeping = false) 
+                    }
                 }
             }
         }
@@ -167,6 +174,14 @@ class GlobalSleepViewModel(
             try {
                 observeUserSleepStateUseCase(uid).collect { state ->
                     _sleepState.value = state
+                    
+                    // Firestore에서 최신 스케줄 정보가 오면 알람 재스케줄링 (Step 2 핵심)
+                    if (state != null) {
+                        com.wngud.allsleep.platform.SleepScheduler.scheduleNextEvents(
+                            bedtime = state.bedtime,
+                            wakeTime = state.wakeTime
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = "Failed to observe state: ${e.message}"
@@ -219,17 +234,35 @@ class GlobalSleepViewModel(
         val uid = currentUid ?: return
         
         viewModelScope.launch {
+            // 로컬 스토리지의 최신 설정값 읽어오기
+            val bedtime = sleepSettingsRepository.bedtime.first()
+            val wakeTime = sleepSettingsRepository.wakeTime.first()
+
             // [낙관적 제어] 서버 응답 전 로컬 상태 먼저 강제 업데이트하여 즉시 애니메이션 전환 유도
             val optimisticState = _sleepState.value?.copy(
                 isSleeping = isSleeping,
                 targetWakeUpTime = targetWakeUpTime,
+                bedtime = bedtime,
+                wakeTime = wakeTime,
                 lastUpdatedAt = 0L
-            ) ?: UserSleepState(uid = uid, isSleeping = isSleeping, targetWakeUpTime = targetWakeUpTime)
+            ) ?: UserSleepState(
+                uid = uid, 
+                isSleeping = isSleeping, 
+                targetWakeUpTime = targetWakeUpTime,
+                bedtime = bedtime,
+                wakeTime = wakeTime
+            )
             
             _sleepState.value = optimisticState
 
-            // 실제 서버 전송
-            val result = updateUserSleepStateUseCase(uid, isSleeping, targetWakeUpTime)
+            // 실제 서버 전송 (전역 스케줄 정보 포함)
+            val result = updateUserSleepStateUseCase(
+                uid = uid, 
+                isSleeping = isSleeping, 
+                targetWakeUpTime = targetWakeUpTime,
+                bedtime = bedtime,
+                wakeTime = wakeTime
+            )
             result.onFailure {
                 _error.value = "Failed to update state: ${it.message}"
             }
