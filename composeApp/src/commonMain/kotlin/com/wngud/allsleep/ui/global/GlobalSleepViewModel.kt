@@ -138,6 +138,7 @@ class GlobalSleepViewModel(
             val deviceState = DeviceState(
                 deviceId = DeviceInfoProvider.getDeviceId(),
                 deviceName = DeviceInfoProvider.getDeviceName(),
+                fcmToken = DeviceInfoProvider.getPushToken(),
                 platform = DeviceInfoProvider.getPlatform(),
                 lastActiveForSleepLocking = 0L,
                 isMainAlarmDevice = false

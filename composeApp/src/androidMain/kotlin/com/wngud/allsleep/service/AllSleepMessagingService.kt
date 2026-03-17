@@ -3,6 +3,15 @@ package com.wngud.allsleep.service
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.wngud.allsleep.domain.model.DeviceState
+import com.wngud.allsleep.domain.repository.SleepSyncRepository
+import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.platform.DeviceInfoProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 class AllSleepMessagingService : FirebaseMessagingService() {
 
@@ -117,9 +126,32 @@ class AllSleepMessagingService : FirebaseMessagingService() {
         Log.d("AllSleepFCM", "CPU & Screen WakeLocks acquired")
     }
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
+    private val sleepSyncRepository: SleepSyncRepository by inject()
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("AllSleepFCM", "New Token: $token")
-        // Step 3.1에서 여기에 Firestore 저장 로직이 들어갑니다.
+        Log.d("AllSleepFCM", "New Token Generated: $token")
+        
+        serviceScope.launch {
+            val user = getCurrentUserUseCase()
+            if (user != null) {
+                Log.d("AllSleepFCM", "User logged in, updating token in Firestore...")
+                val deviceState = DeviceState(
+                    deviceId = DeviceInfoProvider.getDeviceId(),
+                    deviceName = DeviceInfoProvider.getDeviceName(),
+                    fcmToken = token,
+                    platform = DeviceInfoProvider.getPlatform(),
+                    lastActiveForSleepLocking = System.currentTimeMillis(),
+                    isMainAlarmDevice = false // 기존 상태 보존 로직이 필요할 수 있으나, 여기서는 갱신에 집중
+                )
+                sleepSyncRepository.registerDevice(user.uid, deviceState)
+                    .onSuccess { Log.d("AllSleepFCM", "Token updated successfully in Firestore") }
+                    .onFailure { e -> Log.e("AllSleepFCM", "Failed to update token: ${e.message}") }
+            } else {
+                Log.d("AllSleepFCM", "No user logged in, skipping token update")
+            }
+        }
     }
 }
