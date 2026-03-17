@@ -37,7 +37,9 @@ class SleepSyncRepositoryImpl(
     override suspend fun updateUserSleepState(
         uid: String, 
         isSleeping: Boolean, 
-        targetWakeUpTime: Long?
+        targetWakeUpTime: Long?,
+        bedtime: String?,
+        wakeTime: String?
     ): Result<Unit> = runCatching {
         val updates = mutableMapOf<String, Any>(
             "isSleeping" to isSleeping,
@@ -46,9 +48,11 @@ class SleepSyncRepositoryImpl(
         if (targetWakeUpTime != null) {
             updates["targetWakeUpTime"] = targetWakeUpTime
         } else {
-            // null인 경우 명시적으로 필드 업데이트 (또는 유지 정책에 따라 분기 가능)
             updates["targetWakeUpTime"] = com.google.firebase.firestore.FieldValue.delete()
         }
+        
+        bedtime?.let { updates["bedtime"] = it }
+        wakeTime?.let { updates["wakeTime"] = it }
         
         // 문서가 없을 수도 있으므로 set(..., SetOptions.merge())를 사용하는 것이 더 안전함
         usersCollection.document(uid)

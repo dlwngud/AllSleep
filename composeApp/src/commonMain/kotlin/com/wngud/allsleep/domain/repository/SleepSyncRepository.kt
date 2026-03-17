@@ -23,7 +23,9 @@ interface SleepSyncRepository {
     suspend fun updateUserSleepState(
         uid: String, 
         isSleeping: Boolean, 
-        targetWakeUpTime: Long? = null
+        targetWakeUpTime: Long? = null,
+        bedtime: String? = null,
+        wakeTime: String? = null
     ): Result<Unit>
 
     /**

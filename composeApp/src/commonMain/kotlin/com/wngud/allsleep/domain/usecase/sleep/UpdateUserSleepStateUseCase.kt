@@ -8,8 +8,10 @@ class UpdateUserSleepStateUseCase(
     suspend operator fun invoke(
         uid: String, 
         isSleeping: Boolean, 
-        targetWakeUpTime: Long? = null
+        targetWakeUpTime: Long? = null,
+        bedtime: String? = null,
+        wakeTime: String? = null
     ): Result<Unit> {
-        return sleepSyncRepository.updateUserSleepState(uid, isSleeping, targetWakeUpTime)
+        return sleepSyncRepository.updateUserSleepState(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
     }
 }

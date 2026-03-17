@@ -93,6 +93,17 @@
             </intent-filter>
         </service>
 
+        <!-- 수면 스케줄 알람 수신기 -->
+        <receiver
+            android:name=".receiver.SleepAlarmReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.wngud.allsleep.ACTION_START_SLEEP" />
+                <action android:name="com.wngud.allsleep.ACTION_STOP_SLEEP" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

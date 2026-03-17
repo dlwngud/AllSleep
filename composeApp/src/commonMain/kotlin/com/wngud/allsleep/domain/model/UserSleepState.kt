@@ -8,5 +8,7 @@ data class UserSleepState(
     val uid: String = "",
     val isSleeping: Boolean = false,
     val targetWakeUpTime: Long? = null,
+    val bedtime: String = "23:00",
+    val wakeTime: String = "07:00",
     val lastUpdatedAt: Long = 0L
 )
