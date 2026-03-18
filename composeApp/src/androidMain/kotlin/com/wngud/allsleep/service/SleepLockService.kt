@@ -12,8 +12,20 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.wngud.allsleep.platform.LockOverlayManagerImpl
 
-class SleepLockService : Service() {
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
+import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+class SleepLockService : Service(), KoinComponent {
     private var overlayManager: LockOverlayManagerImpl? = null
+    private val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
+    private val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder? {
         return null // 바인딩을 사용하지 않는 Started Service
@@ -70,7 +82,8 @@ class SleepLockService : Service() {
         }
     }
 
-    companion object {
+    companion object : KoinComponent {
+        private val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         const val CHANNEL_ID = "SleepLockServiceChannel"
         const val NOTIFICATION_ID = 1001
 
@@ -84,6 +97,26 @@ class SleepLockService : Service() {
         }
 
         fun stop(context: Context) {
+            // Firestore 상태 동기화 (KoinComponent를 통해 필요한 UseCase 가져오기)
+            val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
+            val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
+            
+            externalScope.launch {
+                val user = getCurrentUserUseCase()
+                if (user != null) {
+                    android.util.Log.d("SleepLockService", "Stopping service: Updating Firestore isSleeping to false for user ${user.uid}")
+                    updateUserSleepStateUseCase(
+                        uid = user.uid,
+                        isSleeping = false,
+                        targetWakeUpTime = null,
+                        bedtime = null,
+                        wakeTime = null
+                    ).onFailure { e ->
+                        android.util.Log.e("SleepLockService", "Failed to update Firestore on stop: ${e.message}")
+                    }
+                }
+            }
+
             // 강제로 메인 액티비티를 포그라운드로 끌어올리기 (Intent Bouncing)
             val packageManager = context.packageManager
             val launchIntent = packageManager.getLaunchIntentForPackage(context.packageName)

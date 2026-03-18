@@ -15,6 +15,7 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <package android:name="com.google.android.gms" />
     </queries>
 
     <!-- 다른 앱 위에 표시 (수면 잠금 오버레이용) -->
