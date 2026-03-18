@@ -20,6 +20,8 @@ import com.wngud.allsleep.platform.DeviceInfoProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -133,6 +135,33 @@ class GlobalSleepViewModel(
                     }
                 }
             }
+
+            // [Upstream Sync] 로컬 DataStore 변경 감지 시 Firestore 동기화 (Step 4 핵심)
+            launch {
+                @OptIn(kotlinx.coroutines.FlowPreview::class)
+                combine(
+                    sleepSettingsRepository.bedtime,
+                    sleepSettingsRepository.wakeTime
+                ) { bedtime, wakeTime ->
+                    bedtime to wakeTime
+                }
+                .debounce(300L)
+                .collect { (bedtime, wakeTime) ->
+                    val uid = currentUid ?: return@collect
+                    val currentState = _sleepState.value
+                    
+                    // Firestore에 저장된 값과 다를 때만 업데이트 (무한 루프 방지)
+                    if (currentState == null || currentState.bedtime != bedtime || currentState.wakeTime != wakeTime) {
+                        android.util.Log.d("GlobalSleepVM", "Syncing Local -> Cloud: $bedtime, $wakeTime")
+                        updateUserSleepStateUseCase(
+                            uid = uid,
+                            isSleeping = currentState?.isSleeping ?: false,
+                            bedtime = bedtime,
+                            wakeTime = wakeTime
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -175,12 +204,24 @@ class GlobalSleepViewModel(
                 observeUserSleepStateUseCase(uid).collect { state ->
                     _sleepState.value = state
                     
-                    // Firestore에서 최신 스케줄 정보가 오면 알람 재스케줄링 (Step 2 핵심)
+                    // Firestore에서 최신 스케줄 정보가 오면
                     if (state != null) {
+                        // 1. 알람 재스케줄링 (Step 2 핵심)
                         com.wngud.allsleep.platform.SleepScheduler.scheduleNextEvents(
                             bedtime = state.bedtime,
                             wakeTime = state.wakeTime
                         )
+
+                        // 2. [Downstream Sync] Firestore 값이 로컬과 다르면 로컬 갱신 (Step 4 핵심)
+                        launch {
+                            val localBedtime = sleepSettingsRepository.bedtime.first()
+                            val localWakeTime = sleepSettingsRepository.wakeTime.first()
+                            
+                            if (state.bedtime != localBedtime || state.wakeTime != localWakeTime) {
+                                android.util.Log.d("GlobalSleepVM", "Syncing Cloud -> Local: ${state.bedtime}, ${state.wakeTime}")
+                                sleepSettingsRepository.saveSleepSchedule(state.bedtime, state.wakeTime)
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
