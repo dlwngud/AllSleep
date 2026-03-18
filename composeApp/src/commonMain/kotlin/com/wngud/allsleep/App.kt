@@ -21,7 +21,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun App() {
     KoinContext {
         val navController = rememberNavController()
-        val globalSleepViewModel: GlobalSleepViewModel = koinViewModel()
+        val globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
         
         val isInitialized by globalSleepViewModel.isStateInitialized.collectAsState()
         

@@ -82,7 +82,7 @@ val appModule = module {
     factoryOf(::CompleteOnboardingUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
-    viewModelOf(::GlobalSleepViewModel)
+    singleOf(::GlobalSleepViewModel)
     viewModelOf(::AuthViewModel)
     viewModelOf(::OnboardingViewModel)
     viewModelOf(::HomeViewModel)

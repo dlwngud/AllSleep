@@ -38,6 +38,8 @@ import com.wngud.allsleep.platform.rememberSleepServiceController
 import com.wngud.allsleep.ui.theme.IndicatorSynced
 import com.wngud.allsleep.ui.theme.OnSurfaceVariant
 import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
+import com.wngud.allsleep.domain.model.UserSleepState
+import com.wngud.allsleep.domain.model.DeviceState
 
 
 /**
@@ -48,7 +50,7 @@ import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: HomeViewModel = koinViewModel(),
-    globalSleepViewModel: com.wngud.allsleep.ui.global.GlobalSleepViewModel = koinViewModel()
+    globalSleepViewModel: com.wngud.allsleep.ui.global.GlobalSleepViewModel = org.koin.compose.koinInject()
 ) {
     val state by viewModel.state.collectAsState()
     val sleepState by globalSleepViewModel.sleepState.collectAsState()
