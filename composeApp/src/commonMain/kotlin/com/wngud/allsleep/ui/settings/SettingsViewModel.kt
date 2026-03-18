@@ -11,6 +11,10 @@ import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import kotlinx.coroutines.launch
 
+import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
 /**
  * 설정 탭 ViewModel
  * 프로필, 수면·앱·계정 설정 상태를 관리합니다.
@@ -18,11 +22,26 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val signOutUseCase: SignOutUseCase,
-    private val unregisterDeviceUseCase: UnregisterDeviceUseCase
+    private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
+    private val sleepSettingsRepository: SleepSettingsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
+
+    init {
+        // 로컬 수면 설정값 관찰
+        viewModelScope.launch {
+            sleepSettingsRepository.bedtime.collectLatest { bedtime ->
+                _state.update { it.copy(bedtime = bedtime) }
+            }
+        }
+        viewModelScope.launch {
+            sleepSettingsRepository.wakeTime.collectLatest { wakeTime ->
+                _state.update { it.copy(wakeTime = wakeTime) }
+            }
+        }
+    }
 
     fun handleIntent(intent: SettingsIntent) {
         when (intent) {
@@ -37,6 +56,9 @@ class SettingsViewModel(
 
             is SettingsIntent.ChangeLanguage ->
                 _state.update { it.copy(appLanguage = intent.language) }
+
+            is SettingsIntent.UpdateBedtime -> updateBedtime(intent.time)
+            is SettingsIntent.UpdateWakeTime -> updateWakeTime(intent.time)
 
             is SettingsIntent.ShowLogoutDialog ->
                 _state.update { it.copy(showLogoutDialog = true) }
@@ -59,6 +81,18 @@ class SettingsViewModel(
 
             // Navigation 이벤트는 TODO: NavController 연결 시 처리
             else -> Unit
+        }
+    }
+
+    private fun updateBedtime(time: String) {
+        viewModelScope.launch {
+            sleepSettingsRepository.saveSleepSchedule(time, _state.value.wakeTime)
+        }
+    }
+
+    private fun updateWakeTime(time: String) {
+        viewModelScope.launch {
+            sleepSettingsRepository.saveSleepSchedule(_state.value.bedtime, time)
         }
     }
 

@@ -22,6 +22,8 @@ data class SettingsState(
     // 앱 설정
     val appTheme: AppTheme = AppTheme.DARK,
     val appLanguage: AppLanguage = AppLanguage.KOREAN,
+    val bedtime: String = "23:00",
+    val wakeTime: String = "07:00",
     // 다이얼로그
     val showDeleteAccountDialog: Boolean = false,
     val showLogoutDialog: Boolean = false
@@ -37,6 +39,8 @@ sealed interface SettingsIntent {
     data object NavigateAlarmSound : SettingsIntent
     data class ChangeTheme(val theme: AppTheme) : SettingsIntent
     data class ChangeLanguage(val language: AppLanguage) : SettingsIntent
+    data class UpdateBedtime(val time: String) : SettingsIntent
+    data class UpdateWakeTime(val time: String) : SettingsIntent
     data object NavigateDeviceManagement : SettingsIntent
     data object NavigateDataSync : SettingsIntent
     data object ShowLogoutDialog : SettingsIntent

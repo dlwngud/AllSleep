@@ -45,6 +45,8 @@ sealed interface AlarmIntent {
     data class ToggleWakeAlarm(val enabled: Boolean) : AlarmIntent
     data class ToggleSleepDay(val dayIndex: Int) : AlarmIntent
     data class ToggleWakeDay(val dayIndex: Int) : AlarmIntent
+    data class UpdateSleepTime(val time: String) : AlarmIntent
+    data class UpdateWakeTime(val time: String) : AlarmIntent
     data class ToggleExtraAlarm(val id: Int) : AlarmIntent
     data object AddAlarm : AlarmIntent
 }
