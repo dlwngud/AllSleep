@@ -23,9 +23,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.tooling.preview.Preview
+import com.wngud.allsleep.ui.components.TimePickerDialog
 import org.koin.compose.viewmodel.koinViewModel
 import com.wngud.allsleep.ui.theme.*
 
@@ -45,19 +49,54 @@ fun AlarmScreen(
     viewModel: AlarmViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    
+    var showSleepTimePicker by remember { mutableStateOf(false) }
+    var showWakeTimePicker by remember { mutableStateOf(false) }
 
     AlarmScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent
+        onIntent = viewModel::handleIntent,
+        onSleepTimeClick = { showSleepTimePicker = true },
+        onWakeTimeClick = { showWakeTimePicker = true }
     )
+
+    if (showSleepTimePicker) {
+        TimePickerDialog(
+            title = "취침 시간 설정",
+            initialHour = state.sleepAlarm.hour,
+            initialMinute = state.sleepAlarm.minute,
+            onConfirm = { h, m ->
+                val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
+                viewModel.handleIntent(AlarmIntent.UpdateSleepTime(time))
+                showSleepTimePicker = false
+            },
+            onDismiss = { showSleepTimePicker = false }
+        )
+    }
+
+    if (showWakeTimePicker) {
+        TimePickerDialog(
+            title = "기상 시간 설정",
+            initialHour = state.wakeAlarm.hour,
+            initialMinute = state.wakeAlarm.minute,
+            onConfirm = { h, m ->
+                val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
+                viewModel.handleIntent(AlarmIntent.UpdateWakeTime(time))
+                showWakeTimePicker = false
+            },
+            onDismiss = { showWakeTimePicker = false }
+        )
+    }
 }
 
 @Composable
 fun AlarmScreenContent(
     contentPadding: PaddingValues,
     state: AlarmState,
-    onIntent: (AlarmIntent) -> Unit
+    onIntent: (AlarmIntent) -> Unit,
+    onSleepTimeClick: () -> Unit,
+    onWakeTimeClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -75,7 +114,8 @@ fun AlarmScreenContent(
             alarm = state.sleepAlarm,
             isAm = false,
             onToggle = { onIntent(AlarmIntent.ToggleSleepAlarm(it)) },
-            onDayToggle = { onIntent(AlarmIntent.ToggleSleepDay(it)) }
+            onDayToggle = { onIntent(AlarmIntent.ToggleSleepDay(it)) },
+            onTimeClick = onSleepTimeClick
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -87,7 +127,8 @@ fun AlarmScreenContent(
             alarm = state.wakeAlarm,
             isAm = true,
             onToggle = { onIntent(AlarmIntent.ToggleWakeAlarm(it)) },
-            onDayToggle = { onIntent(AlarmIntent.ToggleWakeDay(it)) }
+            onDayToggle = { onIntent(AlarmIntent.ToggleWakeDay(it)) },
+            onTimeClick = onWakeTimeClick
         )
 
         // 추가 알람 목록
@@ -165,7 +206,8 @@ private fun AlarmTimeCard(
     alarm: AlarmItem,
     isAm: Boolean,
     onToggle: (Boolean) -> Unit,
-    onDayToggle: (Int) -> Unit
+    onDayToggle: (Int) -> Unit,
+    onTimeClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -173,6 +215,7 @@ private fun AlarmTimeCard(
             .padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(enabled = alarm.isEnabled, onClick = onTimeClick)
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -378,7 +421,9 @@ fun AlarmScreenPreview() {
             AlarmScreenContent(
                 contentPadding = PaddingValues(),
                 state = AlarmState(),
-                onIntent = {}
+                onIntent = {},
+                onSleepTimeClick = {},
+                onWakeTimeClick = {}
             )
         }
     }

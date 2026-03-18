@@ -8,18 +8,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
+import com.wngud.allsleep.ui.components.TimePickerDialog
+import com.wngud.allsleep.ui.theme.*
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -39,12 +39,51 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    
+    var showBedtimePicker by remember { mutableStateOf(false) }
+    var showWakeTimePicker by remember { mutableStateOf(false) }
 
     SettingsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent
+        onIntent = viewModel::handleIntent,
+        onBedtimeClick = { showBedtimePicker = true },
+        onWakeTimeClick = { showWakeTimePicker = true }
     )
+
+    if (showBedtimePicker) {
+        val parts = state.bedtime.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: 23
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        TimePickerDialog(
+            title = "취침 시간 설정",
+            initialHour = hour,
+            initialMinute = minute,
+            onConfirm = { h, m ->
+                val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
+                viewModel.handleIntent(SettingsIntent.UpdateBedtime(time))
+                showBedtimePicker = false
+            },
+            onDismiss = { showBedtimePicker = false }
+        )
+    }
+
+    if (showWakeTimePicker) {
+        val parts = state.wakeTime.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: 7
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        TimePickerDialog(
+            title = "기상 시간 설정",
+            initialHour = hour,
+            initialMinute = minute,
+            onConfirm = { h, m ->
+                val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
+                viewModel.handleIntent(SettingsIntent.UpdateWakeTime(time))
+                showWakeTimePicker = false
+            },
+            onDismiss = { showWakeTimePicker = false }
+        )
+    }
 }
 
 @Composable
@@ -75,7 +114,9 @@ fun SettingsSection(
 fun SettingsScreenContent(
     contentPadding: PaddingValues,
     state: SettingsState,
-    onIntent: (SettingsIntent) -> Unit
+    onIntent: (SettingsIntent) -> Unit,
+    onBedtimeClick: () -> Unit,
+    onWakeTimeClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -122,13 +163,15 @@ fun SettingsScreenContent(
             SettingsRowArrow(
                 emoji = "🌙",
                 label = "취침 시간 설정",
-                onClick = { onIntent(SettingsIntent.NavigateSleepTime) }
+                trailing = state.bedtime,
+                onClick = onBedtimeClick
             )
             SettingsDivider()
             SettingsRowArrow(
                 emoji = "☀️",
                 label = "기상 시간 설정",
-                onClick = { onIntent(SettingsIntent.NavigateWakeTime) }
+                trailing = state.wakeTime,
+                onClick = onWakeTimeClick
             )
             SettingsDivider()
             SettingsRowToggle(
@@ -497,7 +540,9 @@ fun SettingsScreenPreview() {
             SettingsScreenContent(
                 contentPadding = PaddingValues(),
                 state = SettingsState(isPremium = true),
-                onIntent = {}
+                onIntent = {},
+                onBedtimeClick = {},
+                onWakeTimeClick = {}
             )
         }
     }
