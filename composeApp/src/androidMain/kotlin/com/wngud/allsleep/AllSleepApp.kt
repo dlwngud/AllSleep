@@ -21,12 +21,6 @@ class AllSleepApp : Application() {
         // DataStore 초기화 (Koin보다 먼저!)
         initDataStore(this)
 
-        // DeviceInfoProvider 초기화 (Android ID 수집용 ContentResolver 주입)
-        DeviceInfoProvider.init(contentResolver)
-
-        // 수면 스케줄러 초기화
-        com.wngud.allsleep.platform.SleepScheduler.init(this)
-
         // 카카오 SDK 초기화 (네이티브 앱 키)
         KakaoSdk.init(this, getString(R.string.kakao_app_key))
         

@@ -23,6 +23,10 @@ import com.wngud.allsleep.domain.usecase.sleep.ObserveUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RegisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
+import com.wngud.allsleep.platform.DeviceInfoProvider
+import com.wngud.allsleep.platform.DeviceInfoProviderImpl
+import com.wngud.allsleep.platform.SleepScheduler
+import com.wngud.allsleep.platform.SleepSchedulerImpl
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
 import com.wngud.allsleep.ui.auth.login.AuthViewModel
 import com.wngud.allsleep.ui.home.HomeViewModel
@@ -61,6 +65,10 @@ val appModule = module {
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::SleepSyncRepositoryImpl) bind SleepSyncRepository::class
     singleOf(::AppBlockerRepositoryImpl) bind com.wngud.allsleep.domain.repository.AppBlockerRepository::class
+
+    // ── Platform Services ──────────────────────────────────────────
+    single<SleepScheduler> { SleepSchedulerImpl(androidContext()) }
+    single<DeviceInfoProvider> { DeviceInfoProviderImpl(androidContext()) }
 
     // ── DataStore ─────────────────────────────────────────────────
     single { createDataStore() }

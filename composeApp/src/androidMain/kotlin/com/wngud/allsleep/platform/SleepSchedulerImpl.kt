@@ -9,23 +9,16 @@ import android.util.Log
 import com.wngud.allsleep.receiver.SleepAlarmReceiver
 import java.util.*
 
-actual object SleepScheduler {
-    private var appContext: Context? = null
+class SleepSchedulerImpl(private val context: Context) : SleepScheduler {
 
-    fun init(context: Context) {
-        appContext = context.applicationContext
-    }
-
-    actual fun scheduleNextEvents(bedtime: String, wakeTime: String) {
-        val context = appContext ?: return
+    override fun scheduleNextEvents(bedtime: String, wakeTime: String) {
         Log.d("SleepScheduler", "Scheduling alarms: Bedtime=$bedtime, WakeTime=$wakeTime")
 
         scheduleAlarm(context, bedtime, SleepAlarmReceiver.ACTION_START_SLEEP, 100)
         scheduleAlarm(context, wakeTime, SleepAlarmReceiver.ACTION_STOP_SLEEP, 101)
     }
 
-    actual fun cancelAll() {
-        val context = appContext ?: return
+    override fun cancelAll() {
         cancelAlarm(context, SleepAlarmReceiver.ACTION_START_SLEEP, 100)
         cancelAlarm(context, SleepAlarmReceiver.ACTION_STOP_SLEEP, 101)
     }

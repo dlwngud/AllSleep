@@ -1,11 +1,11 @@
 package com.wngud.allsleep.platform
 
-actual object SleepScheduler {
-    actual fun scheduleNextEvents(bedtime: String, wakeTime: String) {
+class SleepSchedulerImpl : SleepScheduler {
+    override fun scheduleNextEvents(bedtime: String, wakeTime: String) {
         // iOS implementation will be added later
     }
 
-    actual fun cancelAll() {
+    override fun cancelAll() {
         // iOS implementation will be added later
     }
 }
