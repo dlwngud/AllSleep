@@ -23,7 +23,8 @@ class SettingsViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
-    private val sleepSettingsRepository: SleepSettingsRepository
+    private val sleepSettingsRepository: SleepSettingsRepository,
+    private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -102,7 +103,7 @@ class SettingsViewModel(
                 val user = getCurrentUserUseCase()
                 if (user != null) {
                     // 1. 현재 기기 등록 해제
-                    val deviceId = DeviceInfoProvider.getDeviceId()
+                    val deviceId = deviceInfoProvider.getDeviceId()
                     unregisterDeviceUseCase(user.uid, deviceId)
                 }
                 
