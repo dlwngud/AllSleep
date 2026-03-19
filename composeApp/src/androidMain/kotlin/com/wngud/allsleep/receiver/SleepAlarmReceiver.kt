@@ -20,6 +20,7 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
     private val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
     private val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
     private val sleepSettingsRepository: SleepSettingsRepository by inject()
+    private val sleepScheduler: com.wngud.allsleep.platform.SleepScheduler by inject()
 
     private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -56,7 +57,7 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
             // 다음 알람 재스케줄링 (24시간 주기 순환을 위해)
             val bedtime = sleepSettingsRepository.bedtime.first()
             val wakeTime = sleepSettingsRepository.wakeTime.first()
-            com.wngud.allsleep.platform.SleepScheduler.scheduleNextEvents(bedtime, wakeTime)
+            sleepScheduler.scheduleNextEvents(bedtime, wakeTime)
         }
     }
 

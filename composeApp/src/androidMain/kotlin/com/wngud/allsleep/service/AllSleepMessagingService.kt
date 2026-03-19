@@ -130,6 +130,7 @@ class AllSleepMessagingService : FirebaseMessagingService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
     private val sleepSyncRepository: SleepSyncRepository by inject()
+    private val deviceInfoProvider: DeviceInfoProvider by inject()
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
@@ -140,10 +141,10 @@ class AllSleepMessagingService : FirebaseMessagingService() {
             if (user != null) {
                 Log.d("AllSleepFCM", "User logged in, updating token in Firestore...")
                 val deviceState = DeviceState(
-                    deviceId = DeviceInfoProvider.getDeviceId(),
-                    deviceName = DeviceInfoProvider.getDeviceName(),
+                    deviceId = deviceInfoProvider.getDeviceId(),
+                    deviceName = deviceInfoProvider.getDeviceName(),
                     fcmToken = token,
-                    platform = DeviceInfoProvider.getPlatform(),
+                    platform = deviceInfoProvider.getPlatform(),
                     lastActiveForSleepLocking = System.currentTimeMillis(),
                     isMainAlarmDevice = false // 기존 상태 보존 로직이 필요할 수 있으나, 여기서는 갱신에 집중
                 )
