@@ -55,21 +55,48 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     val sleepState by globalSleepViewModel.sleepState.collectAsState()
     val devices by globalSleepViewModel.registeredDevices.collectAsState()
+    val isToggleLoading by globalSleepViewModel.isToggleLoading.collectAsState()
 
-    HomeScreenContent(
-        contentPadding = contentPadding,
-        state = state,
-        devices = devices,
-        isSleepModeActive = sleepState?.isSleeping ?: false,
-        onStartSleep = { 
-            viewModel.handleIntent(HomeIntent.StartSleep)
-            globalSleepViewModel.toggleSleepState(isSleeping = true)
-        },
-        onWakeUpTest = {
-            // [임시 테스트용] 강제 기상 버튼 콜백
-            globalSleepViewModel.toggleSleepState(isSleeping = false)
+    Box(modifier = Modifier.fillMaxSize()) {
+        HomeScreenContent(
+            contentPadding = contentPadding,
+            state = state,
+            devices = devices,
+            isSleepModeActive = sleepState?.isSleeping ?: false,
+            onStartSleep = { 
+                viewModel.handleIntent(HomeIntent.StartSleep)
+                globalSleepViewModel.toggleSleepState(isSleeping = true)
+            },
+            onWakeUpTest = {
+                // [임시 테스트용] 강제 기상 버튼 콜백
+                globalSleepViewModel.toggleSleepState(isSleeping = false)
+            }
+        )
+
+        // 화면 딜레이 동안 중복 터치를 막는 로딩 화면 (핑퐁 더블 탭 버그 방지)
+        if (isToggleLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    // 터치 이벤트를 소모하여 하위 컨텐츠 조작 방지
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 4.dp
+                )
+            }
         }
-    )
+    }
 }
 
 @Composable

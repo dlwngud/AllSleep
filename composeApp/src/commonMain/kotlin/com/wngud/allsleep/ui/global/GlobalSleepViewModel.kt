@@ -23,7 +23,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 /**
  * 전역 수면 상태(App State)를 관리하는 ViewModel
@@ -57,6 +59,9 @@ class GlobalSleepViewModel(
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
+    private val _isToggleLoading = MutableStateFlow(false)
+    val isToggleLoading: StateFlow<Boolean> = _isToggleLoading.asStateFlow()
+
     private val _isOnboardingCompleted = MutableStateFlow(false)
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
     
@@ -66,6 +71,11 @@ class GlobalSleepViewModel(
     
     // 현재 사용자 캐싱용 변수
     private var currentUid: String? = null
+    
+    // 중복 구독 방지를 위한 Job 관리
+    private var observeJob: Job? = null
+    private var devicesJob: Job? = null
+    private var deviceRegisterJob: Job? = null
 
     init {
         // ViewModel 생성 시점에 현재 사용자를 확인하고 관찰 시작 + 기기 등록
@@ -93,7 +103,7 @@ class GlobalSleepViewModel(
                 android.util.Log.d("GlobalSleepVM", "[init] uid=${user.uid}, 기기/프로필 등록 시작")
                 launch { updateUserProfileUseCase(user) }
                 startObserving(user.uid)
-                registerCurrentDevice(user.uid)
+                registerCurrentUIDDevice(user.uid)
             } else {
                 android.util.Log.w("GlobalSleepVM", "[init] 로그인 사용자 없음 - 기기 등록 skip")
             }
@@ -115,7 +125,7 @@ class GlobalSleepViewModel(
                         }
                         launch { updateUserProfileUseCase(observedUser) }
                         startObserving(observedUser.uid)
-                        registerCurrentDevice(observedUser.uid)
+                        registerCurrentUIDDevice(observedUser.uid)
                     } else {
                         currentUid = null
                         _sleepState.value = null
@@ -125,15 +135,28 @@ class GlobalSleepViewModel(
             }
             
             launch {
-                observeOnboardingCompletedUseCase().collect { completed ->
-                    _isOnboardingCompleted.value = completed
-                    
-                    // 온보딩이 완료되는 시점에 로컬 설정을 Firestore로 최초 동기화 (Step 2.3 대응)
-                    if (completed && currentUid != null) {
-                        android.util.Log.d("GlobalSleepVM", "Onboarding completed, syncing initial schedule to Firestore")
-                        toggleSleepState(isSleeping = false) 
+                observeOnboardingCompletedUseCase()
+                    .distinctUntilChanged()
+                    .collect { completed ->
+                        val wasCompleted = _isOnboardingCompleted.value
+                        _isOnboardingCompleted.value = completed
+                        
+                        // 온보딩이 "실제로 완료되는 순간"(false -> true)에만 Firestore에 취침/기상 스케줄 최초 동기화
+                        // (앱 시작 시는 실행하지 않음 - 이미 Firestore 에서 Downstream Sync로 처리되므로)
+                        if (completed && !wasCompleted && currentUid != null) {
+                            android.util.Log.d("GlobalSleepVM", "Onboarding just completed. Syncing initial schedule to Firestore (schedule only)")
+                            val uid = currentUid ?: return@collect
+                            val bedtime = sleepSettingsRepository.bedtime.first()
+                            val wakeTime = sleepSettingsRepository.wakeTime.first()
+                            // 수면 모드 상태는 건드리지 않고 스케줄 정보만 동기화
+                            updateUserSleepStateUseCase(
+                                uid = uid,
+                                isSleeping = null,
+                                bedtime = bedtime,
+                                wakeTime = wakeTime
+                            )
+                        }
                     }
-                }
             }
 
             // [Upstream Sync] 로컬 DataStore 변경 감지 시 Firestore 동기화 (Step 4 핵심)
@@ -152,7 +175,7 @@ class GlobalSleepViewModel(
                     
                     // Firestore에 저장된 값과 다를 때만 업데이트 (무한 루프 방지)
                     if (currentState.bedtime != bedtime || currentState.wakeTime != wakeTime) {
-                        android.util.Log.d("GlobalSleepVM", "Syncing Local -> Cloud (Schedule Only): $bedtime, $wakeTime")
+                        android.util.Log.w("SleepBounceDebug", "[UpstreamSync] 스케줄 변경 감지! 서버 전송: bedtime=$bedtime, isSleeping(current)=${currentState.isSleeping}")
                         updateUserSleepStateUseCase(
                             uid = uid,
                             isSleeping = null, // 수면 모드 상태는 건드리지 않음 (Ping-pong 방지)
@@ -199,9 +222,24 @@ class GlobalSleepViewModel(
      * Firebase 인증 후 UID 획득 시 호출하여 상태 구독을 시작합니다.
      */
     fun startObserving(uid: String) {
-        viewModelScope.launch {
+        if (uid == currentUid && observeJob?.isActive == true) return
+        
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
             try {
                 observeUserSleepStateUseCase(uid).collect { state ->
+                    android.util.Log.w("SleepBounceDebug", "[startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping}, isToggleLoading=${_isToggleLoading.value}")
+                    
+                    // [Bounce 방지]: toggleSleepState 진행 중에 Firestore에서 낙관적 상태와 다른 스냅샷이 오면 무시
+                    // (isPersistenceEnabled=false여도 이전 쓰기 확인 전 중간 상태가 올 수 있음)
+                    if (_isToggleLoading.value) {
+                        val currentOptimistic = _sleepState.value
+                        if (currentOptimistic?.lastUpdatedAt == 0L && state?.isSleeping != currentOptimistic.isSleeping) {
+                            android.util.Log.w("SleepBounceDebug", "[startObserving] 토글 중 stale 스냅샷 무시: snapshot=${state?.isSleeping} vs optimistic=${currentOptimistic.isSleeping}")
+                            return@collect
+                        }
+                    }
+                    
                     _sleepState.value = state
                     
                     // Firestore에서 최신 스케줄 정보가 오면
@@ -230,7 +268,8 @@ class GlobalSleepViewModel(
         }
         
         // 기기 목록 실시간 구독 추가
-        viewModelScope.launch {
+        devicesJob?.cancel()
+        devicesJob = viewModelScope.launch {
             try {
                 observeRegisteredDevicesUseCase(uid).collect { devices ->
                     _registeredDevices.value = devices
@@ -242,10 +281,26 @@ class GlobalSleepViewModel(
     }
 
     /**
+     * 현재 기기 정보를 등록하는 작업을 Job으로 관리하여 중복 실행을 방지합니다.
+     */
+    private fun registerCurrentUIDDevice(uid: String) {
+        deviceRegisterJob?.cancel()
+        deviceRegisterJob = viewModelScope.launch {
+            registerCurrentDevice(uid)
+        }
+    }
+
+    /**
      * 로그아웃 처리 (현재 기기 정보 삭제 후 사인아웃)
      */
     fun logout(onComplete: () -> Unit = {}) {
         val uid = currentUid ?: return
+        
+        // 관찰 중이던 Job들 취소
+        observeJob?.cancel()
+        devicesJob?.cancel()
+        deviceRegisterJob?.cancel()
+
         viewModelScope.launch {
             try {
                 // 1. 현재 기기 등록 해제
@@ -272,40 +327,47 @@ class GlobalSleepViewModel(
      * 수면 상태를 수동으로 변경 (낙관적 UI 반영)
      */
     fun toggleSleepState(isSleeping: Boolean, targetWakeUpTime: Long? = null) {
+        if (_isToggleLoading.value) return // 중복 실행 방지
         val uid = currentUid ?: return
         
         viewModelScope.launch {
-            // 로컬 스토리지의 최신 설정값 읽어오기
-            val bedtime = sleepSettingsRepository.bedtime.first()
-            val wakeTime = sleepSettingsRepository.wakeTime.first()
+            _isToggleLoading.value = true
+            try {
+                // 로컬 스토리지의 최신 설정값 읽어오기
+                val bedtime = sleepSettingsRepository.bedtime.first()
+                val wakeTime = sleepSettingsRepository.wakeTime.first()
 
-            // [낙관적 제어] 서버 응답 전 로컬 상태 먼저 강제 업데이트하여 즉시 애니메이션 전환 유도
-            val optimisticState = _sleepState.value?.copy(
-                isSleeping = isSleeping,
-                targetWakeUpTime = targetWakeUpTime,
-                bedtime = bedtime,
-                wakeTime = wakeTime,
-                lastUpdatedAt = 0L
-            ) ?: UserSleepState(
-                uid = uid, 
-                isSleeping = isSleeping, 
-                targetWakeUpTime = targetWakeUpTime,
-                bedtime = bedtime,
-                wakeTime = wakeTime
-            )
-            
-            _sleepState.value = optimisticState
+                // [낙관적 제어] 서버 응답 전 로컬 상태 먼저 강제 업데이트하여 즉시 애니메이션 전환 유도
+                val optimisticState = _sleepState.value?.copy(
+                    isSleeping = isSleeping,
+                    targetWakeUpTime = targetWakeUpTime,
+                    bedtime = bedtime,
+                    wakeTime = wakeTime,
+                    lastUpdatedAt = 0L
+                ) ?: UserSleepState(
+                    uid = uid, 
+                    isSleeping = isSleeping, 
+                    targetWakeUpTime = targetWakeUpTime,
+                    bedtime = bedtime,
+                    wakeTime = wakeTime
+                )
+                
+                _sleepState.value = optimisticState
+                android.util.Log.w("SleepBounceDebug", "[toggleSleepState] 낙관적 상태 설정: isSleeping=$isSleeping")
 
-            // 실제 서버 전송 (전역 스케줄 정보 포함)
-            val result = updateUserSleepStateUseCase(
-                uid = uid, 
-                isSleeping = isSleeping, 
-                targetWakeUpTime = targetWakeUpTime,
-                bedtime = bedtime,
-                wakeTime = wakeTime
-            )
-            result.onFailure {
-                _error.value = "Failed to update state: ${it.message}"
+                // 실제 서버 전송 (전역 스케줄 정보 포함)
+                val result = updateUserSleepStateUseCase(
+                    uid = uid, 
+                    isSleeping = isSleeping, 
+                    targetWakeUpTime = targetWakeUpTime,
+                    bedtime = bedtime,
+                    wakeTime = wakeTime
+                )
+                result.onFailure {
+                    _error.value = "Failed to update state: ${it.message}"
+                }
+            } finally {
+                _isToggleLoading.value = false
             }
         }
     }
