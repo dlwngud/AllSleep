@@ -148,14 +148,14 @@ class GlobalSleepViewModel(
                 .debounce(300L)
                 .collect { (bedtime, wakeTime) ->
                     val uid = currentUid ?: return@collect
-                    val currentState = _sleepState.value
+                    val currentState = _sleepState.value ?: return@collect
                     
                     // Firestore에 저장된 값과 다를 때만 업데이트 (무한 루프 방지)
-                    if (currentState == null || currentState.bedtime != bedtime || currentState.wakeTime != wakeTime) {
-                        android.util.Log.d("GlobalSleepVM", "Syncing Local -> Cloud: $bedtime, $wakeTime")
+                    if (currentState.bedtime != bedtime || currentState.wakeTime != wakeTime) {
+                        android.util.Log.d("GlobalSleepVM", "Syncing Local -> Cloud (Schedule Only): $bedtime, $wakeTime")
                         updateUserSleepStateUseCase(
                             uid = uid,
-                            isSleeping = currentState?.isSleeping ?: false,
+                            isSleeping = null, // 수면 모드 상태는 건드리지 않음 (Ping-pong 방지)
                             bedtime = bedtime,
                             wakeTime = wakeTime
                         )

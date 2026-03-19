@@ -22,7 +22,7 @@ interface SleepSyncRepository {
      */
     suspend fun updateUserSleepState(
         uid: String, 
-        isSleeping: Boolean, 
+        isSleeping: Boolean? = null, 
         targetWakeUpTime: Long? = null,
         bedtime: String? = null,
         wakeTime: String? = null

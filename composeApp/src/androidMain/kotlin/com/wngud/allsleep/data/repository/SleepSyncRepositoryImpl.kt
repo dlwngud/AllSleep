@@ -36,15 +36,15 @@ class SleepSyncRepositoryImpl(
 
     override suspend fun updateUserSleepState(
         uid: String, 
-        isSleeping: Boolean, 
+        isSleeping: Boolean?, 
         targetWakeUpTime: Long?,
         bedtime: String?,
         wakeTime: String?
     ): Result<Unit> = runCatching {
         val updates = mutableMapOf<String, Any>(
-            "isSleeping" to isSleeping,
             "lastUpdatedAt" to System.currentTimeMillis()
         )
+        isSleeping?.let { updates["isSleeping"] = it }
         if (targetWakeUpTime != null) {
             updates["targetWakeUpTime"] = targetWakeUpTime
         } else {

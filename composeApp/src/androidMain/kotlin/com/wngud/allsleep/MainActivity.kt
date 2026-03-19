@@ -44,16 +44,25 @@ class MainActivity : ComponentActivity() {
                     val isSleeping = state?.isSleeping ?: false
                     
                     // 상태가 실제로 변했을 때만 서비스 제어 (무한 루프 방지)
-                    if (isSleeping != lastSleepingState) {
+                    if (lastSleepingState != null && isSleeping != lastSleepingState) {
                         android.util.Log.d("MainActivity", "Sleep status changed: $isSleeping (sync from Remote/Local)")
                         if (isSleeping) {
                             SleepLockService.start(this@MainActivity)
                         } else {
-                            // STOP_SLEEP 시에는 앱이 화면 전면으로 와야 하므로 stop 호출
-                            SleepLockService.stop(this@MainActivity)
+                            // Firestore에서 관찰된 상태가 이미 false이므로, 
+                            // Service.stop() 내부에서 Firestore를 다시 덮어쓸 필요가 없음.
+                            SleepLockService.stop(this@MainActivity, updateFirestore = false)
                         }
-                        lastSleepingState = isSleeping
+                    } else if (lastSleepingState == null) {
+                        // 최초 진입 시, 수면 모드 상태에 맞게 서비스 동기화 (단, Firestore 강제 덮어쓰기는 방지)
+                        android.util.Log.d("MainActivity", "Initial Sleep status: $isSleeping")
+                        if (isSleeping) {
+                            SleepLockService.start(this@MainActivity)
+                        } else {
+                            SleepLockService.stop(this@MainActivity, updateFirestore = false)
+                        }
                     }
+                    lastSleepingState = isSleeping
                 }
             }
         }

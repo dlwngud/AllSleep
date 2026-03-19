@@ -7,7 +7,7 @@ class UpdateUserSleepStateUseCase(
 ) {
     suspend operator fun invoke(
         uid: String, 
-        isSleeping: Boolean, 
+        isSleeping: Boolean? = null, 
         targetWakeUpTime: Long? = null,
         bedtime: String? = null,
         wakeTime: String? = null

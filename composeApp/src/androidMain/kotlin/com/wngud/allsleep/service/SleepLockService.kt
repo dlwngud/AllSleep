@@ -96,25 +96,29 @@ class SleepLockService : Service(), KoinComponent {
             }
         }
 
-        fun stop(context: Context) {
+        fun stop(context: Context, updateFirestore: Boolean = true) {
             // Firestore 상태 동기화 (KoinComponent를 통해 필요한 UseCase 가져오기)
-            val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
-            val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
-            
-            externalScope.launch {
-                val user = getCurrentUserUseCase()
-                if (user != null) {
-                    android.util.Log.d("SleepLockService", "Stopping service: Updating Firestore isSleeping to false for user ${user.uid}")
-                    updateUserSleepStateUseCase(
-                        uid = user.uid,
-                        isSleeping = false,
-                        targetWakeUpTime = null,
-                        bedtime = null,
-                        wakeTime = null
-                    ).onFailure { e ->
-                        android.util.Log.e("SleepLockService", "Failed to update Firestore on stop: ${e.message}")
+            if (updateFirestore) {
+                val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
+                val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
+                
+                externalScope.launch {
+                    val user = getCurrentUserUseCase()
+                    if (user != null) {
+                        android.util.Log.d("SleepLockService", "Stopping service: Updating Firestore isSleeping to false for user ${user.uid}")
+                        updateUserSleepStateUseCase(
+                            uid = user.uid,
+                            isSleeping = false,
+                            targetWakeUpTime = null,
+                            bedtime = null,
+                            wakeTime = null
+                        ).onFailure { e ->
+                            android.util.Log.e("SleepLockService", "Failed to update Firestore on stop: ${e.message}")
+                        }
                     }
                 }
+            } else {
+                android.util.Log.d("SleepLockService", "Stopping service: Local only (Skipped Firestore update)")
             }
 
             // 강제로 메인 액티비티를 포그라운드로 끌어올리기 (Intent Bouncing)
