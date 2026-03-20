@@ -25,7 +25,8 @@ class SleepLockService : Service(), KoinComponent {
     private var overlayManager: LockOverlayManagerImpl? = null
     private val updateUserSleepStateUseCase: UpdateUserSleepStateUseCase by inject()
     private val getCurrentUserUseCase: GetCurrentUserUseCase by inject()
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val observeRegisteredDevicesUseCase: com.wngud.allsleep.domain.usecase.sleep.ObserveRegisteredDevicesUseCase by inject()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main) // UI 업데이트를 위해 Main 사용
 
     override fun onBind(intent: Intent?): IBinder? {
         return null // 바인딩을 사용하지 않는 Started Service
@@ -52,13 +53,26 @@ class SleepLockService : Service(), KoinComponent {
             android.util.Log.e("SleepLockService", "Foreground Service Start Failed: ${e.message}", e)
         }
 
-        // 오버레이 UI 표시
+        // 오버레이 UI 표시 및 기기 목록 관찰
         if (overlayManager == null) {
             overlayManager = LockOverlayManagerImpl(this)
-            overlayManager?.showOverlay()
+            
+            serviceScope.launch {
+                val user = getCurrentUserUseCase()
+                if (user != null) {
+                    observeRegisteredDevicesUseCase(user.uid).collect { devices ->
+                        if (overlayManager?.isShowing == true) {
+                            overlayManager?.updateDevices(devices)
+                        } else {
+                            overlayManager?.showOverlay(devices)
+                        }
+                    }
+                } else {
+                    overlayManager?.showOverlay(emptyList())
+                }
+            }
         }
 
-        // 시스템에 의해 서비스가 종료되더라도 자동으로 다시 시작하도록 설정(불사조 옵션)
         return START_STICKY 
     }
 

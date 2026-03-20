@@ -210,6 +210,41 @@ fun HomeScreenContent(
                 }
             }
 
+            // [NEW] 오버레이 권한 배너: 수면 모드이나 화면이 잠기지 않은 경우 (태블릿 동기화 등)
+            val isOverlayGranted = permissionRequester.isGranted()
+            if (isSleepModeActive && !isOverlayGranted) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable { permissionRequester.requestPermission() },
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("🛡️", fontSize = 16.sp)
+                        Text(
+                            text = "수면 모드 중입니다. 화면 잠금을 위해 권한 허용이 필요합니다.",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "허용하기",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // 1. 중앙 영역: 거대한 동기화 링(Sync Ring)과 상태 메시지
@@ -411,11 +446,8 @@ private fun OrbitalSyncHub(
                     .background(Color(0xFF3BA5F5).copy(alpha = 0.05f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(
-                        if (isSleepModeActive) Res.drawable.charachter_no_phone
-                        else Res.drawable.character_phone
-                    ),
+                androidx.compose.foundation.Image(
+                    painter = painterResource(Res.drawable.character_phone),
                     contentDescription = "Sleep Sync Center",
                     modifier = Modifier.size(200.dp),
                     contentScale = ContentScale.Fit
@@ -541,14 +573,22 @@ private fun BottomSwipeArea(
         // 목표 텍스트
         Text("이번 밤 목표: $sleepGoal", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
 
-        // 슬라이더 버튼 (수면 상태에 따라 테스트용 해제 버튼으로도 변경 가능)
+        // 슬라이더 버튼 영역
         if (isSleepModeActive) {
-            Button(
-                onClick = onWakeUpTest,
-                modifier = Modifier.fillMaxWidth().height(64.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(Color(0xFF131A26).copy(alpha = 0.5f), RoundedCornerShape(32.dp))
+                    .border(1.dp, Color(0xFF1E2633).copy(alpha = 0.3f), RoundedCornerShape(32.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("임시: 잠금 해제 (Wake Up Test)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "🔒 수면 분석 데이터 보호 중",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         } else {
             SwipeToSleepButton(onSwipeComplete = onStartSleep)

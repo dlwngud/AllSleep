@@ -8,7 +8,8 @@ actual fun rememberLockOverlayManager(): LockOverlayManager {
     return remember {
         object : LockOverlayManager {
             override val isShowing: Boolean = false
-            override fun showOverlay() {}
+            override fun showOverlay(devices: List<com.wngud.allsleep.domain.model.DeviceState>) {}
+            override fun updateDevices(devices: List<com.wngud.allsleep.domain.model.DeviceState>) {}
             override fun hideOverlay() {}
         }
     }

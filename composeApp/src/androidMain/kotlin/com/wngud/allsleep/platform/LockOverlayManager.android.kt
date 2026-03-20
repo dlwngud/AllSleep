@@ -6,14 +6,12 @@ import android.os.Build
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -23,31 +21,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.*
+import androidx.compose.ui.layout.ContentScale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.*
+import androidx.savedstate.*
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -56,6 +41,10 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import allsleep.composeapp.generated.resources.Res
+import allsleep.composeapp.generated.resources.ic_mobile
+import allsleep.composeapp.generated.resources.ic_tablet
+import allsleep.composeapp.generated.resources.charachter_no_phone
 
 class WindowLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -86,11 +75,14 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
     private var composeView: ComposeView? = null
     private var lifecycleOwner: WindowLifecycleOwner? = null
 
+    private val _devices = mutableStateOf<List<com.wngud.allsleep.domain.model.DeviceState>>(emptyList())
+
     override var isShowing: Boolean = false
         private set
 
-    override fun showOverlay() {
+    override fun showOverlay(devices: List<com.wngud.allsleep.domain.model.DeviceState>) {
         if (isShowing) return
+        _devices.value = devices
         
         lifecycleOwner = WindowLifecycleOwner()
         
@@ -110,6 +102,7 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
             )
             
             setContent {
+                val currentDevices by _devices
                 var currentTime by remember { mutableStateOf("") }
                 
                 LaunchedEffect(Unit) {
@@ -122,84 +115,219 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
                     }
                 }
 
+                // HomeScreen과 완전히 동일한 레이아웃 구조 적용
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF0B0C10)), // HomeScreen 다크 네이비와 동일
-                    contentAlignment = Alignment.Center
+                        .background(Color(0xFF0B0C10)),
                 ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(24.dp)
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // 상단: 시간 정보
+                        Spacer(modifier = Modifier.height(40.dp))
                         Text(
                             text = currentTime,
                             color = Color.White,
-                            fontSize = 72.sp,
+                            fontSize = 64.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "수면 모드가 켜져있습니다",
                             color = Color.Gray,
-                            fontSize = 18.sp
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
-                        
-                        Spacer(modifier = Modifier.height(120.dp))
 
-                        // 잠금 해제 스와이프 버튼
-                        BoxWithConstraints(
+                        // 중앙: HomeScreen의 OrbitalSyncHub와 동일한 구조 (weight(1f)로 영역 확보)
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
-                                .background(Color(0xFF131A26), RoundedCornerShape(32.dp))
-                                .border(1.dp, Color(0xFF1E2633), RoundedCornerShape(32.dp)),
-                            contentAlignment = Alignment.CenterStart
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
                         ) {
-                            val width = this.maxWidth
-                            val thumbSize = 56.dp
-                            val swipeAreaWidthPx = with(LocalDensity.current) { (width - thumbSize).toPx() }
-
-                            var offsetX by remember { mutableStateOf(0f) }
-
-                            Text(
-                                text = "밀어서 잠금 해제",
-                                color = Color.White.copy(alpha = 0.4f),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .offset { IntOffset(offsetX.roundToInt(), 0) }
-                                    .padding(4.dp)
-                                    .size(48.dp)
-                                    .background(Color(0xFFE53935), CircleShape) // 빨간색(해제) 버튼
-                                    .pointerInput(Unit) {
-                                        detectHorizontalDragGestures(
-                                            onDragEnd = {
-                                                if (offsetX > swipeAreaWidthPx * 0.8f) {
-                                                    // 끝까지 밀면 서비스 종료!
-                                                    com.wngud.allsleep.service.SleepLockService.stop(context)
-                                                } else {
-                                                    offsetX = 0f
-                                                }
-                                            }
-                                        ) { change, dragAmount ->
-                                            change.consume()
-                                            offsetX = (offsetX + dragAmount).coerceIn(0f, swipeAreaWidthPx)
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(40.dp)
                             ) {
+                                // HomeScreen.kt의 OrbitalSyncHub와 동일: size(340.dp).padding(24.dp)
+                                Box(
+                                    modifier = Modifier.size(340.dp).padding(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val infiniteTransition = rememberInfiniteTransition()
+                                    val pulseAlpha by infiniteTransition.animateFloat(
+                                        initialValue = 0.3f,
+                                        targetValue = 0.8f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(2000, easing = FastOutSlowInEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        )
+                                    )
+
+                                    // 궤도선 (280dp) - HomeScreen과 동일
+                                    Box(
+                                        modifier = Modifier
+                                            .size(280.dp)
+                                            .border(1.dp, Color(0xFF3BA5F5).copy(alpha = 0.15f), CircleShape)
+                                    )
+
+                                    // 중앙 허브 (280dp) - HomeScreen과 동일
+                                    Box(
+                                        modifier = Modifier
+                                            .size(280.dp)
+                                            .background(Color(0xFF3BA5F5).copy(alpha = 0.05f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        // 눈 감은 캐릭터 (200dp) - HomeScreen의 character_phone과 동일 크기
+                                        androidx.compose.foundation.Image(
+                                            painter = org.jetbrains.compose.resources.painterResource(allsleep.composeapp.generated.resources.Res.drawable.charachter_no_phone),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(200.dp),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                        )
+                                    }
+
+                                    // 위성 기기들 - orbitRadius 140dp로 HomeScreen과 동일
+                                    val deviceCount = currentDevices.size
+                                    val angleStep = if (deviceCount > 0) 360f / deviceCount else 0f
+                                    val orbitRadius = 140.dp.value
+
+                                    currentDevices.forEachIndexed { index, device ->
+                                        val startAngle = index * angleStep
+                                        val rotation by infiniteTransition.animateFloat(
+                                            initialValue = startAngle,
+                                            targetValue = startAngle + 360f,
+                                            animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart)
+                                        )
+
+                                        val radians = rotation * Math.PI / 180.0
+                                        val x = (orbitRadius * Math.cos(radians)).dp
+                                        val y = (orbitRadius * Math.sin(radians)).dp
+
+                                        Box(
+                                            modifier = Modifier.offset(x = x, y = y).size(56.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(68.dp)
+                                                    .background(
+                                                        brush = Brush.radialGradient(
+                                                            colors = listOf(
+                                                                MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha),
+                                                                MaterialTheme.colorScheme.primary.copy(alpha = 0f)
+                                                            )
+                                                        ),
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                                    .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                androidx.compose.material3.Icon(
+                                                    painter = org.jetbrains.compose.resources.painterResource(
+                                                        when (device.platform.lowercase()) {
+                                                            "android" -> allsleep.composeapp.generated.resources.Res.drawable.ic_mobile
+                                                            "ios" -> allsleep.composeapp.generated.resources.Res.drawable.ic_mobile
+                                                            "tablet" -> allsleep.composeapp.generated.resources.Res.drawable.ic_tablet
+                                                            else -> allsleep.composeapp.generated.resources.Res.drawable.ic_mobile
+                                                        }
+                                                    ),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 홈 화면의 "Sync Hub Control Station" 텍스트 영역 매칭
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        "Sleep Mode Protected",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "현재 기기가 안전하게 보호되고 있습니다",
+                                        fontSize = 14.sp,
+                                        color = Color.White.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 하단: HomeScreen의 BottomSwipeArea와 동일한 padding
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .padding(bottom = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            BoxWithConstraints(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp)
+                                    .background(Color(0xFF131A26), RoundedCornerShape(32.dp))
+                                    .border(1.dp, Color(0xFF1E2633), RoundedCornerShape(32.dp)),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                val width = this.maxWidth
+                                val thumbSize = 56.dp
+                                val swipeAreaWidthPx = with(LocalDensity.current) { (width - thumbSize).toPx() }
+                                var offsetX by remember { mutableStateOf(0f) }
+
                                 Text(
-                                    text = "›",
-                                    color = Color.White,
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.offset(y = (-2).dp)
+                                    text = "밀어서 잠금 해제",
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
+
+                                Box(
+                                    modifier = Modifier
+                                        .offset { IntOffset(offsetX.roundToInt(), 0) }
+                                        .padding(4.dp)
+                                        .size(48.dp)
+                                        .background(Color(0xFFE53935), CircleShape)
+                                        .pointerInput(Unit) {
+                                            detectHorizontalDragGestures(
+                                                onDragEnd = {
+                                                    if (offsetX > swipeAreaWidthPx * 0.8f) {
+                                                        com.wngud.allsleep.service.SleepLockService.stop(context)
+                                                    } else {
+                                                        offsetX = 0f
+                                                    }
+                                                }
+                                            ) { change, dragAmount ->
+                                                change.consume()
+                                                offsetX = (offsetX + dragAmount).coerceIn(0f, swipeAreaWidthPx)
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "›",
+                                        color = Color.White,
+                                        fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.offset(y = (-2).dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -233,6 +361,10 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
         } catch (e: Exception) {
             android.util.Log.e("LockOverlay", "Failed to add view to WindowManager: ${e.message}", e)
         }
+    }
+
+    override fun updateDevices(devices: List<com.wngud.allsleep.domain.model.DeviceState>) {
+        _devices.value = devices
     }
 
     override fun hideOverlay() {

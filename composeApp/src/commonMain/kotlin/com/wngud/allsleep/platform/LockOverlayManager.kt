@@ -9,7 +9,8 @@ import androidx.compose.runtime.Composable
 interface LockOverlayManager {
     val isShowing: Boolean
 
-    fun showOverlay()
+    fun showOverlay(devices: List<com.wngud.allsleep.domain.model.DeviceState> = emptyList())
+    fun updateDevices(devices: List<com.wngud.allsleep.domain.model.DeviceState>)
     fun hideOverlay()
 }
 
