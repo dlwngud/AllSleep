@@ -13,7 +13,6 @@ import android.content.Intent
 import android.provider.Settings
 import android.content.Context
 import android.os.PowerManager
-
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +34,15 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
             private val _isBatteryOptimized = MutableStateFlow(isIgnoringBatteryOptimizationsInternal())
             override val isBatteryOptimized: StateFlow<Boolean> = _isBatteryOptimized.asStateFlow()
 
+            private val _isAccessibilityEnabled = MutableStateFlow(isAccessibilityServiceEnabledInternal())
+            override val isAccessibilityEnabled: StateFlow<Boolean> = _isAccessibilityEnabled.asStateFlow()
+
+            private val _isAlarmPermissionGranted = MutableStateFlow(isAlarmPermissionGrantedInternal())
+            override val isAlarmPermissionGranted: StateFlow<Boolean> = _isAlarmPermissionGranted.asStateFlow()
+
+            private val _isNotificationPermissionGranted = MutableStateFlow(isNotificationPermissionGrantedInternal())
+            override val isNotificationPermissionGranted: StateFlow<Boolean> = _isNotificationPermissionGranted.asStateFlow()
+
             init {
                 // 앱 전체 프로세스의 수명 주기를 관찰하여 ON_RESUME 시점에 상태 갱신
                 ProcessLifecycleOwner.get().lifecycle.addObserver(this)
@@ -42,11 +50,37 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
 
             override fun onResume(owner: LifecycleOwner) {
                 _isBatteryOptimized.value = isIgnoringBatteryOptimizationsInternal()
+                _isAccessibilityEnabled.value = isAccessibilityServiceEnabledInternal()
+                _isAlarmPermissionGranted.value = isAlarmPermissionGrantedInternal()
+                _isNotificationPermissionGranted.value = isNotificationPermissionGrantedInternal()
             }
 
             private fun isIgnoringBatteryOptimizationsInternal(): Boolean {
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+            }
+
+            private fun isAccessibilityServiceEnabledInternal(): Boolean {
+                val expectedService = "${context.packageName}/com.wngud.allsleep.service.AppSupervisorService"
+                val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                return enabledServices?.contains(expectedService) == true
+            }
+
+            private fun isAlarmPermissionGrantedInternal(): Boolean {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+                    alarmManager.canScheduleExactAlarms()
+                } else {
+                    true
+                }
+            }
+
+            private fun isNotificationPermissionGrantedInternal(): Boolean {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    true
+                }
             }
 
             override fun requestBasicPermissions() {
@@ -78,6 +112,15 @@ actual fun rememberPermissionRequester(onResult: (Boolean) -> Unit): PermissionR
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
+            }
+
+            override fun requestAlarmPermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                }
             }
         }
     }
