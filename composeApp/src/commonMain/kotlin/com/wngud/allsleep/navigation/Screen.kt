@@ -9,9 +9,11 @@ sealed class Screen(val route: String) {
         data object Problem : Screen("onboarding/problem")
         data object Solution : Screen("onboarding/solution")
         data object Time : Screen("onboarding/time")
-        data object Permissions : Screen("onboarding/permissions")
-        data object Login : Screen("onboarding/login")
-        data object Complete : Screen("onboarding/complete")
+        data object Alerts : Screen("onboarding/alerts")
+        data object Overlay : Screen("onboarding/overlay")
+        data object Battery : Screen("onboarding/battery")
+        data object Accessibility : Screen("onboarding/accessibility")
+        data object Auth : Screen("onboarding/auth")
     }
 
     // 인증 (로그아웃 후 재로그인 등)

@@ -49,11 +49,6 @@ fun App() {
             }
         }
 
-        // 온보딩 테스트 코드
-//        val initialStartDestination = remember {
-//            Screen.Onboarding.route // 강제로 온보딩 경로 지정
-//        }
-
 
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
