@@ -22,8 +22,13 @@ class OnboardingViewModel(
             is OnboardingIntent.LoadCurrentUser -> loadCurrentUser()
             is OnboardingIntent.UpdateBedtime -> updateBedtime(intent.time)
             is OnboardingIntent.UpdateWakeTime -> updateWakeTime(intent.time)
+            is OnboardingIntent.UpdateUserName -> updateUserName(intent.name)
             is OnboardingIntent.CompleteOnboarding -> completeOnboarding()
         }
+    }
+
+    private fun updateUserName(name: String) {
+        _state.update { it.copy(userName = name, user = null) } // user = null for guest
     }
 
     private fun loadCurrentUser() {

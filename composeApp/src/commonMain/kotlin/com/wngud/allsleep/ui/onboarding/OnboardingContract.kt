@@ -19,5 +19,6 @@ sealed interface OnboardingIntent {
     data object LoadCurrentUser : OnboardingIntent
     data class UpdateBedtime(val time: String) : OnboardingIntent
     data class UpdateWakeTime(val time: String) : OnboardingIntent
+    data class UpdateUserName(val name: String) : OnboardingIntent
     data object CompleteOnboarding : OnboardingIntent
 }
