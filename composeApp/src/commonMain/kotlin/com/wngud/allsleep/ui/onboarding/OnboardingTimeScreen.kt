@@ -41,17 +41,23 @@ fun OnboardingTimeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .padding(bottom = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
         
         // 페이지 인디케이터 (상단)
         PageIndicator(
             currentPage = 2,
-            totalPages = 6
+            totalPages = 8
         )
         
         Spacer(modifier = Modifier.height(Spacing.extraLarge))
@@ -122,7 +128,8 @@ fun OnboardingTimeScreen(
             wakeMinute = wakeMinute
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
+        }
         
         // 다음 버튼
         Button(

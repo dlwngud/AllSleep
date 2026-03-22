@@ -43,8 +43,8 @@ fun OnboardingCompleteScreen(
         
         // 페이지 인디케이터 (상단)
         PageIndicator(
-            currentPage = 5,
-            totalPages = 6
+            currentPage = 7,
+            totalPages = 8
         )
         
         Spacer(modifier = Modifier.weight(0.2f))

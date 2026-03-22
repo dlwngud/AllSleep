@@ -87,7 +87,7 @@ actual fun OnboardingLoginScreen(
         ) {
             Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
 
-            PageIndicator(currentPage = 4, totalPages = 6)
+            PageIndicator(currentPage = 7, totalPages = 8)
 
             Spacer(modifier = Modifier.height(Spacing.extraLarge))
 
