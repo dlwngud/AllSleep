@@ -11,10 +11,12 @@ import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.domain.usecase.auth.DeleteAccountUseCase
 import com.wngud.allsleep.domain.usecase.auth.ObserveUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithGoogleUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithKakaoUseCase
 import com.wngud.allsleep.domain.usecase.auth.SignOutUseCase
+import com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase
 import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.CompleteOnboardingUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.ObserveOnboardingCompletedUseCase
@@ -88,6 +90,8 @@ val appModule = module {
     factoryOf(::ObserveRegisteredDevicesUseCase)
     factoryOf(::ObserveOnboardingCompletedUseCase)
     factoryOf(::CompleteOnboardingUseCase)
+    factoryOf(::DeleteAccountUseCase)
+    factoryOf(::ValidateSessionUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
     singleOf(::GlobalSleepViewModel)
