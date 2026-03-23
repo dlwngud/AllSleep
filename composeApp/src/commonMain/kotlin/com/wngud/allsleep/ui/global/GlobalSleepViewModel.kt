@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 
@@ -45,6 +46,7 @@ class GlobalSleepViewModel(
     private val observeRegisteredDevicesUseCase: ObserveRegisteredDevicesUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
     private val signOutUseCase: SignOutUseCase,
+    private val validateSessionUseCase: com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase,
     private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository,
     private val sleepScheduler: SleepScheduler,
     private val deviceInfoProvider: DeviceInfoProvider
@@ -91,6 +93,20 @@ class GlobalSleepViewModel(
             
             // 2. 초기 사용자 세션 확인
             val user = getCurrentUserUseCase()
+            
+            // [추가] 기동 시 서버에서 계정 생존 여부 강제 확인 (타 기기 탈퇴 대응)
+            if (user != null) {
+                println("GlobalSleepVM: [init] 기존 세션 발견, 서버 유효성 검사 시작")
+                validateSessionUseCase().onFailure { e ->
+                    println("GlobalSleepVM: [init] 세션 유효성 검사 실패 (계정 삭제됨으로 판단): ${e.message}")
+                    // 서버에서 계정이 삭제된 경우이므로 즉시 로그아웃 처리하여 로그인 화면으로 유도
+                    logout()
+                    _isStateInitialized.value = true
+                    return@launch
+                }
+                println("GlobalSleepVM: [init] 세션 유효성 검사 통과")
+            }
+            
             handleUserSessionChange(user)
             
             // 3. 마이그레이션 (로그인된 경우 온보딩 강제 완료 처리)
@@ -212,42 +228,61 @@ class GlobalSleepViewModel(
         
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            observeUserSleepStateUseCase(uid).collect { state ->
-                println("SleepBounceDebug: [startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping}")
-                
-                // [동시성 제어] Timestamp 기반 Stale 스냅샷 필터링
-                if (_isToggleLoading.value) {
-                    val current = _sleepState.value
-                    // 현재 로컬에서 발생한 낙관적 상태(lastUpdatedAt=0L)가 있고, 서버 데이터가 그보다 이전(stale)이면 무시
-                    if (current?.lastUpdatedAt == 0L && state != null && state.isSleeping != current.isSleeping) {
-                        println("SleepBounceDebug: [startObserving] Stale 스냅샷 무시됨")
+            observeUserSleepStateUseCase(uid)
+                .catch { e ->
+                    println("GlobalSleepVM: [observeUserState] 에러 발생, 로그아웃 처리: ${e.message}")
+                    logout()
+                }
+                .collect { state ->
+                    println("SleepBounceDebug: [startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping}")
+                    
+                    // 만약 로그인된 상태에서 서버 데이터(User document)가 삭제되었다면,
+                    // 계정 삭제 등으로 판단하여 모든 기기에서 즉시 로그아웃 처리함 (동기화 핵심)
+                    if (state == null && currentUid != null) {
+                        println("GlobalSleepVM: [startObserving] 서버 데이터 삭제 확인 -> 로그아웃 수행")
+                        // logout() 내부에서 currentUid 가 null 로 바뀜
+                        logout()
                         return@collect
                     }
-                }
-                
-                _sleepState.value = state
-                
-                if (state != null) {
-                    // 1. 알람 재스케줄링 (Injected Scheduler)
-                    sleepScheduler.scheduleNextEvents(state.bedtime, state.wakeTime)
 
-                    // 2. [Downstream Sync]
-                    launch {
-                        val localBedtime = sleepSettingsRepository.bedtime.first()
-                        val localWakeTime = sleepSettingsRepository.wakeTime.first()
-                        if (state.bedtime != localBedtime || state.wakeTime != localWakeTime) {
-                            sleepSettingsRepository.saveSleepSchedule(state.bedtime, state.wakeTime)
+                    // [동시성 제어] Timestamp 기반 Stale 스냅샷 필터링
+                    if (_isToggleLoading.value) {
+                        val current = _sleepState.value
+                        // 현재 로컬에서 발생한 낙관적 상태(lastUpdatedAt=0L)가 있고, 서버 데이터가 그보다 이전(stale)이면 무시
+                        if (current?.lastUpdatedAt == 0L && state != null && state.isSleeping != current.isSleeping) {
+                            println("SleepBounceDebug: [startObserving] Stale 스냅샷 무시됨")
+                            return@collect
+                        }
+                    }
+                    
+                    _sleepState.value = state
+                    
+                    if (state != null) {
+                        // 1. 알람 재스케줄링 (Injected Scheduler)
+                        sleepScheduler.scheduleNextEvents(state.bedtime, state.wakeTime)
+
+                        // 2. [Downstream Sync]
+                        launch {
+                            val localBedtime = sleepSettingsRepository.bedtime.first()
+                            val localWakeTime = sleepSettingsRepository.wakeTime.first()
+                            if (state.bedtime != localBedtime || state.wakeTime != localWakeTime) {
+                                sleepSettingsRepository.saveSleepSchedule(state.bedtime, state.wakeTime)
+                            }
                         }
                     }
                 }
-            }
         }
         
         devicesJob?.cancel()
         devicesJob = viewModelScope.launch {
-            observeRegisteredDevicesUseCase(uid).collect { devices ->
-                _registeredDevices.value = devices
-            }
+            observeRegisteredDevicesUseCase(uid)
+                .catch { e ->
+                    println("GlobalSleepVM: [devicesSync] 에러 발생, 로그아웃 처리: ${e.message}")
+                    logout()
+                }
+                .collect { devices ->
+                    _registeredDevices.value = devices
+                }
         }
     }
 

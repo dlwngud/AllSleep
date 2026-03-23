@@ -6,6 +6,7 @@ import com.wngud.allsleep.domain.model.User
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * Firebase Auth 상태 관리 DataSource
@@ -22,6 +23,14 @@ class FirebaseAuthDataSource {
     fun getCurrentUser(): User? {
         val firebaseUser = firebaseAuth.currentUser ?: return null
         return mapFirebaseUser(firebaseUser)
+    }
+
+    suspend fun deleteAccount() {
+        firebaseAuth.currentUser?.delete()?.await()
+    }
+
+    suspend fun reloadUser() {
+        firebaseAuth.currentUser?.reload()?.await()
     }
 
     private fun mapFirebaseUser(firebaseUser: com.google.firebase.auth.FirebaseUser): User {

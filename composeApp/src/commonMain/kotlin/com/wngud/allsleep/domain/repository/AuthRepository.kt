@@ -15,6 +15,8 @@ interface AuthRepository {
     suspend fun loginWithKakao(): Result<User>
     suspend fun loginWithGoogle(context: PlatformContext): Result<User>
     suspend fun logout(): Result<Unit>
+    suspend fun deleteAccount(): Result<Unit>
+    suspend fun validateSession(): Result<Unit>
     suspend fun getCurrentUser(): User?
     fun isLoggedIn(): Boolean
     fun observeUser(): Flow<User?>
