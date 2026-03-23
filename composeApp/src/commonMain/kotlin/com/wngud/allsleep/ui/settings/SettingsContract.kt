@@ -26,7 +26,13 @@ data class SettingsState(
     val wakeTime: String = "07:00",
     // 다이얼로그
     val showDeleteAccountDialog: Boolean = false,
-    val showLogoutDialog: Boolean = false
+    val showLogoutDialog: Boolean = false,
+    
+    // 로딩 상태
+    val isLoading: Boolean = false,
+    
+    // 이벤트 처리용 (단회성 에러 메시지 등)
+    val error: String? = null
 )
 
 sealed interface SettingsIntent {

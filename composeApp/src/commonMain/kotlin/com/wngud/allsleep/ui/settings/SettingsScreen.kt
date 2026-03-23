@@ -304,6 +304,34 @@ fun SettingsScreenContent(
             onDismiss = { onIntent(SettingsIntent.DismissDialog) }
         )
     }
+
+    // 로딩 인디케이터 (계정 삭제 중)
+    if (state.isLoading) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = {}) {
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(Color.White, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+    }
+
+    // 오류 발생 시 스낵바 처리 (또는 단순 AlertDialog)
+    if (state.error != null) {
+        AlertDialog(
+            onDismissRequest = { /* 오류 메시지 닫기 액션 (viewModel 연동 필요 시 추가) */ },
+            title = { Text("오류") },
+            text = { Text(state.error) },
+            confirmButton = {
+                TextButton(onClick = { /* 오류 무시 */ }) {
+                    Text("확인")
+                }
+            }
+        )
+    }
 }
 
 @Composable

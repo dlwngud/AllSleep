@@ -15,6 +15,8 @@ import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+import com.wngud.allsleep.domain.usecase.auth.DeleteAccountUseCase
+
 /**
  * 설정 탭 ViewModel
  * 프로필, 수면·앱·계정 설정 상태를 관리합니다.
@@ -23,6 +25,7 @@ class SettingsViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val sleepSettingsRepository: SleepSettingsRepository,
     private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
@@ -30,6 +33,7 @@ class SettingsViewModel(
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
+    // ... (init block remains the same)
     init {
         // 로컬 수면 설정값 관찰
         viewModelScope.launch {
@@ -77,11 +81,34 @@ class SettingsViewModel(
 
             is SettingsIntent.ConfirmDeleteAccount -> {
                 _state.update { it.copy(showDeleteAccountDialog = false) }
-                // TODO: 계정 삭제 UseCase 연결
+                performDeleteAccount()
             }
 
             // Navigation 이벤트는 TODO: NavController 연결 시 처리
             else -> Unit
+        }
+    }
+    
+    private fun performDeleteAccount() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            val result = deleteAccountUseCase()
+            result.onSuccess {
+                // UI 레이어(SettingsScreen)에서 로그인 화면으로 이동하는 처리를 위해
+                // 진행 중인 로딩 상태는 풀고, 성공 이벤트는 별도의 Flow나 
+                // Navigation Event로 처리하는 것이 좋으나, 
+                // 현재는 로그아웃과 동일하게 세션 종료를 감지하여 처리하도록 유도하거나 
+                // error 없이 isLoading이 false가 되는 것을 감지할 수 있습니다.
+                _state.update { it.copy(isLoading = false) }
+                // TODO: UI 레이어에서 세션 종료 감지 후 로그인 화면으로 이동 필요
+            }.onFailure { e ->
+                _state.update { 
+                    it.copy(
+                        isLoading = false, 
+                        error = e.message ?: "계정 삭제에 실패했습니다."
+                    ) 
+                }
+            }
         }
     }
 
