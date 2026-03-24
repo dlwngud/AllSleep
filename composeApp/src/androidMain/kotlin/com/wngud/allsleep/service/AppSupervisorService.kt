@@ -28,6 +28,8 @@ class AppSupervisorService : AccessibilityService() {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: return
             
+            Log.d("AppSupervisor", "Window State Changed: $packageName")
+            
             // 시스템 UI이거나 자기 자신 앱(AllSleep)이면 통과
             if (packageName == "com.android.systemui" || packageName == this.packageName) {
                 return
@@ -39,6 +41,7 @@ class AppSupervisorService : AccessibilityService() {
                 return
             }
             
+            Log.d("AppSupervisor", "Checking block for: $packageName")
             checkAndBlockApp(packageName, currentTime)
         }
     }
@@ -46,37 +49,71 @@ class AppSupervisorService : AccessibilityService() {
     private fun checkAndBlockApp(targetPackageName: String, currentTime: Long) {
         serviceScope.launch {
             try {
-                // 1. 현재 수면 모드인지 확인
-                val currentUser = authRepository.getCurrentUser()
-                val uid = currentUser?.uid
-                if (uid == null) return@launch
-                
-                val userSleepState = sleepSyncRepository.observeUserSleepState(uid).first()
-                val isSleeping = userSleepState?.isSleeping == true
-                if (!isSleeping) return@launch
+                // 1. 현재 수면 모드인지 확인 (메모리 상주하는 프로세스의 상태 즉시 확인)
+                if (!SleepLockService.isServiceRunning) {
+                    Log.d("AppSupervisor", "SleepLockService is NOT running, unblocking.")
+                    return@launch
+                }
 
                 // 2. 시스템 앱인지 확인 (시스템 앱이면 생명/기능에 직결되므로 허용)
                 val isSystemApp = appBlockerRepository.isSystemApp(targetPackageName)
-                if (isSystemApp) return@launch
+                if (isSystemApp) {
+                    Log.d("AppSupervisor", "$targetPackageName is an allowed system app, unblocking.")
+                    return@launch
+                }
 
-                // 3. 차단 로직 실행: 홈 화면(바탕화면)으로 강제 튕겨냄
+                // 3. 차단 로직 실행: MainActivity로 강제 튕겨냄 (앱 소환)
                 Log.d("AppSupervisor", "Blocking unauthorized user app: $targetPackageName")
                 lastBlockedPackage = targetPackageName
                 lastBlockTime = currentTime
                 
-                performGlobalAction(GLOBAL_ACTION_HOME)
-                
-                // 4. 홈으로 튕긴 직후, 수면 오버레이를 다시 최상단으로 끌어올림
                 withContext(Dispatchers.Main) {
-                    val bringToFrontIntent = Intent(this@AppSupervisorService, SleepLockService::class.java).apply {
-                        // SleepLockService가 켜져 있으면, startService를 다시 부르는 것만으로도 오버레이를 갱신할 수 있음
+                    try {
+                        // 1. 시스템의 홈 전환 처리가 완료될 때까지 대기
+                        Log.d("AppSupervisor", "Waiting 500ms for system transition to settle...")
+                        delay(500)
+                        
+                        // 2. 소환 시도 (1회차)
+                        fireMainActivityIntent()
+                        
+                        // 3. 잠시 후 재검사: 여전히 런처면 한 번 더 소환 (끈질기게 소환)
+                        delay(200)
+                        // Note: 여기서 packageName을 다시 확인할 방법은 AccessibilityEvent를 기다리는 게 정석이지만,
+                        // 일단 한 번 더 호출하는 것이 확실한 효과가 있을 수 있음.
+                        Log.d("AppSupervisor", "Filing secondary enforcement intent...")
+                        fireMainActivityIntent()
+                        
+                        // 기존 오버레이 유지용 서비스도 갱신
+                        val bringToFrontIntent = Intent(this@AppSupervisorService, SleepLockService::class.java)
+                        startService(bringToFrontIntent)
+                        Log.d("AppSupervisor", "Double forced return sequence executed")
+                    } catch (e: Exception) {
+                        Log.e("AppSupervisor", "Error during startActivity: ${e.message}", e)
                     }
-                    startService(bringToFrontIntent)
                 }
                 
             } catch (e: Exception) {
-                Log.e("AppSupervisor", "Error in app blocking logic", e)
+                Log.e("AppSupervisor", "CheckAndBlock error: ${e.message}", e)
             }
+        }
+    }
+
+    private fun fireMainActivityIntent() {
+        try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            if (launchIntent != null) {
+                Log.d("AppSupervisor", "Firing Launch Intent with Aggressive Flags")
+                launchIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or 
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or 
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
+                startActivity(launchIntent)
+            }
+        } catch (e: Exception) {
+            Log.e("AppSupervisor", "Failed to fireMainActivityIntent: ${e.message}")
         }
     }
 

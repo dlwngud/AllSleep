@@ -32,6 +32,11 @@ class SleepLockService : Service(), KoinComponent {
         return null // 바인딩을 사용하지 않는 Started Service
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        isServiceRunning = true
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
 
@@ -78,6 +83,7 @@ class SleepLockService : Service(), KoinComponent {
 
     override fun onDestroy() {
         super.onDestroy()
+        isServiceRunning = false
         overlayManager?.hideOverlay()
         overlayManager = null
     }
@@ -97,6 +103,9 @@ class SleepLockService : Service(), KoinComponent {
     }
 
     companion object : KoinComponent {
+        var isServiceRunning: Boolean = false
+            private set
+            
         private val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         const val CHANNEL_ID = "SleepLockServiceChannel"
         const val NOTIFICATION_ID = 1001
