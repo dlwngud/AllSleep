@@ -34,6 +34,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import com.wngud.allsleep.platform.rememberPermissionRequester
 import com.wngud.allsleep.platform.rememberOverlayPermissionRequester
+import com.wngud.allsleep.platform.rememberAccessibilityPermissionRequester
 import com.wngud.allsleep.platform.rememberSleepServiceController
 import com.wngud.allsleep.ui.theme.IndicatorSynced
 import com.wngud.allsleep.ui.theme.OnSurfaceVariant
@@ -114,10 +115,20 @@ fun HomeScreenContent(
     var showForcedBatteryDialog by remember { mutableStateOf(false) }
     
     val sleepServiceController = rememberSleepServiceController()
-    val permissionRequester = rememberOverlayPermissionRequester { isGranted ->
+    val accessibilityPermissionRequester = rememberAccessibilityPermissionRequester { isGranted ->
         if (isGranted) {
             onStartSleep()
             sleepServiceController.start()
+        }
+    }
+    val permissionRequester = rememberOverlayPermissionRequester { isGranted ->
+        if (isGranted) {
+            if (accessibilityPermissionRequester.isGranted()) {
+                onStartSleep()
+                sleepServiceController.start()
+            } else {
+                accessibilityPermissionRequester.requestPermission()
+            }
         }
     }
 
@@ -127,12 +138,16 @@ fun HomeScreenContent(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
-            title = { Text("화면 잠금 권한 안내", fontWeight = FontWeight.Bold) },
-            text = { Text("수면 중 휴대폰 사용을 효과적으로 차단하기 위해 '다른 앱 위에 표시' 기능이 필수적입니다.\n\n설정 화면으로 이동하여 권한을 허용해 주세요.") },
+            title = { Text("권한 안내", fontWeight = FontWeight.Bold) },
+            text = { Text("수면 중 휴대폰 사용을 효과적으로 차단하기 위해 '다른 앱 위에 표시' 및 '접근성(강제 회귀)' 권한이 필수적입니다.\n\n설정 화면으로 이동하여 권한을 허용해 주세요.") },
             confirmButton = {
                 TextButton(onClick = {
                     showPermissionDialog = false
-                    permissionRequester.requestPermission()
+                    if (!permissionRequester.isGranted()) {
+                        permissionRequester.requestPermission()
+                    } else if (!accessibilityPermissionRequester.isGranted()) {
+                        accessibilityPermissionRequester.requestPermission()
+                    }
                 }) {
                     Text("설정으로 이동", fontWeight = FontWeight.Bold)
                 }
@@ -210,14 +225,21 @@ fun HomeScreenContent(
                 }
             }
 
-            // [NEW] 오버레이 권한 배너: 수면 모드이나 화면이 잠기지 않은 경우 (태블릿 동기화 등)
+            // [NEW] 권한 배너: 수면 모드이나 화면이 잠기지 않은 경우 (태블릿 동기화 등)
             val isOverlayGranted = permissionRequester.isGranted()
-            if (isSleepModeActive && !isOverlayGranted) {
+            val isAccessibilityGranted = accessibilityPermissionRequester.isGranted()
+            if (isSleepModeActive && (!isOverlayGranted || !isAccessibilityGranted)) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clickable { permissionRequester.requestPermission() },
+                        .clickable { 
+                            if (!isOverlayGranted) {
+                                permissionRequester.requestPermission()
+                            } else {
+                                accessibilityPermissionRequester.requestPermission()
+                            }
+                        },
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
@@ -229,7 +251,7 @@ fun HomeScreenContent(
                     ) {
                         Text("🛡️", fontSize = 16.sp)
                         Text(
-                            text = "수면 모드 중입니다. 화면 잠금을 위해 권한 허용이 필요합니다.",
+                            text = "수면 모드 중입니다. 완벽한 화면 잠금을 위해 추가 권한 허용이 필요합니다.",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -270,7 +292,7 @@ fun HomeScreenContent(
                     // Stage 3: 수면 시작 가드 (Force Guard)
                     if (!batteryPermissionRequester.isIgnoringBatteryOptimizations()) {
                         showForcedBatteryDialog = true
-                    } else if (permissionRequester.isGranted()) {
+                    } else if (permissionRequester.isGranted() && accessibilityPermissionRequester.isGranted()) {
                         onStartSleep()
                         sleepServiceController.start()
                     } else {
