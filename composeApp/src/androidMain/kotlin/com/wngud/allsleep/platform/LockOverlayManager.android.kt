@@ -349,7 +349,7 @@ class LockOverlayManagerImpl(private val context: Context) : LockOverlayManager 
             layoutFlag,
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
+            PixelFormat.OPAQUE
         ).apply {
             gravity = Gravity.CENTER
         }
