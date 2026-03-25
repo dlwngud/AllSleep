@@ -1,5 +1,6 @@
 package com.wngud.allsleep.ui.home
 
+import com.wngud.allsleep.ui.components.DeviceListContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
@@ -347,77 +348,11 @@ private fun DeviceBottomSheet(
             )
         }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 48.dp)
-        ) {
-            Text(
-                text = "동기화된 기기",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-            
-            devices.forEach { device ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val isSynced = true // Firestore에 존재한다는 것 자체가 현재 동기화 대상임을 의미
-                    val icon = getDeviceIcon(device.platform)
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0xFF0B0C10), CircleShape)
-                            .border(1.dp, Color(0xFF1C2431), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(icon),
-                            contentDescription = device.deviceName,
-                            tint = if (isSynced) MaterialTheme.colorScheme.primary else Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column {
-                        Text(
-                            text = device.deviceName,
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        // 연결 상태 표시 (Dot + 텍스트)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(
-                                        color = if (isSynced) IndicatorSynced else Color.Gray,
-                                        shape = CircleShape
-                                    )
-                            )
-                            Text(
-                                text = if (isSynced) "Ready" else "Offline",
-                                color = if (isSynced) IndicatorSynced else Color.Gray,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        DeviceListContent(
+            devices = devices,
+            showHeader = true
+        )
+
     }
 }
 

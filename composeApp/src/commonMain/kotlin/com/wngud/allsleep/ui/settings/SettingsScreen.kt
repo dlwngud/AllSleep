@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wngud.allsleep.domain.model.DeviceState
+import com.wngud.allsleep.platform.rememberAccessibilityPermissionRequester
+import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
+import com.wngud.allsleep.ui.components.DeviceListContent
 import com.wngud.allsleep.ui.components.TimePickerDialog
 import com.wngud.allsleep.ui.theme.*
 import org.koin.compose.viewmodel.koinViewModel
@@ -39,17 +43,68 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    
+
     var showBedtimePicker by remember { mutableStateOf(false) }
     var showWakeTimePicker by remember { mutableStateOf(false) }
+    var deviceToRename by remember { mutableStateOf<DeviceState?>(null) }
+    var renameText by remember { mutableStateOf("") }
+    var showDeviceSheet by remember { mutableStateOf(false) }
+
+    // 접근성 서비스 상태 실시간 체크
+    val accessibilityRequester = rememberAccessibilityPermissionRequester { /* 결과 무시, 재진입 시 isGranted()로 읽음 */ }
+    // isGranted()는 Composable 외부(interface)이므로 LaunchedEffect로 주기적으로 동기화
+    val isAccessibilityGranted = accessibilityRequester.isGranted()
+    LaunchedEffect(isAccessibilityGranted) {
+        viewModel.updateAccessibilityStatus(isAccessibilityGranted)
+    }
+
+    // 알림 권한 요청자
+    val notificationRequester = rememberNotificationPermissionRequester { granted ->
+        viewModel.onNotificationPermissionResult(granted)
+    }
 
     SettingsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent,
+        onIntent = { intent ->
+            when (intent) {
+                is SettingsIntent.ToggleNotification -> {
+                    if (intent.enabled) {
+                        notificationRequester.requestPermission()
+                    } else {
+                        viewModel.handleIntent(intent)
+                    }
+                }
+                is SettingsIntent.OpenAccessibilitySettings -> {
+                    accessibilityRequester.requestPermission()
+                }
+                is SettingsIntent.NavigateDeviceManagement -> {
+                    showDeviceSheet = true
+                }
+                else -> viewModel.handleIntent(intent)
+            }
+        },
         onBedtimeClick = { showBedtimePicker = true },
-        onWakeTimeClick = { showWakeTimePicker = true }
+        onWakeTimeClick = { showWakeTimePicker = true },
+        onRenameDevice = { device ->
+            deviceToRename = device
+            renameText = device.deviceName
+        }
     )
+
+    if (showDeviceSheet) {
+        DeviceManagementBottomSheet(
+            devices = state.devices,
+            onDismiss = { showDeviceSheet = false },
+            onRenameClick = { device ->
+                deviceToRename = device
+                renameText = device.deviceName
+            },
+            onUnregisterClick = { device ->
+                viewModel.handleIntent(SettingsIntent.UnregisterDevice(device))
+            }
+        )
+    }
 
     if (showBedtimePicker) {
         val parts = state.bedtime.split(":")
@@ -84,6 +139,58 @@ fun SettingsScreen(
             onDismiss = { showWakeTimePicker = false }
         )
     }
+
+    // 기기 이름 변경 다이얼로그
+    if (deviceToRename != null) {
+        val maxChar = 20
+        // [NEW] 중복 이름 체크 로직 추가 (state.devices 사용 및 변수명 명확화)
+        val isInputBlank = renameText.isBlank()
+        val isInputDuplicate = state.devices.any { it.deviceId != deviceToRename?.deviceId && it.deviceName == renameText.trim() }
+        val isInputSameAsOld = renameText.trim() == deviceToRename?.deviceName
+        
+        AlertDialog(
+            onDismissRequest = { deviceToRename = null },
+            title = { Text("기기 이름 변경", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { if (it.length <= maxChar) renameText = it },
+                        label = { Text("새 기기 이름") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = isInputBlank || isInputDuplicate,
+                        supportingText = {
+                            if (isInputDuplicate) {
+                                Text("이미 사용 중인 기기 이름입니다.", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    )
+                    Text(
+                        text = "${renameText.length}/$maxChar",
+                        fontSize = 12.sp,
+                        color = if (renameText.length >= maxChar) MaterialTheme.colorScheme.error 
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deviceToRename?.let { device ->
+                            viewModel.handleIntent(SettingsIntent.RenameDevice(device, renameText.trim()))
+                        }
+                        deviceToRename = null
+                    },
+                    enabled = !isInputBlank && !isInputDuplicate && !isInputSameAsOld && renameText.length <= maxChar
+                ) { Text("저장", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deviceToRename = null }) { Text("취소") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -116,7 +223,8 @@ fun SettingsScreenContent(
     state: SettingsState,
     onIntent: (SettingsIntent) -> Unit,
     onBedtimeClick: () -> Unit,
-    onWakeTimeClick: () -> Unit
+    onWakeTimeClick: () -> Unit,
+    onRenameDevice: (DeviceState) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -150,9 +258,9 @@ fun SettingsScreenContent(
         SettingsSection(title = "보안") {
             SettingsRowArrow(
                 emoji = "🔑",
-                label = "접근성 권한 설정",
-                trailing = "준비 중",
-                onClick = { /* TODO: 접근성 설정 화면 이동 */ }
+                label = "접근성 권한",
+                trailing = if (state.isAccessibilityEnabled) "On" else "Off",
+                onClick = { onIntent(SettingsIntent.OpenAccessibilitySettings) }
             )
         }
 
@@ -180,45 +288,6 @@ fun SettingsScreenContent(
                 checked = state.isNotificationEnabled,
                 onCheckedChange = { onIntent(SettingsIntent.ToggleNotification(it)) }
             )
-            SettingsDivider()
-            SettingsRowToggle(
-                emoji = "🌙",
-                label = "방해 금지 모드",
-                checked = state.isDndEnabled,
-                onCheckedChange = { onIntent(SettingsIntent.ToggleDnd(it)) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 앱 설정
-        SettingsSection(title = "앱 설정") {
-            SettingsRowArrow(
-                emoji = "🎨",
-                label = "테마 설정",
-                trailing = when (state.appTheme) {
-                    AppTheme.DARK -> "다크"
-                    AppTheme.LIGHT -> "라이트"
-                    AppTheme.SYSTEM -> "시스템"
-                },
-                onClick = { /* TODO: 테마 선택 다이얼로그 */ }
-            )
-            SettingsDivider()
-            SettingsRowArrow(
-                emoji = "🌐",
-                label = "언어 설정",
-                trailing = when (state.appLanguage) {
-                    AppLanguage.KOREAN -> "한국어"
-                    AppLanguage.ENGLISH -> "English"
-                },
-                onClick = { /* TODO: 언어 선택 다이얼로그 */ }
-            )
-            SettingsDivider()
-            SettingsRowArrow(
-                emoji = "🔔",
-                label = "알람 변환",
-                onClick = { onIntent(SettingsIntent.NavigateAlarmSound) }
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -229,12 +298,6 @@ fun SettingsScreenContent(
                 emoji = "📱",
                 label = "연결된 기기 관리",
                 onClick = { onIntent(SettingsIntent.NavigateDeviceManagement) }
-            )
-            SettingsDivider()
-            SettingsRowArrow(
-                emoji = "💾",
-                label = "데이터 동기화",
-                onClick = { onIntent(SettingsIntent.NavigateDataSync) }
             )
             SettingsDivider()
             SettingsRowArrow(
@@ -571,6 +634,37 @@ fun SettingsScreenPreview() {
                 onIntent = {},
                 onBedtimeClick = {},
                 onWakeTimeClick = {}
+            )
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeviceManagementBottomSheet(
+    devices: List<DeviceState>,
+    onDismiss: () -> Unit,
+    onRenameClick: (DeviceState) -> Unit,
+    onUnregisterClick: (DeviceState) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF131821),
+        scrimColor = Color.Black.copy(alpha = 0.6f),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 16.dp)
+                    .size(width = 40.dp, height = 4.dp)
+                    .background(Color(0xFF1C2431), CircleShape)
+            )
+        }
+    ) {
+        Box(modifier = Modifier.padding(bottom = 32.dp)) {
+            DeviceListContent(
+                devices = devices,
+                showHeader = true,
+                onRenameClick = onRenameClick,
+                onUnregisterClick = onUnregisterClick
             )
         }
     }
