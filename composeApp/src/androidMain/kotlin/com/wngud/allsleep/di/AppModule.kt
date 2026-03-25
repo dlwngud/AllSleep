@@ -44,6 +44,8 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import com.google.firebase.firestore.FirebaseFirestore
 import com.wngud.allsleep.data.repository.SleepSyncRepositoryImpl
+import com.wngud.allsleep.domain.usecase.sleep.RenameDeviceUseCase
+
 // SleepSyncRepository 인터페이스 임포트 제거 (위에서 domain으로 통합됨)
 
 val appModule = module {
@@ -87,6 +89,7 @@ val appModule = module {
     factoryOf(::UpdateUserSleepStateUseCase)
     factoryOf(::RegisterDeviceUseCase)
     factoryOf(::UnregisterDeviceUseCase)
+    factoryOf(::RenameDeviceUseCase)
     factoryOf(::ObserveRegisteredDevicesUseCase)
     factoryOf(::ObserveOnboardingCompletedUseCase)
     factoryOf(::CompleteOnboardingUseCase)

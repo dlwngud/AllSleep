@@ -11,19 +11,21 @@ import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import kotlinx.coroutines.launch
 
+import com.wngud.allsleep.domain.usecase.sleep.ObserveRegisteredDevicesUseCase
+import com.wngud.allsleep.domain.usecase.sleep.RenameDeviceUseCase
+import com.wngud.allsleep.domain.usecase.auth.DeleteAccountUseCase
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-
-import com.wngud.allsleep.domain.usecase.auth.DeleteAccountUseCase
 
 /**
  * 설정 탭 ViewModel
- * 프로필, 수면·앱·계정 설정 상태를 관리합니다.
+ * 프로필, 수면 설정(알림/권한) 및 계정/기기 관리 상태를 관리합니다.
  */
 class SettingsViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val signOutUseCase: SignOutUseCase,
+    private val observeRegisteredDevicesUseCase: ObserveRegisteredDevicesUseCase,
+    private val renameDeviceUseCase: RenameDeviceUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val sleepSettingsRepository: SleepSettingsRepository,
@@ -33,7 +35,6 @@ class SettingsViewModel(
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
-    // ... (init block remains the same)
     init {
         // 로컬 수면 설정값 관찰
         viewModelScope.launch {
@@ -46,6 +47,16 @@ class SettingsViewModel(
                 _state.update { it.copy(wakeTime = wakeTime) }
             }
         }
+        
+        // 동기화된 기기 목록 관찰
+        viewModelScope.launch {
+            val user = getCurrentUserUseCase()
+            if (user != null) {
+                observeRegisteredDevicesUseCase(user.uid).collectLatest { devices ->
+                    _state.update { it.copy(devices = devices) }
+                }
+            }
+        }
     }
 
     fun handleIntent(intent: SettingsIntent) {
@@ -53,17 +64,11 @@ class SettingsViewModel(
             is SettingsIntent.ToggleNotification ->
                 _state.update { it.copy(isNotificationEnabled = intent.enabled) }
 
-            is SettingsIntent.ToggleDnd ->
-                _state.update { it.copy(isDndEnabled = intent.enabled) }
-
-            is SettingsIntent.ChangeTheme ->
-                _state.update { it.copy(appTheme = intent.theme) }
-
-            is SettingsIntent.ChangeLanguage ->
-                _state.update { it.copy(appLanguage = intent.language) }
-
             is SettingsIntent.UpdateBedtime -> updateBedtime(intent.time)
             is SettingsIntent.UpdateWakeTime -> updateWakeTime(intent.time)
+
+            is SettingsIntent.RenameDevice -> renameDevice(intent.device, intent.newName)
+            is SettingsIntent.UnregisterDevice -> unregisterDevice(intent.device)
 
             is SettingsIntent.ShowLogoutDialog ->
                 _state.update { it.copy(showLogoutDialog = true) }
@@ -84,8 +89,39 @@ class SettingsViewModel(
                 performDeleteAccount()
             }
 
-            // Navigation 이벤트는 TODO: NavController 연결 시 처리
+            // OpenAccessibilitySettings 등 UI Navigation/System Call 영역은 UI단에서 처리
             else -> Unit
+        }
+    }
+
+    /** SettingsScreen에서 AccessibilityPermissionRequester.isGranted() 결과를 동기화 */
+    fun updateAccessibilityStatus(isEnabled: Boolean) {
+        _state.update { it.copy(isAccessibilityEnabled = isEnabled) }
+    }
+
+    /** 알림 권한 결과(granted) 처리: 상태를 저장 */
+    fun onNotificationPermissionResult(granted: Boolean) {
+        _state.update { it.copy(isNotificationEnabled = granted) }
+    }
+
+    private fun renameDevice(device: com.wngud.allsleep.domain.model.DeviceState, newName: String) {
+        viewModelScope.launch {
+            val user = getCurrentUserUseCase() ?: return@launch
+            _state.update { it.copy(isLoading = true, error = null) }
+            // [NEW] 전체 기기 리스트 전달
+            val result = renameDeviceUseCase(user.uid, device, newName, _state.value.devices)
+            result.onSuccess {
+                _state.update { it.copy(isLoading = false) }
+            }.onFailure { e ->
+                _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    private fun unregisterDevice(device: com.wngud.allsleep.domain.model.DeviceState) {
+        viewModelScope.launch {
+            val user = getCurrentUserUseCase() ?: return@launch
+            unregisterDeviceUseCase(user.uid, device.deviceId)
         }
     }
     
