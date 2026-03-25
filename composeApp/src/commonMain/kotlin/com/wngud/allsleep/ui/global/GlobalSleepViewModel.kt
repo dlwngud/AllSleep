@@ -207,9 +207,13 @@ class GlobalSleepViewModel(
 
     private suspend fun registerCurrentDevice(uid: String) {
         try {
+            // [NEW] 로컬 캐시된 이름 확인 (DataStore)
+            val cachedName = sleepSettingsRepository.deviceName.first()
+            val deviceName = cachedName ?: deviceInfoProvider.getDeviceName()
+            
             val deviceState = DeviceState(
                 deviceId = deviceInfoProvider.getDeviceId(),
-                deviceName = deviceInfoProvider.getDeviceName(),
+                deviceName = deviceName,
                 fcmToken = deviceInfoProvider.getPushToken(),
                 platform = deviceInfoProvider.getPlatform(),
                 lastActiveForSleepLocking = 0L,

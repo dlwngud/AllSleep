@@ -20,6 +20,12 @@ interface SleepSettingsRepository {
 
     // 온보딩 완료 상태 저장
     suspend fun saveOnboardingCompleted(completed: Boolean)
+
+    // 기기 이름 (로컬 캐시)
+    val deviceName: Flow<String?>
+
+    // 기기 이름 저장
+    suspend fun saveDeviceName(name: String)
     
     // 초기화 (로그아웃 시 등)
     suspend fun clear()

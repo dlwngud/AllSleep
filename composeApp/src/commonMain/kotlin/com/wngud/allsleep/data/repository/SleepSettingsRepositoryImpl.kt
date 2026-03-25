@@ -21,9 +21,20 @@ class SleepSettingsRepositoryImpl(
         private val KEY_BEDTIME = stringPreferencesKey("bedtime")
         private val KEY_WAKE_TIME = stringPreferencesKey("wake_time")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val KEY_DEVICE_NAME = stringPreferencesKey("device_name")
         
         private const val DEFAULT_BEDTIME = "23:00"
         private const val DEFAULT_WAKE_TIME = "07:00"
+    }
+    
+    override val deviceName: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[KEY_DEVICE_NAME]
+    }
+
+    override suspend fun saveDeviceName(name: String) {
+        dataStore.edit { preferences ->
+            preferences[KEY_DEVICE_NAME] = name
+        }
     }
 
     override val bedtime: Flow<String> = dataStore.data.map { preferences ->
