@@ -7,8 +7,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +33,9 @@ fun DeviceListContent(
     showHeader: Boolean = true,
     onRenameClick: ((DeviceState) -> Unit)? = null,
     onUnregisterClick: ((DeviceState) -> Unit)? = null
-) {
+    ) {
+    var expandedDeviceId by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -103,17 +107,51 @@ fun DeviceListContent(
                     }
                 }
 
-                // [NEW] 이름 변경 버튼
-                if (onRenameClick != null) {
-                    IconButton(
-                        onClick = { onRenameClick.invoke(device) }
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_more),
-                            contentDescription = "Rename",
-                            tint = Color.White.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
+                // 기기 액션 버튼 (이름 변경, 등록 해제 메뉴)
+                if (onRenameClick != null || onUnregisterClick != null) {
+                    Box {
+                        IconButton(
+                            onClick = { expandedDeviceId = device.deviceId }
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_more),
+                                contentDescription = "기기 메뉴",
+                                tint = Color.White.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = expandedDeviceId == device.deviceId,
+                            onDismissRequest = { expandedDeviceId = null },
+                            containerColor = Color(0xFF1C2431) // 어두운 테마에 어울리는 색상
+                        ) {
+                            if (onRenameClick != null) {
+                                DropdownMenuItem(
+                                    text = { Text("이름 변경", color = Color.White) },
+                                    leadingIcon = { 
+                                        // ✏️ 이모지 또는 아이콘 (텍스트로 대체 가능)
+                                        Text("✏️", modifier = Modifier.padding(end = 4.dp))
+                                    },
+                                    onClick = {
+                                        expandedDeviceId = null
+                                        onRenameClick(device)
+                                    }
+                                )
+                            }
+                            if (onUnregisterClick != null) {
+                                DropdownMenuItem(
+                                    text = { Text("등록 해제", color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = { 
+                                        Text("🗑️", modifier = Modifier.padding(end = 4.dp))
+                                    },
+                                    onClick = {
+                                        expandedDeviceId = null
+                                        onUnregisterClick(device)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
