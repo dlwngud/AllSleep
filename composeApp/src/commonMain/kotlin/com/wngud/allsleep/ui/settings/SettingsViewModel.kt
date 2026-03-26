@@ -28,6 +28,7 @@ class SettingsViewModel(
     private val renameDeviceUseCase: RenameDeviceUseCase,
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val updateUserProfileUseCase: com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase,
     private val sleepSettingsRepository: SleepSettingsRepository,
     private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
@@ -48,9 +49,11 @@ class SettingsViewModel(
             }
         }
         
-        // 동기화된 기기 목록 관찰
+        // 동기화된 기기 목록 및 유저 정보 관찰
         viewModelScope.launch {
             val user = getCurrentUserUseCase()
+            _state.update { it.copy(user = user) }
+            
             if (user != null) {
                 observeRegisteredDevicesUseCase(user.uid).collectLatest { devices ->
                     _state.update { it.copy(devices = devices) }
@@ -66,9 +69,27 @@ class SettingsViewModel(
 
             is SettingsIntent.UpdateBedtime -> updateBedtime(intent.time)
             is SettingsIntent.UpdateWakeTime -> updateWakeTime(intent.time)
+            
+            is SettingsIntent.ShowEditNameDialog -> {
+                _state.update { it.copy(showEditNameDialog = true) }
+            }
+            is SettingsIntent.UpdateDisplayName -> {
+                _state.update { it.copy(showEditNameDialog = false) }
+                updateDisplayName(intent.name)
+            }
 
             is SettingsIntent.RenameDevice -> renameDevice(intent.device, intent.newName)
-            is SettingsIntent.UnregisterDevice -> unregisterDevice(intent.device)
+            
+            is SettingsIntent.ShowUnregisterDialog -> {
+                _state.update { it.copy(showUnregisterDialog = true, deviceToUnregister = intent.device) }
+            }
+            is SettingsIntent.ConfirmUnregisterDevice -> {
+                val device = _state.value.deviceToUnregister
+                if (device != null) {
+                    unregisterDevice(device)
+                    _state.update { it.copy(showUnregisterDialog = false, deviceToUnregister = null) }
+                }
+            }
 
             is SettingsIntent.ShowLogoutDialog ->
                 _state.update { it.copy(showLogoutDialog = true) }
@@ -77,7 +98,13 @@ class SettingsViewModel(
                 _state.update { it.copy(showDeleteAccountDialog = true) }
 
             is SettingsIntent.DismissDialog ->
-                _state.update { it.copy(showLogoutDialog = false, showDeleteAccountDialog = false) }
+                _state.update { it.copy(
+                    showLogoutDialog = false, 
+                    showDeleteAccountDialog = false,
+                    showUnregisterDialog = false,
+                    showEditNameDialog = false,
+                    deviceToUnregister = null
+                ) }
 
             is SettingsIntent.ConfirmLogout -> {
                 _state.update { it.copy(showLogoutDialog = false) }
@@ -102,6 +129,26 @@ class SettingsViewModel(
     /** 알림 권한 결과(granted) 처리: 상태를 저장 */
     fun onNotificationPermissionResult(granted: Boolean) {
         _state.update { it.copy(isNotificationEnabled = granted) }
+    }
+
+    private fun updateDisplayName(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return
+        
+        val currentUser = _state.value.user ?: return
+        if (currentUser.displayName == trimmedName) return
+        
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            val updatedUser = currentUser.copy(displayName = trimmedName)
+            updateUserProfileUseCase(updatedUser)
+                .onSuccess {
+                    _state.update { it.copy(user = updatedUser, isLoading = false) }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(isLoading = false, error = "프로필 업데이트 실패: ${e.message}") }
+                }
+        }
     }
 
     private fun renameDevice(device: com.wngud.allsleep.domain.model.DeviceState, newName: String) {

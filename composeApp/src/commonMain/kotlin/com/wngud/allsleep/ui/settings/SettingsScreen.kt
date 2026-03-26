@@ -19,7 +19,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wngud.allsleep.domain.model.DeviceState
+import com.wngud.allsleep.domain.model.User
+import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.platform.rememberAccessibilityPermissionRequester
+import allsleep.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.painterResource
 import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
 import com.wngud.allsleep.ui.components.DeviceListContent
 import com.wngud.allsleep.ui.components.TimePickerDialog
@@ -101,7 +105,7 @@ fun SettingsScreen(
                 renameText = device.deviceName
             },
             onUnregisterClick = { device ->
-                viewModel.handleIntent(SettingsIntent.UnregisterDevice(device))
+                viewModel.handleIntent(SettingsIntent.ShowUnregisterDialog(device))
             }
         )
     }
@@ -191,6 +195,48 @@ fun SettingsScreen(
             }
         )
     }
+
+    // 프로필 이름 수정 다이얼로그
+    val currentUser = state.user
+    if (state.showEditNameDialog && currentUser != null) {
+        var newName by remember { mutableStateOf(currentUser.displayName ?: "") }
+        val maxChar = 20
+        
+        AlertDialog(
+            onDismissRequest = { viewModel.handleIntent(SettingsIntent.DismissDialog) },
+            title = { Text("프로필 이름 수정", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { if (it.length <= maxChar) newName = it },
+                        label = { Text("새 프로필 이름") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = newName.isBlank()
+                    )
+                    Text(
+                        text = "${newName.length}/$maxChar",
+                        fontSize = 12.sp,
+                        color = if (newName.length >= maxChar) MaterialTheme.colorScheme.error 
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.handleIntent(SettingsIntent.UpdateDisplayName(newName))
+                    },
+                    enabled = newName.isNotBlank() && (newName != currentUser.displayName) && (newName.length <= maxChar)
+                ) { Text("저장", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.handleIntent(SettingsIntent.DismissDialog) }) { Text("취소") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -240,6 +286,15 @@ fun SettingsScreenContent(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
         )
+
+        // 프로필 카드 (최상단)
+        state.user?.let { user ->
+            ProfileCard(
+                user = user,
+                onEditClick = { onIntent(SettingsIntent.ShowEditNameDialog) }
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         // 프리미엄 상태/업그레이드 카드
         if (state.isPremium) {
@@ -321,7 +376,7 @@ fun SettingsScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "v1.0",
+                text = "v1.1.0",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
@@ -380,6 +435,18 @@ fun SettingsScreenContent(
                 CircularProgressIndicator()
             }
         }
+    }
+
+    // 기기 등록 해제 확인 다이얼로그
+    if (state.showUnregisterDialog && state.deviceToUnregister != null) {
+        ConfirmDialog(
+            title = "기기 등록 해제",
+            message = "'${state.deviceToUnregister.deviceName}' 기기를 등록 해제하시겠습니까? 해제하면 해당 기기에서 더 이상 수면 잠금 기능을 사용할 수 없습니다.",
+            confirmText = "해제",
+            isDestructive = true,
+            onConfirm = { onIntent(SettingsIntent.ConfirmUnregisterDevice) },
+            onDismiss = { onIntent(SettingsIntent.DismissDialog) }
+        )
     }
 
     // 오류 발생 시 스낵바 처리 (또는 단순 AlertDialog)
@@ -623,21 +690,6 @@ private fun ConfirmDialog(
     )
 }
 
-@Preview
-@Composable
-fun SettingsScreenPreview() {
-    MaterialTheme(colorScheme = darkColorScheme()) {
-        Surface {
-            SettingsScreenContent(
-                contentPadding = PaddingValues(),
-                state = SettingsState(isPremium = true),
-                onIntent = {},
-                onBedtimeClick = {},
-                onWakeTimeClick = {}
-            )
-        }
-    }
-}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceManagementBottomSheet(
@@ -665,6 +717,115 @@ private fun DeviceManagementBottomSheet(
                 showHeader = true,
                 onRenameClick = onRenameClick,
                 onUnregisterClick = onUnregisterClick
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun SettingsScreenPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        Surface {
+            SettingsScreenContent(
+                contentPadding = PaddingValues(),
+                state = SettingsState(isPremium = true),
+                onIntent = {},
+                onBedtimeClick = {},
+                onWakeTimeClick = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PremiumActiveCardPreview() {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        PremiumActiveCard({})
+    }
+}
+
+@Composable
+private fun ProfileCard(
+    user: User,
+    onEditClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 프로필 이미지 (RoundedCorner)
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            val initial = user.displayName?.firstOrNull()?.toString() ?: "?"
+            Text(
+                text = initial,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // 유저 정보
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = user.displayName ?: "사용자",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // 제공자 아이콘 ([G], [K] 등 간단히 표시)
+                val providerTag = when(user.provider) {
+                    AuthProvider.GOOGLE -> "G"
+                    AuthProvider.KAKAO -> "K"
+                    else -> ""
+                }
+                if (providerTag.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = providerTag,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = user.email ?: "",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+        
+        // 편집 버튼
+        IconButton(onClick = onEditClick) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_more),
+                contentDescription = "이름 수정",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }

@@ -11,6 +11,7 @@ import com.wngud.allsleep.domain.model.DeviceState
  */
 
 data class SettingsState(
+    val user: com.wngud.allsleep.domain.model.User? = null, // 사용자 정보
     val isPremium: Boolean = false, // 프리미엄 구독 여부
 
     // 수면 설정 및 권한
@@ -25,6 +26,9 @@ data class SettingsState(
     // 다이얼로그
     val showDeleteAccountDialog: Boolean = false,
     val showLogoutDialog: Boolean = false,
+    val showUnregisterDialog: Boolean = false,
+    val showEditNameDialog: Boolean = false,
+    val deviceToUnregister: DeviceState? = null,
     
     // 로딩 상태
     val isLoading: Boolean = false,
@@ -41,10 +45,15 @@ sealed interface SettingsIntent {
     data class UpdateBedtime(val time: String) : SettingsIntent
     data class UpdateWakeTime(val time: String) : SettingsIntent
     
+    data object ShowEditNameDialog : SettingsIntent // 프로필 이름 수정 다이얼로그 노출
+    data class UpdateDisplayName(val name: String) : SettingsIntent // 프로필 이름 수정 수행
+    
     data class RenameDevice(val device: DeviceState, val newName: String) : SettingsIntent // 기기 이름 변경
-    data class UnregisterDevice(val device: DeviceState) : SettingsIntent // 기기 등록 해제
     data object NavigateDeviceManagement : SettingsIntent // 기기 관리 바텀시트 열기
     
+    data class ShowUnregisterDialog(val device: DeviceState) : SettingsIntent
+    data object ConfirmUnregisterDevice : SettingsIntent
+
     data object ShowLogoutDialog : SettingsIntent
     data object ConfirmLogout : SettingsIntent
     data object ShowDeleteAccountDialog : SettingsIntent
