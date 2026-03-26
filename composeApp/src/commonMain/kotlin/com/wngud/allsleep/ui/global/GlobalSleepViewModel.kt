@@ -286,6 +286,18 @@ class GlobalSleepViewModel(
                 }
                 .collect { devices ->
                     _registeredDevices.value = devices
+
+                    // [원격 로그아웃 체크] 기기 목록에 내 기기가 사라졌는지 확인
+                    if (currentUid != null) {
+                        val currentId = deviceInfoProvider.getDeviceId()
+                        val isStillRegistered = devices.any { it.deviceId == currentId }
+                        
+                        // 서버 데이터가 존재하는데 내 기기만 없다면 원격에서 해제된 것으로 간주 (빈 목록일 때의 레이스 컨디션 방지)
+                        if (!isStillRegistered && devices.isNotEmpty()) {
+                            println("GlobalSleepVM: [RemoteLogout] 다른 기기에 의해 현재 기기가 등록 해제됨 확인 -> 로그아웃 수행")
+                            logout()
+                        }
+                    }
                 }
         }
     }
