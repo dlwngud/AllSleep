@@ -23,7 +23,9 @@ fun App() {
         val navController = rememberNavController()
         val globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
         
-        val isInitialized by globalSleepViewModel.isStateInitialized.collectAsState()
+        val stateFlow = globalSleepViewModel.state
+        val state by stateFlow.collectAsState()
+        val isInitialized = state.isStateInitialized
         
         // 데이터(온보딩 여부, 로그인 여부)를 불러오는 동안에는 빈 화면(또는 스플래시)을 보여주어 "깜빡임" 현상을 완전히 제거
         if (!isInitialized) {
@@ -35,8 +37,8 @@ fun App() {
             return@KoinContext
         }
 
-        val user by globalSleepViewModel.currentUser.collectAsState()
-        val isOnboardingCompleted by globalSleepViewModel.isOnboardingCompleted.collectAsState()
+        val user = state.currentUser
+        val isOnboardingCompleted = state.isOnboardingCompleted
         
         // 모든 정보가 준비되었을 때, 동적으로 딱 알맞은 Start 화면을 결정함. (온보딩을 잠깐 거치는 일 방지)
         val initialStartDestination = remember {

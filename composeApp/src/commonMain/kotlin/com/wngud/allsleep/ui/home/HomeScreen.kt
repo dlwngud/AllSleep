@@ -42,7 +42,8 @@ import com.wngud.allsleep.ui.theme.OnSurfaceVariant
 import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
 import com.wngud.allsleep.domain.model.UserSleepState
 import com.wngud.allsleep.domain.model.DeviceState
-
+import com.wngud.allsleep.ui.global.GlobalSleepViewModel
+import com.wngud.allsleep.ui.global.GlobalSleepContract
 
 /**
  * 홈 탭 화면
@@ -52,12 +53,14 @@ import com.wngud.allsleep.domain.model.DeviceState
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: HomeViewModel = koinViewModel(),
-    globalSleepViewModel: com.wngud.allsleep.ui.global.GlobalSleepViewModel = org.koin.compose.koinInject()
+    globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
 ) {
     val state by viewModel.state.collectAsState()
-    val sleepState by globalSleepViewModel.sleepState.collectAsState()
-    val devices by globalSleepViewModel.registeredDevices.collectAsState()
-    val isToggleLoading by globalSleepViewModel.isToggleLoading.collectAsState()
+    val globalState by globalSleepViewModel.state.collectAsState(GlobalSleepContract.State())
+    
+    val sleepState = globalState.sleepState
+    val devices = globalState.registeredDevices
+    val isToggleLoading = globalState.isToggleLoading
 
     Box(modifier = Modifier.fillMaxSize()) {
         HomeScreenContent(
@@ -67,11 +70,14 @@ fun HomeScreen(
             isSleepModeActive = sleepState?.isSleeping ?: false,
             onStartSleep = { 
                 viewModel.handleIntent(HomeIntent.StartSleep)
-                globalSleepViewModel.toggleSleepState(isSleeping = true)
+                globalSleepViewModel.handleIntent(
+                    GlobalSleepContract.Intent.ToggleSleepState(isSleeping = true)
+                )
             },
             onWakeUpTest = {
-                // [임시 테스트용] 강제 기상 버튼 콜백
-                globalSleepViewModel.toggleSleepState(isSleeping = false)
+                globalSleepViewModel.handleIntent(
+                    GlobalSleepContract.Intent.ToggleSleepState(isSleeping = false)
+                )
             }
         )
 
