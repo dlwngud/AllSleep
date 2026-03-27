@@ -26,11 +26,13 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 
 /**
- * 전역 수면 상태(App State)를 관리하는 ViewModel
+ * 전역 수면 상태(App State)를 관리하는 ViewModel (MVI)
  * - 앱 시작 시 현재 사용자 UID를 확인 후 기기 정보를 Firestore에 등록
  * - 실시간으로 수면 상태를 구독하여 전역 UI 상태로 제공
  */
@@ -52,26 +54,11 @@ class GlobalSleepViewModel(
     private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
 
-    private val _sleepState = MutableStateFlow<UserSleepState?>(null)
-    val sleepState: StateFlow<UserSleepState?> = _sleepState.asStateFlow()
+    private val _state = MutableStateFlow(GlobalSleepContract.State())
+    val state: StateFlow<GlobalSleepContract.State> = _state.asStateFlow()
 
-    private val _registeredDevices = MutableStateFlow<List<DeviceState>>(emptyList())
-    val registeredDevices: StateFlow<List<DeviceState>> = _registeredDevices.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _currentUser = MutableStateFlow<User?>(null)
-    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
-
-    private val _isToggleLoading = MutableStateFlow(false)
-    val isToggleLoading: StateFlow<Boolean> = _isToggleLoading.asStateFlow()
-
-    private val _isOnboardingCompleted = MutableStateFlow(false)
-    val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
-    
-    private val _isStateInitialized = MutableStateFlow(false)
-    val isStateInitialized: StateFlow<Boolean> = _isStateInitialized.asStateFlow()
+    private val _effect = kotlinx.coroutines.channels.Channel<GlobalSleepContract.Effect>()
+    val effect = _effect.receiveAsFlow()
     
     private var currentUid: String? = null
     
@@ -80,7 +67,16 @@ class GlobalSleepViewModel(
     private var deviceRegisterJob: Job? = null
 
     init {
-        initializeData()
+        handleIntent(GlobalSleepContract.Intent.RequestInitialize)
+    }
+
+    fun handleIntent(intent: GlobalSleepContract.Intent) {
+        when (intent) {
+            is GlobalSleepContract.Intent.RequestInitialize -> initializeData()
+            is GlobalSleepContract.Intent.RequestLogout -> logout()
+            is GlobalSleepContract.Intent.ToggleSleepState -> toggleSleepState(intent.isSleeping, intent.targetWakeUpTime)
+            is GlobalSleepContract.Intent.CompleteOnboarding -> completeOnboarding(intent.bedtime, intent.wakeTime)
+        }
     }
 
     private fun initializeData() {
@@ -89,7 +85,7 @@ class GlobalSleepViewModel(
             
             // 1. 초기 온보딩 상태 로드
             val initialOnboardingState = observeOnboardingCompletedUseCase().first()
-            _isOnboardingCompleted.value = initialOnboardingState
+            _state.update { it.copy(isOnboardingCompleted = initialOnboardingState) }
             
             // 2. 초기 사용자 세션 확인
             val user = getCurrentUserUseCase()
@@ -99,9 +95,8 @@ class GlobalSleepViewModel(
                 println("GlobalSleepVM: [init] 기존 세션 발견, 서버 유효성 검사 시작")
                 validateSessionUseCase().onFailure { e ->
                     println("GlobalSleepVM: [init] 세션 유효성 검사 실패 (계정 삭제됨으로 판단): ${e.message}")
-                    // 서버에서 계정이 삭제된 경우이므로 즉시 로그아웃 처리하여 로그인 화면으로 유도
                     logout()
-                    _isStateInitialized.value = true
+                    _state.update { it.copy(isStateInitialized = true) }
                     return@launch
                 }
                 println("GlobalSleepVM: [init] 세션 유효성 검사 통과")
@@ -111,11 +106,11 @@ class GlobalSleepViewModel(
             
             // 3. 마이그레이션 (로그인된 경우 온보딩 강제 완료 처리)
             if (user != null && !initialOnboardingState) {
-                completeOnboardingUseCase(bedtime = "23:00", wakeTime = "07:00")
-                _isOnboardingCompleted.value = true
+                completeOnboarding(bedtime = "23:00", wakeTime = "07:00")
+                _state.update { it.copy(isOnboardingCompleted = true) }
             }
             
-            _isStateInitialized.value = true
+            _state.update { it.copy(isStateInitialized = true) }
 
             // 4. 실시간 관찰자 설정 (Modularized)
             setupAuthObserver()
@@ -138,8 +133,8 @@ class GlobalSleepViewModel(
             observeOnboardingCompletedUseCase()
                 .distinctUntilChanged()
                 .collect { completed ->
-                    val wasCompleted = _isOnboardingCompleted.value
-                    _isOnboardingCompleted.value = completed
+                    val wasCompleted = _state.value.isOnboardingCompleted
+                    _state.update { it.copy(isOnboardingCompleted = completed) }
                     
                     if (completed && !wasCompleted && currentUid != null) {
                         syncScheduleToFirestore()
@@ -159,7 +154,7 @@ class GlobalSleepViewModel(
                 .debounce(500L)
                 .collect { (bedtime, wakeTime) ->
                     val uid = currentUid ?: return@collect
-                    val remoteState = _sleepState.value ?: return@collect
+                    val remoteState = _state.value.sleepState ?: return@collect
                     
                     if (remoteState.bedtime != bedtime || remoteState.wakeTime != wakeTime) {
                         println("SleepBounceDebug: [UpstreamSync] 스케줄 변경 감지! Cloud 업데이트")
@@ -175,7 +170,7 @@ class GlobalSleepViewModel(
     }
 
     private fun handleUserSessionChange(user: User?) {
-        _currentUser.value = user
+        _state.update { it.copy(currentUser = user) }
         if (user != null) {
             if (user.uid != currentUid) {
                 currentUid = user.uid
@@ -186,8 +181,12 @@ class GlobalSleepViewModel(
             }
         } else {
             currentUid = null
-            _sleepState.value = null
-            _registeredDevices.value = emptyList()
+            _state.update { 
+                it.copy(
+                    sleepState = null,
+                    registeredDevices = emptyList()
+                )
+            }
             observeJob?.cancel()
             devicesJob?.cancel()
         }
@@ -207,7 +206,6 @@ class GlobalSleepViewModel(
 
     private suspend fun registerCurrentDevice(uid: String) {
         try {
-            // [NEW] 로컬 캐시된 이름 확인 (DataStore)
             val cachedName = sleepSettingsRepository.deviceName.first()
             val deviceName = cachedName ?: deviceInfoProvider.getDeviceName()
             
@@ -220,14 +218,14 @@ class GlobalSleepViewModel(
                 isMainAlarmDevice = false
             )
             registerDeviceUseCase(uid, deviceState).onFailure { e ->
-                _error.value = "기기 등록 실패: ${e.message}"
+                _state.update { it.copy(error = "기기 등록 실패: ${e.message}") }
             }
         } catch (e: Exception) {
-            _error.value = "기기 등록 중 오류: ${e.message}"
+            _state.update { it.copy(error = "기기 등록 중 오류: ${e.message}") }
         }
     }
 
-    fun startObserving(uid: String) {
+    private fun startObserving(uid: String) {
         if (uid != currentUid) currentUid = uid 
         
         observeJob?.cancel()
@@ -240,32 +238,24 @@ class GlobalSleepViewModel(
                 .collect { state ->
                     println("SleepBounceDebug: [startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping}")
                     
-                    // 만약 로그인된 상태에서 서버 데이터(User document)가 삭제되었다면,
-                    // 계정 삭제 등으로 판단하여 모든 기기에서 즉시 로그아웃 처리함 (동기화 핵심)
                     if (state == null && currentUid != null) {
                         println("GlobalSleepVM: [startObserving] 서버 데이터 삭제 확인 -> 로그아웃 수행")
-                        // logout() 내부에서 currentUid 가 null 로 바뀜
                         logout()
                         return@collect
                     }
 
-                    // [동시성 제어] Timestamp 기반 Stale 스냅샷 필터링
-                    if (_isToggleLoading.value) {
-                        val current = _sleepState.value
-                        // 현재 로컬에서 발생한 낙관적 상태(lastUpdatedAt=0L)가 있고, 서버 데이터가 그보다 이전(stale)이면 무시
+                    if (_state.value.isToggleLoading) {
+                        val current = _state.value.sleepState
                         if (current?.lastUpdatedAt == 0L && state != null && state.isSleeping != current.isSleeping) {
                             println("SleepBounceDebug: [startObserving] Stale 스냅샷 무시됨")
                             return@collect
                         }
                     }
                     
-                    _sleepState.value = state
+                    _state.update { it.copy(sleepState = state) }
                     
                     if (state != null) {
-                        // 1. 알람 재스케줄링 (Injected Scheduler)
                         sleepScheduler.scheduleNextEvents(state.bedtime, state.wakeTime)
-
-                        // 2. [Downstream Sync]
                         launch {
                             val localBedtime = sleepSettingsRepository.bedtime.first()
                             val localWakeTime = sleepSettingsRepository.wakeTime.first()
@@ -285,14 +275,13 @@ class GlobalSleepViewModel(
                     logout()
                 }
                 .collect { devices ->
-                    _registeredDevices.value = devices
+                    _state.update { it.copy(registeredDevices = devices) }
 
                     // [원격 로그아웃 체크] 기기 목록에 내 기기가 사라졌는지 확인
                     if (currentUid != null) {
                         val currentId = deviceInfoProvider.getDeviceId()
                         val isStillRegistered = devices.any { it.deviceId == currentId }
                         
-                        // 서버 데이터가 존재하는데 내 기기만 없다면 원격에서 해제된 것으로 간주 (빈 목록일 때의 레이스 컨디션 방지)
                         if (!isStillRegistered && devices.isNotEmpty()) {
                             println("GlobalSleepVM: [RemoteLogout] 다른 기기에 의해 현재 기기가 등록 해제됨 확인 -> 로그아웃 수행")
                             logout()
@@ -309,7 +298,7 @@ class GlobalSleepViewModel(
         }
     }
 
-    fun logout(onComplete: () -> Unit = {}) {
+    private fun logout() {
         val uid = currentUid ?: return
         observeJob?.cancel()
         devicesJob?.cancel()
@@ -321,41 +310,53 @@ class GlobalSleepViewModel(
                 unregisterDeviceUseCase(uid, deviceId)
                 signOutUseCase()
                 currentUid = null
-                _currentUser.value = null
-                _sleepState.value = null
-                _registeredDevices.value = emptyList()
-                onComplete()
+                _state.update { 
+                    it.copy(
+                        currentUser = null,
+                        sleepState = null,
+                        registeredDevices = emptyList()
+                    )
+                }
             } catch (e: Exception) {
                 println("GlobalSleepVM: Logout failed: ${e.message}")
             }
         }
     }
 
-    fun toggleSleepState(isSleeping: Boolean, targetWakeUpTime: Long? = null) {
-        if (_isToggleLoading.value) return
+    private fun toggleSleepState(isSleeping: Boolean, targetWakeUpTime: Long? = null) {
+        if (_state.value.isToggleLoading) return
         val uid = currentUid ?: return
         
         viewModelScope.launch {
-            _isToggleLoading.value = true
+            _state.update { it.copy(isToggleLoading = true) }
             try {
                 val bedtime = sleepSettingsRepository.bedtime.first()
                 val wakeTime = sleepSettingsRepository.wakeTime.first()
 
-                val optimisticState = _sleepState.value?.copy(
+                val optimisticState = _state.value.sleepState?.copy(
                     isSleeping = isSleeping,
                     targetWakeUpTime = targetWakeUpTime,
                     bedtime = bedtime,
                     wakeTime = wakeTime,
-                    lastUpdatedAt = 0L // 낙관적 업데이트 마커
+                    lastUpdatedAt = 0L
                 ) ?: UserSleepState(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
                 
-                _sleepState.value = optimisticState
+                _state.update { it.copy(sleepState = optimisticState) }
 
                 val result = updateUserSleepStateUseCase(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
-                result.onFailure { _error.value = "업데이트 실패: ${it.message}" }
+                result.onFailure { e -> 
+                    _state.update { it.copy(error = "업데이트 실패: ${e.message}") }
+                }
             } finally {
-                _isToggleLoading.value = false
+                _state.update { it.copy(isToggleLoading = false) }
             }
+        }
+    }
+
+    private fun completeOnboarding(bedtime: String, wakeTime: String) {
+        viewModelScope.launch {
+            completeOnboardingUseCase(bedtime, wakeTime)
+            _state.update { it.copy(isOnboardingCompleted = true) }
         }
     }
 }
