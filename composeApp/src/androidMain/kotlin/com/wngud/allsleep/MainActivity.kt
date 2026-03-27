@@ -40,7 +40,8 @@ class MainActivity : ComponentActivity() {
         // 전역 수면 상태 관찰 시작 (실시간 동기화 핵심)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                globalSleepViewModel.sleepState.collectLatest { state ->
+                globalSleepViewModel.state.collectLatest { globalState ->
+                    val state = globalState.sleepState
                     val isSleeping = state?.isSleeping ?: false
                     
                     // 상태가 실제로 변했을 때만 서비스 제어 (무한 루프 방지)
