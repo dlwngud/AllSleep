@@ -58,8 +58,16 @@ class AuthRepositoryImpl(
         firebaseAuthDataSource.reloadUser()
     }
 
-    override suspend fun getCurrentUser(): User? =
-        firebaseAuthDataSource.getCurrentUser()
+    override suspend fun getCurrentUser(): User? {
+        val user = firebaseAuthDataSource.getCurrentUser() ?: return null
+        return try {
+            val snapshot = firestore.collection("users").document(user.uid).get().await()
+            val isPremium = snapshot.getBoolean("isPremium") ?: false
+            user.copy(isPremium = isPremium)
+        } catch (e: Exception) {
+            user // Firestore 실패 시 기본 유저 정보 반환
+        }
+    }
 
     override fun isLoggedIn(): Boolean =
         firebaseAuthDataSource.isLoggedIn()

@@ -69,6 +69,7 @@ class SleepSyncRepositoryImpl(
         user.email?.let { data["email"] = it }
         user.displayName?.let { data["displayName"] = it }
         user.photoUrl?.let { data["photoUrl"] = it }
+        data["isPremium"] = user.isPremium
         
         usersCollection.document(user.uid)
             .set(data, com.google.firebase.firestore.SetOptions.merge())
