@@ -170,7 +170,12 @@ class GlobalSleepViewModel(
     }
 
     private fun handleUserSessionChange(user: User?) {
-        _state.update { it.copy(currentUser = user) }
+        _state.update { 
+            it.copy(
+                currentUser = user,
+                isPremium = user?.isPremium ?: false
+            ) 
+        }
         if (user != null) {
             if (user.uid != currentUid) {
                 currentUid = user.uid
