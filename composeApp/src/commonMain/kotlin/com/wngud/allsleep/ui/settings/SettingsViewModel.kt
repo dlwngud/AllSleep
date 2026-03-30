@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.collectLatest
  */
 class SettingsViewModel(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val observeUserUseCase: com.wngud.allsleep.domain.usecase.auth.ObserveUserUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val observeRegisteredDevicesUseCase: ObserveRegisteredDevicesUseCase,
     private val renameDeviceUseCase: RenameDeviceUseCase,
@@ -49,14 +50,16 @@ class SettingsViewModel(
             }
         }
         
-        // 동기화된 기기 목록 및 유저 정보 관찰
+        // 유저 정보 실시간 관찰
         viewModelScope.launch {
-            val user = getCurrentUserUseCase()
-            _state.update { it.copy(user = user) }
-            
-            if (user != null) {
-                observeRegisteredDevicesUseCase(user.uid).collectLatest { devices ->
-                    _state.update { it.copy(devices = devices) }
+            observeUserUseCase().collectLatest { user ->
+                _state.update { it.copy(user = user, isPremium = user?.isPremium ?: false) }
+                
+                // 유저가 있는 경우 기기 목록 관찰 시작
+                if (user != null) {
+                    observeRegisteredDevicesUseCase(user.uid).collectLatest { devices ->
+                        _state.update { it.copy(devices = devices) }
+                    }
                 }
             }
         }

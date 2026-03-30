@@ -30,7 +30,15 @@ fun AppNavigation(
             ) 
         }
         composable(Screen.Alarm.route) { AlarmScreen(contentPadding = contentPadding) }
-        composable(Screen.Settings.route) { SettingsScreen(navController = navController, contentPadding = contentPadding) }
+        composable(Screen.Settings.route) { 
+            SettingsScreen(
+                navController = navController, 
+                onNavigateToSubscription = {
+                    navController.navigate(Screen.Subscription.route)
+                },
+                contentPadding = contentPadding
+            ) 
+        }
         
         composable(Screen.Subscription.route) {
             SubscriptionScreen()
