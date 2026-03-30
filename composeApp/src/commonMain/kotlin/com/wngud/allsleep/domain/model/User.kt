@@ -8,7 +8,8 @@ data class User(
     val email: String?,
     val displayName: String?,
     val photoUrl: String?,
-    val provider: AuthProvider
+    val provider: AuthProvider,
+    val isPremium: Boolean = false
 )
 
 enum class AuthProvider {

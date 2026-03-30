@@ -12,6 +12,7 @@ class GlobalSleepContract {
     // 1. 상태 (State) - 단일 데이터 클래스로 모든 상태 통합
     data class State(
         val currentUser: User? = null,
+        val isPremium: Boolean = false,
         val sleepState: UserSleepState? = null,
         val registeredDevices: List<DeviceState> = emptyList(),
         val isOnboardingCompleted: Boolean = false,

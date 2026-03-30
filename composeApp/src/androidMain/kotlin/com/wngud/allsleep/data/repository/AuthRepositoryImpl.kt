@@ -7,6 +7,10 @@ import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.platform.PlatformContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.runBlocking
 
@@ -61,5 +65,16 @@ class AuthRepositoryImpl(
         firebaseAuthDataSource.isLoggedIn()
 
     override fun observeUser(): Flow<User?> =
-        firebaseAuthDataSource.observeUser()
+        firebaseAuthDataSource.observeUser().flatMapLatest { user ->
+            if (user == null) {
+                flowOf(null)
+            } else {
+                firestore.collection("users").document(user.uid)
+                    .snapshots()
+                    .map { snapshot ->
+                        val isPremium = snapshot.getBoolean("isPremium") ?: false
+                        user.copy(isPremium = isPremium)
+                    }
+            }
+        }
 }
