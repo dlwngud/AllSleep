@@ -32,4 +32,7 @@ sealed class Screen(val route: String) {
     
     // 설정
     data object Settings : Screen("settings")
+    
+    // 프리미엄 구독
+    data object Subscription : Screen("subscription")
 }

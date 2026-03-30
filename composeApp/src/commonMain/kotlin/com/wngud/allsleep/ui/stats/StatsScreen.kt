@@ -16,22 +16,32 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
+import com.wngud.allsleep.ui.components.PremiumOverlay
+import com.wngud.allsleep.ui.global.GlobalSleepViewModel
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun StatsScreen(
     contentPadding: PaddingValues = PaddingValues(),
-    viewModel: StatsViewModel = koinViewModel()
+    onNavigateToSubscription: () -> Unit,
+    viewModel: StatsViewModel = koinViewModel(),
+    globalViewModel: GlobalSleepViewModel = koinInject()
 ) {
     val state by viewModel.state.collectAsState()
+    val globalState by globalViewModel.state.collectAsState()
+    val isPremium = globalState.isPremium
 
     StatsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        onIntent = viewModel::handleIntent
+        isPremium = isPremium,
+        onIntent = viewModel::handleIntent,
+        onNavigateToSubscription = onNavigateToSubscription
     )
 }
 
@@ -39,20 +49,24 @@ fun StatsScreen(
 fun StatsScreenContent(
     contentPadding: PaddingValues,
     state: StatsState,
-    onIntent: (StatsIntent) -> Unit
+    isPremium: Boolean,
+    onIntent: (StatsIntent) -> Unit,
+    onNavigateToSubscription: () -> Unit
 ) {
     Scaffold(
-        containerColor = Color.Transparent // 투명으로 설정하여 배경 일관성 유지
+        containerColor = Color.Transparent
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding) // 외부(네비게이션 바) 패딩 적용
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .padding(innerPadding)
+                    .then(if (!isPremium) Modifier.blur(15.dp) else Modifier) // 구독 안했으면 블러
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp)
+            ) {
             Spacer(modifier = Modifier.height(8.dp))
             PeriodSelector(
                 selectedIndex = state.timePeriodIndex,
@@ -74,8 +88,14 @@ fun StatsScreenContent(
             Spacer(modifier = Modifier.height(20.dp))
             AIInsightCard()
         }
-    }
-}
+
+        // 구독 안했으면 오버레이 표시
+        if (!isPremium) {
+            PremiumOverlay(onSubscribeClick = onNavigateToSubscription)
+        }
+    } // Box 닫기
+} // Scaffold 닫기
+} // StatsScreenContent 닫기
 
 
 @Composable
@@ -436,7 +456,9 @@ fun StatsScreenPreview() {
             StatsScreenContent(
                 contentPadding = PaddingValues(),
                 state = StatsState(),
-                onIntent = {}
+                isPremium = false, // 프리미엄 아닌 상태 테스트용
+                onIntent = {},
+                onNavigateToSubscription = {}
             )
         }
     }
