@@ -27,6 +27,12 @@ interface SleepSettingsRepository {
     // 기기 이름 저장
     suspend fun saveDeviceName(name: String)
     
+    // 프리미엄 구독 여부
+    val isPremium: Flow<Boolean>
+
+    // 프리미엄 구독 여부 저장
+    suspend fun savePremiumStatus(isPremium: Boolean)
+
     // 초기화 (로그아웃 시 등)
     suspend fun clear()
 }

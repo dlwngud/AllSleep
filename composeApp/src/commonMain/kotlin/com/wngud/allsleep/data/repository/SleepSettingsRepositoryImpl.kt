@@ -22,6 +22,7 @@ class SleepSettingsRepositoryImpl(
         private val KEY_WAKE_TIME = stringPreferencesKey("wake_time")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_DEVICE_NAME = stringPreferencesKey("device_name")
+        private val KEY_IS_PREMIUM = booleanPreferencesKey("is_premium")
         
         private const val DEFAULT_BEDTIME = "23:00"
         private const val DEFAULT_WAKE_TIME = "07:00"
@@ -47,6 +48,16 @@ class SleepSettingsRepositoryImpl(
 
     override val isOnboardingCompleted: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[KEY_ONBOARDING_COMPLETED] ?: false
+    }
+
+    override val isPremium: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[KEY_IS_PREMIUM] ?: false
+    }
+
+    override suspend fun savePremiumStatus(isPremium: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_IS_PREMIUM] = isPremium
+        }
     }
 
     override suspend fun saveSleepSchedule(bedtime: String, wakeTime: String) {

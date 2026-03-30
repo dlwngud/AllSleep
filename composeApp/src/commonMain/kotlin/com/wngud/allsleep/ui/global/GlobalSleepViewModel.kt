@@ -83,6 +83,10 @@ class GlobalSleepViewModel(
         viewModelScope.launch {
             println("GlobalSleepVM: [init] ViewModel 초기화 시작")
             
+            // 0. 로컬에 저장된 구독 상태 초기 로딩 (최우선 반영)
+            val cachedIsPremium = sleepSettingsRepository.isPremium.first()
+            _state.update { it.copy(isPremium = cachedIsPremium) }
+
             // 1. 초기 온보딩 상태 로드
             val initialOnboardingState = observeOnboardingCompletedUseCase().first()
             _state.update { it.copy(isOnboardingCompleted = initialOnboardingState) }
@@ -103,12 +107,6 @@ class GlobalSleepViewModel(
             }
             
             handleUserSessionChange(user)
-            
-            // 3. 마이그레이션 (로그인된 경우 온보딩 강제 완료 처리)
-            if (user != null && !initialOnboardingState) {
-                completeOnboarding(bedtime = "23:00", wakeTime = "07:00")
-                _state.update { it.copy(isOnboardingCompleted = true) }
-            }
             
             _state.update { it.copy(isStateInitialized = true) }
 
@@ -173,9 +171,17 @@ class GlobalSleepViewModel(
         _state.update { 
             it.copy(
                 currentUser = user,
-                isPremium = user?.isPremium ?: false
+                isPremium = user?.isPremium ?: it.isPremium // 서버 데이터가 올 때까지 기존(캐시) 상태 유지
             ) 
         }
+        
+        // Firestore에서 받은 최신 구독 상태를 로컬 캐시에 저장
+        user?.let {
+            viewModelScope.launch {
+                sleepSettingsRepository.savePremiumStatus(it.isPremium)
+            }
+        }
+
         if (user != null) {
             if (user.uid != currentUid) {
                 currentUid = user.uid
