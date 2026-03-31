@@ -66,6 +66,9 @@ class GlobalSleepViewModel(
     private var devicesJob: Job? = null
     private var deviceRegisterJob: Job? = null
 
+    // 원격 로그아웃 감지를 위한 플래그: 현재 세션 중에 한 번이라도 성공적으로 기기가 등록되었는지 추적
+    private var hasBeenRegisteredInThisSession = false
+
     init {
         handleIntent(GlobalSleepContract.Intent.RequestInitialize)
     }
@@ -76,6 +79,52 @@ class GlobalSleepViewModel(
             is GlobalSleepContract.Intent.RequestLogout -> logout()
             is GlobalSleepContract.Intent.ToggleSleepState -> toggleSleepState(intent.isSleeping, intent.targetWakeUpTime)
             is GlobalSleepContract.Intent.CompleteOnboarding -> completeOnboarding(intent.bedtime, intent.wakeTime)
+            is GlobalSleepContract.Intent.ReplaceDevice -> forceReplaceDevice()
+            is GlobalSleepContract.Intent.CancelDeviceRegistration -> cancelDeviceRegistration()
+            is GlobalSleepContract.Intent.UpgradeToPremium -> upgradeToPremium()
+        }
+    }
+
+    private fun upgradeToPremium() {
+        _state.update { it.copy(showDeviceLimitDialog = false) }
+        viewModelScope.launch {
+            _effect.send(GlobalSleepContract.Effect.NavigateToSubscription)
+        }
+    }
+
+    private fun cancelDeviceRegistration() {
+        _state.update { 
+            it.copy(
+                showDeviceLimitDialog = false,
+                cachedDeviceStateToRegister = null
+            ) 
+        }
+        // 새 기기 등록을 취소했으므로 로그아웃 처리하여 서비스를 이용하지 못하게 함
+        handleIntent(GlobalSleepContract.Intent.RequestLogout)
+    }
+
+    private fun forceReplaceDevice() {
+        val uid = currentUid ?: return
+        val deviceToRegister = _state.value.cachedDeviceStateToRegister ?: return
+        
+        _state.update { it.copy(showDeviceLimitDialog = false, cachedDeviceStateToRegister = null) }
+        
+        viewModelScope.launch {
+            try {
+                // 1. 기존 기기들 모두 삭제
+                val devices = observeRegisteredDevicesUseCase(uid).first()
+                devices.forEach { device ->
+                    unregisterDeviceUseCase(uid, device.deviceId)
+                }
+                
+                // 2. 새 기기 등록 (이때는 강제로 프리미엄 체크 패스하거나 size가 0이므로 성공)
+                // RegisterDeviceUseCase에 isPremium = true를 넘겨서 강제 등록
+                registerDeviceUseCase(uid, deviceToRegister, isPremium = true).onFailure { e ->
+                    _state.update { it.copy(error = "기기 교체 실패: ${e.message}") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "기기 교체 중 오류: ${e.message}") }
+            }
         }
     }
 
@@ -168,10 +217,13 @@ class GlobalSleepViewModel(
     }
 
     private fun handleUserSessionChange(user: User?) {
+        val wasPremium = _state.value.isPremium
+        val isNowPremium = user?.isPremium ?: _state.value.isPremium
+        
         _state.update { 
             it.copy(
                 currentUser = user,
-                isPremium = user?.isPremium ?: it.isPremium // 서버 데이터가 올 때까지 기존(캐시) 상태 유지
+                isPremium = isNowPremium
             ) 
         }
         
@@ -181,10 +233,29 @@ class GlobalSleepViewModel(
                 sleepSettingsRepository.savePremiumStatus(it.isPremium)
             }
         }
+        
+        // 사용자가 구독 결제에 성공하여 처음으로 프리미엄 상태가 되었을 때 보류되었던 기기 강제 등록
+        if (!wasPremium && isNowPremium) {
+            val pendingDevice = _state.value.cachedDeviceStateToRegister
+            val uid = user?.uid
+            if (pendingDevice != null && uid != null) {
+                _state.update { it.copy(cachedDeviceStateToRegister = null, showDeviceLimitDialog = false) }
+                viewModelScope.launch {
+                    try {
+                        registerDeviceUseCase(uid, pendingDevice, isPremium = true).onFailure { e ->
+                            _state.update { it.copy(error = "구독 후 자동 기기 등록 실패: ${e.message}") }
+                        }
+                    } catch (e: Exception) {
+                        _state.update { it.copy(error = "자동 등록 중 오류: ${e.message}") }
+                    }
+                }
+            }
+        }
 
         if (user != null) {
             if (user.uid != currentUid) {
                 currentUid = user.uid
+                hasBeenRegisteredInThisSession = false // 유저 변경 시 초기화
                 // 새 유저인 경우 프로필 갱신 및 관찰 시작
                 viewModelScope.launch { updateUserProfileUseCase(user) }
                 startObserving(user.uid)
@@ -192,6 +263,7 @@ class GlobalSleepViewModel(
             }
         } else {
             currentUid = null
+            hasBeenRegisteredInThisSession = false
             _state.update { 
                 it.copy(
                     sleepState = null,
@@ -228,8 +300,18 @@ class GlobalSleepViewModel(
                 lastActiveForSleepLocking = 0L,
                 isMainAlarmDevice = false
             )
-            registerDeviceUseCase(uid, deviceState).onFailure { e ->
-                _state.update { it.copy(error = "기기 등록 실패: ${e.message}") }
+            val isPremium = _state.value.isPremium
+            registerDeviceUseCase(uid, deviceState, isPremium).onFailure { e ->
+                if (e is com.wngud.allsleep.domain.model.exception.PremiumRequiredException) {
+                    _state.update { 
+                        it.copy(
+                            showDeviceLimitDialog = true,
+                            cachedDeviceStateToRegister = deviceState
+                        ) 
+                    }
+                } else {
+                    _state.update { it.copy(error = "기기 등록 실패: ${e.message}") }
+                }
             }
         } catch (e: Exception) {
             _state.update { it.copy(error = "기기 등록 중 오류: ${e.message}") }
@@ -293,7 +375,9 @@ class GlobalSleepViewModel(
                         val currentId = deviceInfoProvider.getDeviceId()
                         val isStillRegistered = devices.any { it.deviceId == currentId }
                         
-                        if (!isStillRegistered && devices.isNotEmpty()) {
+                        if (isStillRegistered) {
+                            hasBeenRegisteredInThisSession = true
+                        } else if (hasBeenRegisteredInThisSession && devices.isNotEmpty()) {
                             println("GlobalSleepVM: [RemoteLogout] 다른 기기에 의해 현재 기기가 등록 해제됨 확인 -> 로그아웃 수행")
                             logout()
                         }
@@ -321,6 +405,7 @@ class GlobalSleepViewModel(
                 unregisterDeviceUseCase(uid, deviceId)
                 signOutUseCase()
                 currentUid = null
+                hasBeenRegisteredInThisSession = false
                 _state.update { 
                     it.copy(
                         currentUser = null,

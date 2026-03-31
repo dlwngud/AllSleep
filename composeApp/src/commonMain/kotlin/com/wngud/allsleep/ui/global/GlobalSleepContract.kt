@@ -18,6 +18,8 @@ class GlobalSleepContract {
         val isOnboardingCompleted: Boolean = false,
         val isStateInitialized: Boolean = false,
         val isToggleLoading: Boolean = false,
+        val showDeviceLimitDialog: Boolean = false,
+        val cachedDeviceStateToRegister: DeviceState? = null,
         val error: String? = null
     )
 
@@ -33,10 +35,16 @@ class GlobalSleepContract {
             val bedtime: String, 
             val wakeTime: String
         ) : Intent
+        
+        // 기기 한도 초과 처리용 Intent
+        data object ReplaceDevice : Intent
+        data object CancelDeviceRegistration : Intent
+        data object UpgradeToPremium : Intent
     }
 
     // 3. 효과 (Effect) - 일회성 이벤트 정의
     sealed interface Effect {
         data class ShowSnackbar(val message: String) : Effect
+        data object NavigateToSubscription : Effect
     }
 }
