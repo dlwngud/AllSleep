@@ -10,5 +10,7 @@ data class UserSleepState(
     val targetWakeUpTime: Long? = null,
     val bedtime: String = "23:00",
     val wakeTime: String = "07:00",
-    val lastUpdatedAt: Long = 0L
+    val lastUpdatedAt: Long = 0L,
+    val sleepStartAt: Long = 0L  // ← 신규: 수면 시작 타임스탬프 (ms)
 )
+
