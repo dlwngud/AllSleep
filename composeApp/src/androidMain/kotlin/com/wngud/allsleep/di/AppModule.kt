@@ -10,6 +10,7 @@ import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
+import com.wngud.allsleep.domain.repository.SleepRecordRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.DeleteAccountUseCase
 import com.wngud.allsleep.domain.usecase.auth.ObserveUserUseCase
@@ -25,6 +26,9 @@ import com.wngud.allsleep.domain.usecase.sleep.ObserveUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RegisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
+import com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase
+import com.wngud.allsleep.domain.usecase.sleep.GetSleepStatsUseCase
+import com.wngud.allsleep.domain.usecase.sleep.GetMonthlyCalendarUseCase
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import com.wngud.allsleep.platform.DeviceInfoProviderImpl
 import com.wngud.allsleep.platform.SleepScheduler
@@ -44,6 +48,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import com.google.firebase.firestore.FirebaseFirestore
 import com.wngud.allsleep.data.repository.SleepSyncRepositoryImpl
+import com.wngud.allsleep.data.repository.SleepRecordRepositoryImpl
 import com.wngud.allsleep.domain.usecase.sleep.RenameDeviceUseCase
 
 // SleepSyncRepository 인터페이스 임포트 제거 (위에서 domain으로 통합됨)
@@ -68,6 +73,7 @@ val appModule = module {
     // ── Repository (인터페이스 → 구현체, DIP) ─────────────────────
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::SleepSyncRepositoryImpl) bind SleepSyncRepository::class
+    singleOf(::SleepRecordRepositoryImpl) bind SleepRecordRepository::class
     singleOf(::AppBlockerRepositoryImpl) bind com.wngud.allsleep.domain.repository.AppBlockerRepository::class
 
     // ── Platform Services ──────────────────────────────────────────
@@ -95,6 +101,9 @@ val appModule = module {
     factoryOf(::CompleteOnboardingUseCase)
     factoryOf(::DeleteAccountUseCase)
     factoryOf(::ValidateSessionUseCase)
+    factoryOf(::RecordSleepSessionUseCase)
+    factoryOf(::GetSleepStatsUseCase)
+    factoryOf(::GetMonthlyCalendarUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
     singleOf(::GlobalSleepViewModel)

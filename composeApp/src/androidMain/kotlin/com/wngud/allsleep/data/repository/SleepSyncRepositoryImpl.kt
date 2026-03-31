@@ -54,6 +54,13 @@ class SleepSyncRepositoryImpl(
         bedtime?.let { updates["bedtime"] = it }
         wakeTime?.let { updates["wakeTime"] = it }
         
+        // 수면 시작 시 sleepStartAt 기록, 종료 시 0으로 초기화
+        if (isSleeping == true) {
+            updates["sleepStartAt"] = System.currentTimeMillis()
+        } else if (isSleeping == false) {
+            updates["sleepStartAt"] = 0L
+        }
+        
         // 문서가 없을 수도 있으므로 set(..., SetOptions.merge())를 사용하는 것이 더 안전함
         usersCollection.document(uid)
             .set(updates, com.google.firebase.firestore.SetOptions.merge())

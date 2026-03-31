@@ -49,6 +49,7 @@ class GlobalSleepViewModel(
     private val unregisterDeviceUseCase: UnregisterDeviceUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val validateSessionUseCase: com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase,
+    private val recordSleepSessionUseCase: com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase,
     private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository,
     private val sleepScheduler: SleepScheduler,
     private val deviceInfoProvider: DeviceInfoProvider
@@ -440,13 +441,40 @@ class GlobalSleepViewModel(
                 _state.update { it.copy(sleepState = optimisticState) }
 
                 val result = updateUserSleepStateUseCase(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
-                result.onFailure { e -> 
+                result.onSuccess {
+                    // 수면 종료 시 세션 기록 자동 생성
+                    if (!isSleeping) {
+                        val sleepStartAt = _state.value.sleepState?.sleepStartAt ?: 0L
+                        if (sleepStartAt > 0L) {
+                            val now = platformTimeMillis()
+                            recordSleepSessionUseCase(
+                                uid = uid,
+                                date = formatCurrentDate(sleepStartAt), // 취침 시작일 기준
+                                sleepStartAt = sleepStartAt,
+                                wakeTimeMs = now,
+                                targetBedtime = bedtime,
+                                targetWakeTime = wakeTime,
+                                isLockUsed = true // 현재 잠금 시스템이 활성화되었으므로 true
+                            )
+                        }
+                    }
+                }.onFailure { e -> 
                     _state.update { it.copy(error = "업데이트 실패: ${e.message}") }
                 }
             } finally {
                 _state.update { it.copy(isToggleLoading = false) }
             }
         }
+    }
+
+    /** KMP 환경에서 현재 시각을 구하거나 날짜를 포맷팅하기 위한 헬퍼 (나중에 유틸로 분리 권장) */
+    private fun platformTimeMillis(): Long = com.wngud.allsleep.domain.model.platformTimeMillis()
+    
+    private fun formatCurrentDate(timestamp: Long): String {
+        // 실제로는 expect/actual이나 kotlinx-datetime을 사용해야 함. 
+        // 일단 "yyyy-MM-dd" 하드코딩 형식으로 반환하거나 유틸 구현.
+        // 여기서는 간단한 변환 로직 (예: 2026-03-31)
+        return com.wngud.allsleep.domain.model.formatTimestampToDate(timestamp)
     }
 
     private fun completeOnboarding(bedtime: String, wakeTime: String) {
