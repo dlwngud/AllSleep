@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.blur
+import com.wngud.allsleep.ui.components.PremiumOverlay
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -102,33 +104,52 @@ fun StatsScreenContent(
     onIntent: (StatsIntent) -> Unit,
     onNavigateToSubscription: () -> Unit
 ) {
-    Scaffold(containerColor = Color.Transparent) { innerPadding ->
-        Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = Color.Transparent,
             modifier = Modifier
-                .fillMaxSize()
                 .padding(contentPadding)
-                .padding(innerPadding)
-        ) {
-            // ── 고정 헤더 ──────────────────
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Spacer(Modifier.height(12.dp))
-                HeaderTitleRow(isPremium = isPremium, sleepScore = 82)
-                Spacer(Modifier.height(12.dp))
-                TodaySummaryCard()
-                Spacer(Modifier.height(12.dp))
+                .then(if (!isPremium) Modifier.blur(16.dp) else Modifier)
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                // ── 고정 헤더 ──────────────────
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    Spacer(Modifier.height(12.dp))
+                    HeaderTitleRow(isPremium = isPremium, sleepScore = 82)
+                    Spacer(Modifier.height(12.dp))
+                    TodaySummaryCard()
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // ── 탭 바 ───────────────────────
+                StatsTabBar(selectedTab = state.selectedTab, onIntent = onIntent)
+
+                // ── 탭 콘텐츠 ──────────────────
+                when (state.selectedTab) {
+                    StatsTab.RECORD -> RecordTab(state = state, onIntent = onIntent)
+                    StatsTab.TREND  -> TrendTab(state = state, onIntent = onIntent)
+                    StatsTab.INSIGHT -> InsightTab(
+                        isPremium = isPremium,
+                        onNavigateToSubscription = onNavigateToSubscription
+                    )
+                }
             }
+        }
 
-            // ── 탭 바 ───────────────────────
-            StatsTabBar(selectedTab = state.selectedTab, onIntent = onIntent)
-
-            // ── 탭 콘텐츠 ──────────────────
-            when (state.selectedTab) {
-                StatsTab.RECORD -> RecordTab(state = state, onIntent = onIntent)
-                StatsTab.TREND  -> TrendTab(state = state, onIntent = onIntent)
-                StatsTab.INSIGHT -> InsightTab(
-                    isPremium = isPremium,
-                    onNavigateToSubscription = onNavigateToSubscription
-                )
+        // 구독 안했으면 오버레이 표시
+        if (!isPremium) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false) { }, // 뒷배경 터치 방지
+                contentAlignment = Alignment.Center
+            ) {
+                PremiumOverlay(onSubscribeClick = onNavigateToSubscription)
             }
         }
     }
