@@ -32,6 +32,10 @@ class SleepSyncRepositoryImpl(
                         targetWakeUpTime = doc.getLong("targetWakeUpTime"),
                         bedtime = doc.getString("bedtime") ?: "23:00",
                         wakeTime = doc.getString("wakeTime") ?: "07:00",
+                        sleepAlarmDays = (doc.get("sleepAlarmDays") as? List<*>)?.filterIsInstance<Long>()?.map { it.toInt() }?.toSet() ?: setOf(1, 2, 3, 4, 5),
+                        wakeAlarmDays = (doc.get("wakeAlarmDays") as? List<*>)?.filterIsInstance<Long>()?.map { it.toInt() }?.toSet() ?: setOf(1, 2, 3, 4, 5),
+                        isSleepAlarmEnabled = doc.getBoolean("isSleepAlarmEnabled") ?: true,
+                        isWakeAlarmEnabled = doc.getBoolean("isWakeAlarmEnabled") ?: true,
                         lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
                         sleepStartAt = doc.getLong("sleepStartAt") ?: 0L
                     )
@@ -50,7 +54,11 @@ class SleepSyncRepositoryImpl(
         isSleeping: Boolean?, 
         targetWakeUpTime: Long?,
         bedtime: String?,
-        wakeTime: String?
+        wakeTime: String?,
+        sleepAlarmDays: Set<Int>?,
+        wakeAlarmDays: Set<Int>?,
+        isSleepAlarmEnabled: Boolean?,
+        isWakeAlarmEnabled: Boolean?
     ): Result<Unit> = runCatching {
         val updates = mutableMapOf<String, Any>(
             "lastUpdatedAt" to System.currentTimeMillis()
@@ -64,6 +72,10 @@ class SleepSyncRepositoryImpl(
         
         bedtime?.let { updates["bedtime"] = it }
         wakeTime?.let { updates["wakeTime"] = it }
+        sleepAlarmDays?.let { updates["sleepAlarmDays"] = it.toList() }
+        wakeAlarmDays?.let { updates["wakeAlarmDays"] = it.toList() }
+        isSleepAlarmEnabled?.let { updates["isSleepAlarmEnabled"] = it }
+        isWakeAlarmEnabled?.let { updates["isWakeAlarmEnabled"] = it }
         
         // 수면 시작 시 sleepStartAt 기록, 종료 시 0으로 초기화
         if (isSleeping == true) {
