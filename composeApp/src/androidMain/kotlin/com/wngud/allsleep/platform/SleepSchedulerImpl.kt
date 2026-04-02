@@ -11,11 +11,16 @@ import java.util.*
 
 class SleepSchedulerImpl(private val context: Context) : SleepScheduler {
 
-    override fun scheduleNextEvents(bedtime: String, wakeTime: String) {
-        Log.d("SleepScheduler", "Scheduling alarms: Bedtime=$bedtime, WakeTime=$wakeTime")
+    override fun scheduleNextEvents(
+        bedtime: String,
+        wakeTime: String,
+        sleepDays: Set<Int>,
+        wakeDays: Set<Int>
+    ) {
+        Log.d("SleepScheduler", "Scheduling alarms: Bedtime=$bedtime ($sleepDays), WakeTime=$wakeTime ($wakeDays)")
 
-        scheduleAlarm(context, bedtime, SleepAlarmReceiver.ACTION_START_SLEEP, 100)
-        scheduleAlarm(context, wakeTime, SleepAlarmReceiver.ACTION_STOP_SLEEP, 101)
+        scheduleAlarm(context, bedtime, sleepDays, SleepAlarmReceiver.ACTION_START_SLEEP, 100)
+        scheduleAlarm(context, wakeTime, wakeDays, SleepAlarmReceiver.ACTION_STOP_SLEEP, 101)
     }
 
     override fun cancelAll() {
@@ -23,7 +28,12 @@ class SleepSchedulerImpl(private val context: Context) : SleepScheduler {
         cancelAlarm(context, SleepAlarmReceiver.ACTION_STOP_SLEEP, 101)
     }
 
-    private fun scheduleAlarm(context: Context, timeStr: String, action: String, requestCode: Int) {
+    private fun scheduleAlarm(context: Context, timeStr: String, selectedDays: Set<Int>, action: String, requestCode: Int) {
+        if (selectedDays.isEmpty()) {
+            cancelAlarm(context, action, requestCode)
+            return
+        }
+
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val parts = timeStr.split(":")
         if (parts.size != 2) return
@@ -31,15 +41,25 @@ class SleepSchedulerImpl(private val context: Context) : SleepScheduler {
         val hour = parts[0].toIntOrNull() ?: return
         val minute = parts[1].toIntOrNull() ?: return
 
+        val now = Calendar.getInstance()
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
+        }
 
-            // 시각이 이미 지났다면 내일로 예약
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
+        // 선택된 요일에 맞게 다음 알람 시각 계산
+        val todayDayOfWeek = now.get(Calendar.DAY_OF_WEEK) - 1 // 0=일, 1=월, ..., 6=토
+        
+        if (!(selectedDays.contains(todayDayOfWeek) && calendar.after(now))) {
+            // 오늘이 아니거나 이미 시간이 지났다면, 다음 유효한 요일을 찾을 때까지 하루씩 더함
+            for (i in 1..7) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
+                if (selectedDays.contains(dayOfWeek)) {
+                    break
+                }
             }
         }
 

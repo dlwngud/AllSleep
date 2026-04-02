@@ -57,7 +57,14 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
             // 다음 알람 재스케줄링 (24시간 주기 순환을 위해)
             val bedtime = sleepSettingsRepository.bedtime.first()
             val wakeTime = sleepSettingsRepository.wakeTime.first()
-            sleepScheduler.scheduleNextEvents(bedtime, wakeTime)
+            
+            val isSleepEnabled = sleepSettingsRepository.isSleepAlarmEnabled.first()
+            val sleepDays = if (isSleepEnabled) sleepSettingsRepository.sleepAlarmDays.first() else emptySet()
+            
+            val isWakeEnabled = sleepSettingsRepository.isWakeAlarmEnabled.first()
+            val wakeDays = if (isWakeEnabled) sleepSettingsRepository.wakeAlarmDays.first() else emptySet()
+
+            sleepScheduler.scheduleNextEvents(bedtime, wakeTime, sleepDays, wakeDays)
         }
     }
 
