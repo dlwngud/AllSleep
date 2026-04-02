@@ -39,44 +39,21 @@ import com.wngud.allsleep.domain.model.formatTimestampToDate
 import com.wngud.allsleep.domain.model.formatTimestampToTime
 
 // ──────────────────────────────────────────
-// Mock 데이터
-// ──────────────────────────────────────────
-private object MockData {
-    val sleepBars = listOf(7f, 5f, 8.5f, 6f, 9f, 4.5f, 8f) // 월~일 (시간)
-    val days = listOf("월", "화", "수", "목", "금", "토", "일")
-    val targetHours = 8f
-
-    // 달력용: "2026-03-DD" -> achievementRate (null = 기록 없음)
-    val calendarData: Map<String, Float?> = buildMap {
-        val achieved = listOf(1, 3, 5, 8, 10, 12, 14, 15, 16, 18, 20, 22, 24)
-        val partial  = listOf(2, 7, 11, 17, 21, 23, 25, 27)
-        val poor     = listOf(19, 26, 28)
-        for (d in 1..31) {
-            val key = "2026-03-%02d".format(d)
-            put(key, when (d) {
-                in achieved -> 1.05f
-                in partial  -> 0.82f
-                in poor     -> 0.55f
-                else        -> null
-            })
-        }
-    }
-
-    val weekdayAvgHours = listOf(7.1f, 6.8f, 7.5f, 7.2f, 6.5f, 8.8f, 8.5f) // 월~일
-}
+// 색상 상수
+// ──────────────────
 
 // ──────────────────────────────────────────
 // 색상 상수
 // ──────────────────────────────────────────
-private val indigo     = Color(0xFF4938FF)
+private val indigo = Color(0xFF4938FF)
 private val indigoFaint = Color(0x1A4938FF)
-private val surface    = Color(0xFF1A1C2E)
+private val surface = Color(0xFF1A1C2E)
 private val surfaceHigh = Color(0xFF242645)
-private val onSurface  = Color(0xFFF6F5F8)
+private val onSurface = Color(0xFFF6F5F8)
 private val onSurfaceVariant = Color(0xFFC7C4DA)
-private val green  = Color(0xFF4CAF50)
-private val amber  = Color(0xFFF59E0B)
-private val red    = Color(0xFFEF4444)
+private val green = Color(0xFF4CAF50)
+private val amber = Color(0xFFF59E0B)
+private val red = Color(0xFFEF4444)
 
 // ──────────────────────────────────────────
 // Entry Point
@@ -124,7 +101,7 @@ fun StatsScreenContent(
                 // ── 고정 헤더 ──────────────────
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                     Spacer(Modifier.height(12.dp))
-                    HeaderTitleRow(isPremium = isPremium, sleepScore = (state.avgEfficiency * 100).toInt())
+                    HeaderTitleRow(isPremium = isPremium)
                     Spacer(Modifier.height(12.dp))
                     TodaySummaryCard(record = state.latestRecord)
                     Spacer(Modifier.height(12.dp))
@@ -136,7 +113,7 @@ fun StatsScreenContent(
                 // ── 탭 콘텐츠 ──────────────────
                 when (state.selectedTab) {
                     StatsTab.RECORD -> RecordTab(state = state, onIntent = onIntent)
-                    StatsTab.TREND  -> TrendTab(state = state, onIntent = onIntent)
+                    StatsTab.TREND -> TrendTab(state = state, onIntent = onIntent)
                     StatsTab.INSIGHT -> InsightTab(
                         state = state,
                         isPremium = isPremium,
@@ -166,7 +143,7 @@ fun StatsScreenContent(
 // ──────────────────────────────────────────
 
 @Composable
-private fun HeaderTitleRow(isPremium: Boolean, sleepScore: Int) {
+private fun HeaderTitleRow(isPremium: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -178,23 +155,6 @@ private fun HeaderTitleRow(isPremium: Boolean, sleepScore: Int) {
             color = onSurface,
             modifier = Modifier.weight(1f)
         )
-        // 수면 점수 미니 뱃지 (프리미엄)
-        if (isPremium) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(indigo)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                text = "${sleepScore}점 👑",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
     }
 }
 
@@ -234,14 +194,22 @@ private fun TodaySummaryCard(record: SleepRecord?) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("🌙", fontSize = 12.sp)
                         Text(
-                            " ${formatMillisToTime(record.bedtime)}  →  ☀️ ${formatMillisToTime(record.wakeTime)}",
+                            " ${formatMillisToTime(record.bedtime)}  →  ☀️ ${
+                                formatMillisToTime(
+                                    record.wakeTime
+                                )
+                            }",
                             fontSize = 12.sp,
                             color = onSurfaceVariant
                         )
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "수면 효율 ${(record.sleepEfficiency).toInt()}%  |  목표 ${formatMinutesToDuration(record.targetMinutes)}",
+                        "수면 효율 ${(record.sleepEfficiency).toInt()}%  |  목표 ${
+                            formatMinutesToDuration(
+                                record.targetMinutes
+                            )
+                        }",
                         fontSize = 11.sp,
                         color = onSurfaceVariant
                     )
@@ -249,7 +217,12 @@ private fun TodaySummaryCard(record: SleepRecord?) {
                 // 우측: 달성률
                 Column(horizontalAlignment = Alignment.End) {
                     val rate = record.achievementRate.toInt()
-                    Text("✅ $rate%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (rate >= 95) green else amber)
+                    Text(
+                        "✅ $rate%",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (rate >= 95) green else amber
+                    )
                     Text("달성", fontSize = 11.sp, color = onSurfaceVariant)
                 }
             } else {
@@ -268,8 +241,8 @@ private fun TodaySummaryCard(record: SleepRecord?) {
 @Composable
 private fun StatsTabBar(selectedTab: StatsTab, onIntent: (StatsIntent) -> Unit) {
     val tabs = listOf(
-        StatsTab.RECORD  to "기록",
-        StatsTab.TREND   to "트렌드",
+        StatsTab.RECORD to "기록",
+        StatsTab.TREND to "트렌드",
         StatsTab.INSIGHT to "인사이트"
     )
 
@@ -349,7 +322,7 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
     } catch (e: Exception) {
         2026 to 4 // 기본값
     }
-    
+
     val year = currentYearMonth.first
     val month = currentYearMonth.second
 
@@ -373,7 +346,13 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                         .clip(CircleShape)
                         .clickable {
                             val prevDate = LocalDate(year, month, 1).minus(1, DateTimeUnit.MONTH)
-                            onIntent(StatsIntent.NavigateMonth("${prevDate.year}-${prevDate.monthNumber.toString().padStart(2, '0')}"))
+                            onIntent(
+                                StatsIntent.NavigateMonth(
+                                    "${prevDate.year}-${
+                                        prevDate.monthNumber.toString().padStart(2, '0')
+                                    }"
+                                )
+                            )
                         }
                         .padding(8.dp)
                 )
@@ -391,7 +370,13 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                         .clip(CircleShape)
                         .clickable {
                             val nextDate = LocalDate(year, month, 1).plus(1, DateTimeUnit.MONTH)
-                            onIntent(StatsIntent.NavigateMonth("${nextDate.year}-${nextDate.monthNumber.toString().padStart(2, '0')}"))
+                            onIntent(
+                                StatsIntent.NavigateMonth(
+                                    "${nextDate.year}-${
+                                        nextDate.monthNumber.toString().padStart(2, '0')
+                                    }"
+                                )
+                            )
                         }
                         .padding(8.dp)
                 )
@@ -417,15 +402,18 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
 
             // 해당 월의 시작 요일 및 총 일수 계산
             val firstDayOfMonth = LocalDate(year, month, 1)
-            val startDayOfWeek = firstDayOfMonth.dayOfWeek.ordinal % 7 // ISO ordinal(Mon=1~Sun=7) -> (Sun=0~Sat=6)
+            val startDayOfWeek =
+                firstDayOfMonth.dayOfWeek.ordinal % 7 // ISO ordinal(Mon=1~Sun=7) -> (Sun=0~Sat=6)
             // 주의: dayOfWeek.ordinal은 월=0일 수 있으므로 조정 필요. 
             // kotlinx-datetime DayOfWeek enum: MONDAY(0), TUESDAY(1), ..., SUNDAY(6)
             // 일요일=0으로 맞추기 위해: (dayOfWeek.ordinal + 1) % 7
             val startPadding = (firstDayOfMonth.dayOfWeek.ordinal + 1) % 7
-            
+
             val daysInMonth = try {
                 firstDayOfMonth.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).dayOfMonth
-            } catch (e: Exception) { 30 }
+            } catch (e: Exception) {
+                30
+            }
 
             val totalCells = ((daysInMonth + startPadding + 6) / 7) * 7
 
@@ -435,11 +423,14 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                     week.forEach { cell ->
                         val dayNum = cell - startPadding + 1
                         val isValidDay = dayNum in 1..daysInMonth
-                        val dateStr = if (isValidDay) "${year}-${month.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}" else null
+                        val dateStr = if (isValidDay) "${year}-${
+                            month.toString().padStart(2, '0')
+                        }-${dayNum.toString().padStart(2, '0')}" else null
                         val record = dateStr?.let { state.records[it] }
-                        
+
                         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                        val isToday = isValidDay && today.year == year && today.monthNumber == month && today.dayOfMonth == dayNum
+                        val isToday =
+                            isValidDay && today.year == year && today.monthNumber == month && today.dayOfMonth == dayNum
                         val isSelected = dateStr != null && dateStr == state.selectedDate
 
                         CalendarDayCell(
@@ -510,9 +501,9 @@ private fun CalendarDayCell(
 ) {
     val dotColor = when {
         achievementRate == null || achievementRate <= 0f -> Color.Transparent
-        achievementRate >= 0.95f         -> green
-        achievementRate >= 0.7f         -> amber
-        else                            -> red
+        achievementRate >= 0.95f -> green
+        achievementRate >= 0.7f -> amber
+        else -> red
     }
 
     Column(
@@ -552,7 +543,7 @@ private fun CalendarDayCell(
                     color = if (isSelected) Color.White else onSurface
                 )
             }
-            
+
             Box(
                 modifier = Modifier
                     .padding(bottom = 2.dp) // 가장 아래쪽에서 살짝 띄움
@@ -577,17 +568,29 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
         Column(modifier = Modifier.padding(16.dp)) {
             val dateParts = record.date.split("-")
             val formattedDate = "${dateParts[1].toInt()}월 ${dateParts[2].toInt()}일 수면 기록"
-            
+
             Text(formattedDate, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = onSurface)
             Spacer(Modifier.height(12.dp))
-            
+
             Row(modifier = Modifier.fillMaxWidth()) {
-                DetailItem(label = "취침", value = formatMillisToTime(record.bedtime), modifier = Modifier.weight(1f))
-                DetailItem(label = "기상", value = formatMillisToTime(record.wakeTime), modifier = Modifier.weight(1f))
-                DetailItem(label = "수면", value = formatMinutesToDuration(record.durationMinutes), modifier = Modifier.weight(1f))
+                DetailItem(
+                    label = "취침",
+                    value = formatMillisToTime(record.bedtime),
+                    modifier = Modifier.weight(1f)
+                )
+                DetailItem(
+                    label = "기상",
+                    value = formatMillisToTime(record.wakeTime),
+                    modifier = Modifier.weight(1f)
+                )
+                DetailItem(
+                    label = "수면",
+                    value = formatMinutesToDuration(record.durationMinutes),
+                    modifier = Modifier.weight(1f)
+                )
             }
             Spacer(Modifier.height(12.dp))
-            
+
             // 달성률 바
             val ratePct = (record.achievementRate * 100).toInt()
             Text("목표 달성률 $ratePct%", fontSize = 12.sp, color = onSurfaceVariant)
@@ -609,9 +612,15 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
             }
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                ChipInfo(label = if (record.isLockUsed) "잠금 사용 ✅" else "잠금 미사용", modifier = Modifier.weight(1f))
+                ChipInfo(
+                    label = if (record.isLockUsed) "잠금 사용 ✅" else "잠금 미사용",
+                    modifier = Modifier.weight(1f)
+                )
                 Spacer(Modifier.width(8.dp))
-                ChipInfo(label = "수면 효율 ${(record.sleepEfficiency * 100).toInt()}%", modifier = Modifier.weight(1f))
+                ChipInfo(
+                    label = "수면 효율 ${(record.sleepEfficiency * 100).toInt()}%",
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -755,7 +764,11 @@ private fun PeriodChipRow(selectedIndex: Int, onIntent: (StatsIntent) -> Unit) {
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(if (isSelected) indigo else surface)
-                    .border(1.dp, if (isSelected) Color.Transparent else Color(0x334938FF), RoundedCornerShape(20.dp))
+                    .border(
+                        1.dp,
+                        if (isSelected) Color.Transparent else Color(0x334938FF),
+                        RoundedCornerShape(20.dp)
+                    )
                     .clickable { onIntent(StatsIntent.SelectPeriod(idx)) }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -776,9 +789,9 @@ private fun KeyMetricsRow(state: StatsState) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TrendMetricCard("평균 수면", formatMinutesToDuration(state.avgSleepMinutes), Modifier.weight(1f))
-        TrendMetricCard("수면 효율", "${(state.avgEfficiency * 100).toInt()}%", Modifier.weight(1f))
-        TrendMetricCard("목표 달성", "${state.achievementCount}일", Modifier.weight(1f))
+        TrendMetricCard(state.metricLabel1, state.metricValue1, Modifier.weight(1f))
+        TrendMetricCard(state.metricLabel2, state.metricValue2, Modifier.weight(1f))
+        TrendMetricCard(state.metricLabel3, state.metricValue3, Modifier.weight(1f))
     }
 }
 
@@ -818,20 +831,26 @@ private fun SleepTrendChartCard(state: StatsState) {
                         .background(amber.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Text("목표 ${formatMinutesToDuration(state.currentTargetMinutes)}", fontSize = 11.sp, color = amber, fontWeight = FontWeight.Medium)
+                    Text(
+                        "목표 ${formatMinutesToDuration(state.currentTargetMinutes)}",
+                        fontSize = 11.sp,
+                        color = amber,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))
 
-            val maxVal = maxOf(state.weeklyTrend.maxOrNull() ?: 10f, 10f)
+            val bars = state.periodBars.ifEmpty { listOf(0f) }
+            val barCount = bars.size
+            val maxVal = maxOf(bars.maxOrNull() ?: 10f, 10f)
             Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
                 val w = size.width
                 val h = size.height
-                val barCount = state.weeklyTrend.size.coerceAtLeast(1)
                 val barW = w / (barCount * 2f)
                 val gap = barW
 
-                // 목표선 (설정된 목표 시간 연동)
+                // 목표선
                 val targetHours = state.currentTargetMinutes / 60f
                 val targetY = h - (targetHours / maxVal) * h
                 drawLine(
@@ -842,11 +861,11 @@ private fun SleepTrendChartCard(state: StatsState) {
                     strokeWidth = 1.5.dp.toPx()
                 )
 
-                state.weeklyTrend.forEachIndexed { i, hrs ->
+                bars.forEachIndexed { i, hrs ->
                     val barH = (hrs / maxVal) * h
                     val x = i * (barW + gap) + gap / 2
                     val y = h - barH
-                    val rate = hrs / targetHours
+                    val rate = if (targetHours > 0) hrs / targetHours else 1f
                     val barColor = when {
                         rate >= 0.95f -> indigo
                         rate >= 0.7f -> amber
@@ -863,14 +882,20 @@ private fun SleepTrendChartCard(state: StatsState) {
             }
 
             Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                state.trendDates.forEach { day ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                state.periodLabels.forEach { label ->
+                    val isYearly = state.selectedPeriodIndex >= 2
                     Text(
-                        day,
-                        fontSize = 11.sp,
+                        text = label,
+                        fontSize = if (isYearly) 9.sp else 11.sp,
                         color = onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -892,7 +917,7 @@ private fun WeekdayHeatmapCard(state: StatsState) {
 
             val heatmapData = state.heatmapData.ifEmpty { List(7) { 0f } }
             val maxAvg = maxOf(heatmapData.maxOrNull() ?: 1f, 1f)
-            
+
             Row(modifier = Modifier.fillMaxWidth()) {
                 dayNames.forEachIndexed { i, day ->
                     val avg = heatmapData.getOrElse(i) { 0f }
@@ -902,7 +927,7 @@ private fun WeekdayHeatmapCard(state: StatsState) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = if (avg > 0) "${avg.toInt()}h" else "-",
+                            text = if (avg > 0) "%.1fh".format(avg) else "-",
                             fontSize = 10.sp,
                             color = onSurfaceVariant
                         )
@@ -928,7 +953,8 @@ private fun WeekdayHeatmapCard(state: StatsState) {
                     .padding(10.dp)
             ) {
                 val bestDayIdx = heatmapData.indexOfMax()
-                val bestDayName = if (bestDayIdx != -1 && heatmapData[bestDayIdx] > 0) dayNames[bestDayIdx] else "요일"
+                val bestDayName =
+                    if (bestDayIdx != -1 && heatmapData[bestDayIdx] > 0) dayNames[bestDayIdx] else "요일"
                 Text(
                     "💡 ${bestDayName}요일에 평균 가장 많이 주무시네요",
                     fontSize = 12.sp,
@@ -991,7 +1017,9 @@ private fun formatDayLabel(dateStr: String): String {
     return try {
         val date = LocalDate.parse(dateStr)
         "${date.monthNumber}월 ${date.dayOfMonth}일"
-    } catch (e: Exception) { dateStr }
+    } catch (e: Exception) {
+        dateStr
+    }
 }
 
 @Composable
@@ -1025,7 +1053,11 @@ private fun BestWorstItem(
 // ══════════════════════════════════════════
 
 @Composable
-private fun InsightTab(state: StatsState, isPremium: Boolean, onNavigateToSubscription: () -> Unit) {
+private fun InsightTab(
+    state: StatsState,
+    isPremium: Boolean,
+    onNavigateToSubscription: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1039,7 +1071,7 @@ private fun InsightTab(state: StatsState, isPremium: Boolean, onNavigateToSubscr
             // 비프리미엄: 블러 없이 업셀 카드만
             InsightUpsellCard(onNavigateToSubscription = onNavigateToSubscription)
         } else {
-            SleepScoreCard(score = (state.avgEfficiency * 100).toInt())
+            SleepScoreCard(state = state)
             Spacer(Modifier.height(16.dp))
             SleepDebtCard(state = state)
             Spacer(Modifier.height(16.dp))
@@ -1053,7 +1085,8 @@ private fun InsightTab(state: StatsState, isPremium: Boolean, onNavigateToSubscr
 // PremiumBadge 함수 제거됨 (인사이트 전체가 프리미엄이므로 개별 표시 불필요)
 
 @Composable
-private fun SleepScoreCard(score: Int) {
+private fun SleepScoreCard(state: StatsState) {
+    val score = state.sleepScore
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -1082,7 +1115,10 @@ private fun SleepScoreCard(score: Int) {
                         )
                         // 점수 아크
                         drawArc(
-                            brush = Brush.sweepGradient(listOf(indigo, Color(0xFF8B7FFF)), center = center),
+                            brush = Brush.sweepGradient(
+                                listOf(indigo, Color(0xFF8B7FFF)),
+                                center = center
+                            ),
                             startAngle = -90f, sweepAngle = score / 100f * 360f,
                             useCenter = false,
                             style = Stroke(stroke, cap = StrokeCap.Round),
@@ -1090,24 +1126,34 @@ private fun SleepScoreCard(score: Int) {
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("$score", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = onSurface)
+                        Text(
+                            "$score",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = onSurface
+                        )
                         Text("점", fontSize = 12.sp, color = onSurfaceVariant)
                     }
                 }
 
                 Spacer(Modifier.width(20.dp))
 
-                // 서브스코어 (평균적 수식 기반 가상 스코어링)
+                // 서브스코어 (실데이터 체계 연동)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val statusText = when {
                         score >= 90 -> "😊 매우 좋음"
                         score >= 80 -> "🙂 좋음"
-                        else        -> "🤔 관리 필요"
+                        else -> "🤔 관리 필요"
                     }
-                    Text(statusText, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (score >= 80) green else amber)
-                    SubScoreBar("수면 시간", (score / 100f).coerceIn(0f, 1f))
-                    SubScoreBar("일관성", 0.85f)
-                    SubScoreBar("잠금 준수", if (score > 50) 0.9f else 0.4f)
+                    Text(
+                        statusText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (score >= 80) green else amber
+                    )
+                    SubScoreBar("수면 시간", state.durationScore)
+                    SubScoreBar("일관성", state.consistencyScore)
+                    SubScoreBar("잠금 준수", state.lockComplianceScore)
                 }
             }
         }
@@ -1118,7 +1164,12 @@ private fun SleepScoreCard(score: Int) {
 private fun SubScoreBar(label: String, ratio: Float) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, fontSize = 11.sp, color = onSurfaceVariant, modifier = Modifier.width(72.dp))
+            Text(
+                label,
+                fontSize = 11.sp,
+                color = onSurfaceVariant,
+                modifier = Modifier.width(72.dp)
+            )
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier = Modifier
@@ -1143,11 +1194,14 @@ private fun SubScoreBar(label: String, ratio: Float) {
 
 @Composable
 private fun SleepDebtCard(state: StatsState) {
-    val targetTotal = state.currentTargetMinutes * 7.0f // 주간 목표 (설정 기반)
-    val actualTotal = state.avgSleepMinutes * 7.0f
-    val debt = (targetTotal - actualTotal).coerceAtLeast(0f)
-    val debtH = (debt / 60).toInt()
-    val debtM = (debt % 60).toInt()
+    val debt = state.recentSevenDaysDebt.toFloat()
+    val avgH = state.recentAvgMinutes / 60
+    val avgM = state.recentAvgMinutes % 60
+    val targetH = state.currentTargetMinutes / 60
+    val targetM = state.currentTargetMinutes % 60
+
+    // 오늘의 권장 추가 수면 (부채를 7로 나눈 값 + 보정치)
+    val recommendedExtra = (debt / 7 + 10).toInt().coerceAtMost(120)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1156,7 +1210,7 @@ private fun SleepDebtCard(state: StatsState) {
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("이번 주 수면 부채", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
+                Text("수면 코칭", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1164,11 +1218,22 @@ private fun SleepDebtCard(state: StatsState) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     if (debt > 0) {
-                        Text("${debtH}h ${debtM}m 부족", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = amber)
-                        Text("주간 목표 ${formatMinutesToDuration(targetTotal.toInt())} / 실제 ${formatMinutesToDuration(actualTotal.toInt())}", fontSize = 12.sp, color = onSurfaceVariant)
+                        Text(
+                            text = buildString {
+                                append("최근 7일간 평균 ${avgH}시간 ${avgM}분 주무셨어요. ")
+                                append("목표인 ${targetH}시간 ${targetM}분을 채우려면 오늘은 약 ${recommendedExtra}분 더 주무시는 게 좋겠어요!")
+                            },
+                            fontSize = 14.sp,
+                            color = onSurface,
+                            lineHeight = 20.sp
+                        )
                     } else {
                         Text("부채 없음", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green)
-                        Text("수집된 데이터를 기반으로 목표를 충족했습니다.", fontSize = 12.sp, color = onSurfaceVariant)
+                        Text(
+                            "최근 수집된 데이터가 목표 시간을 아주 잘 충족하고 있습니다!",
+                            fontSize = 12.sp,
+                            color = onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -1180,18 +1245,19 @@ private fun SleepDebtCard(state: StatsState) {
                     .clip(RoundedCornerShape(4.dp))
                     .background(surfaceHigh)
             ) {
-                val ratio = if (targetTotal > 0) (actualTotal / targetTotal).coerceIn(0f, 1f) else 1f
+                // 목표 대비 실제 평균 수치 비중
+                val progress =
+                    if (state.currentTargetMinutes > 0) (state.recentAvgMinutes.toFloat() / state.currentTargetMinutes.toFloat()).coerceIn(
+                        0f,
+                        1f
+                    ) else 1f
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(ratio)
+                        .fillMaxWidth(progress)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(4.dp))
-                        .background(if (ratio >= 1f) green else amber)
+                        .background(if (progress >= 1f) green else amber)
                 )
-            }
-            if (debt > 0) {
-                Spacer(Modifier.height(10.dp))
-                Text("→ 오늘 약 ${debtM + 10}분 더 주무세요", fontSize = 13.sp, color = amber, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -1210,17 +1276,31 @@ private fun LockStreakCard(streak: Int) {
                 Text("잠금 연속 달성", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
             }
             Spacer(Modifier.height(16.dp))
-            Text("🔥 ${streak}일", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = if (streak > 0) amber else onSurface)
-            Text(if (streak > 0) "연속 ${streak}일째 잠금을 켜고 숙면을 취했어요!" else "기록을 쌓아 연속 잠금에 도전하세요!", fontSize = 13.sp, color = onSurfaceVariant)
+            Text(
+                "🔥 ${streak}일",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (streak > 0) amber else onSurface
+            )
+            Text(
+                if (streak > 0) "연속 ${streak}일째 잠금을 켜고 숙면을 취했어요!" else "기록을 쌓아 연속 잠금에 도전하세요!",
+                fontSize = 13.sp,
+                color = onSurfaceVariant
+            )
             Spacer(Modifier.height(16.dp))
 
-            // 최근 7일 시각화 (간략화)
+            // 최근 7일 시각화 (현재 요일 기준 하이라이팅 버그 수정)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                val todayIndex = (today.dayOfWeek.ordinal) % 7 // 0=Mon, 6=Sun
+
                 dayNames.forEachIndexed { i, day ->
-                    val isAchieved = i < (streak % 8)
+                    // 현재 요일(todayIndex)부터 streak만큼 소급하여 활성화
+                    val isAchieved = streak > 0 && i <= todayIndex && i >= todayIndex - streak + 1
+
                     Column(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -1231,12 +1311,21 @@ private fun LockStreakCard(streak: Int) {
                                 .clip(CircleShape)
                                 .background(if (isAchieved) indigo else surfaceHigh)
                                 .then(
-                                    if (!isAchieved) Modifier.border(1.dp, Color(0xFF333344), CircleShape)
+                                    if (!isAchieved) Modifier.border(
+                                        1.dp,
+                                        Color(0xFF333344),
+                                        CircleShape
+                                    )
                                     else Modifier
                                 )
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text(day, fontSize = 10.sp, color = onSurfaceVariant)
+                        Text(
+                            day,
+                            fontSize = 10.sp,
+                            color = if (i == todayIndex) indigo else onSurfaceVariant,
+                            fontWeight = if (i == todayIndex) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 }
             }
@@ -1262,20 +1351,27 @@ private fun AIInsightCard(state: StatsState) {
                 .background(indigo)
                 .align(Alignment.CenterStart)
         )
-        Column(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 20.dp)) {
+        Column(
+            modifier = Modifier.padding(
+                start = 20.dp,
+                top = 20.dp,
+                end = 20.dp,
+                bottom = 20.dp
+            )
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("✨ AI 수면 분석", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
+                Text(
+                    "✨ AI 수면 분석",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = onSurface
+                )
             }
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.Top) {
-                Text("💤", fontSize = 28.sp)
+                Text(state.aiSymbol, fontSize = 28.sp)
                 Spacer(Modifier.width(12.dp))
-                val message = when {
-                    state.records.isEmpty() -> "아직 분석할 데이터가 부족해요. 3일 이상 기록해 주세요!"
-                    state.avgEfficiency < 0.8f -> "수면 효율이 조금 낮아요. 취침 전 스마트폰 사용을 줄여보시는 건 어떨까요? 😴"
-                    state.streakDays >= 3 -> "잠금 모드를 아주 잘 사용하고 계시네요! 숙면의 비결입니다. 🔥"
-                    else -> "일정한 시간에 잠드시는 편이네요. 규칙적인 생활은 건강의 기본입니다. ✨"
-                }
+                val message = state.aiMessage
                 Column {
                     Text(
                         message,
