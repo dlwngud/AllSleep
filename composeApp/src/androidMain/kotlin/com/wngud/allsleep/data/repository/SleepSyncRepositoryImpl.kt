@@ -24,7 +24,18 @@ class SleepSyncRepositoryImpl(
                 }
                 
                 // 데이터 변환 후 전송 (문서가 없으면 null)
-                val state = snapshot?.toObject(UserSleepState::class.java)
+                val state = snapshot?.let { doc ->
+                    if (!doc.exists()) return@let null
+                    UserSleepState(
+                        uid = doc.getString("uid") ?: "",
+                        isSleeping = doc.getBoolean("isSleeping") ?: false,
+                        targetWakeUpTime = doc.getLong("targetWakeUpTime"),
+                        bedtime = doc.getString("bedtime") ?: "23:00",
+                        wakeTime = doc.getString("wakeTime") ?: "07:00",
+                        lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
+                        sleepStartAt = doc.getLong("sleepStartAt") ?: 0L
+                    )
+                }
                 trySend(state)
             }
         

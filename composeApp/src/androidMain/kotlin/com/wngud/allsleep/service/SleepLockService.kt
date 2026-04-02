@@ -128,15 +128,17 @@ class SleepLockService : Service(), KoinComponent {
                 externalScope.launch {
                     val user = getCurrentUserUseCase()
                     if (user != null) {
-                        android.util.Log.d("SleepLockService", "Stopping service: Updating Firestore isSleeping to false for user ${user.uid}")
+                        println("[SleepDebug] 오버레이 해제 감지: Firestore 상태 업데이트 시작 (isSleeping=false)")
                         updateUserSleepStateUseCase(
                             uid = user.uid,
                             isSleeping = false,
                             targetWakeUpTime = null,
                             bedtime = null,
                             wakeTime = null
-                        ).onFailure { e ->
-                            android.util.Log.e("SleepLockService", "Failed to update Firestore on stop: ${e.message}")
+                        ).onSuccess {
+                            println("[SleepDebug] 오버레이 해제: Firestore 상태 업데이트 성공")
+                        }.onFailure { e ->
+                            println("[SleepDebug] 오버레이 해제: Firestore 상태 업데이트 실패: ${e.message}")
                         }
                     }
                 }

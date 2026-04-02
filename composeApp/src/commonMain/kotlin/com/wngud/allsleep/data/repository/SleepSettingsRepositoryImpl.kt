@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -23,12 +24,24 @@ class SleepSettingsRepositoryImpl(
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_DEVICE_NAME = stringPreferencesKey("device_name")
         private val KEY_IS_PREMIUM = booleanPreferencesKey("is_premium")
+        private val KEY_ACTIVE_SLEEP_START_AT = longPreferencesKey("active_sleep_start_at")
         
         private const val DEFAULT_BEDTIME = "23:00"
         private const val DEFAULT_WAKE_TIME = "07:00"
     }
+
+    override val activeSleepStartAt: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[KEY_ACTIVE_SLEEP_START_AT] ?: 0L
+    }
+
+    override suspend fun saveActiveSleepStartAt(startTime: Long) {
+        dataStore.edit { preferences ->
+            preferences[KEY_ACTIVE_SLEEP_START_AT] = startTime
+        }
+    }
     
     override val deviceName: Flow<String?> = dataStore.data.map { preferences ->
+// ... (rest of the file)
         preferences[KEY_DEVICE_NAME]
     }
 

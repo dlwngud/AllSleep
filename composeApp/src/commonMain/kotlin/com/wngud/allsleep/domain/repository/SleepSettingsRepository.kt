@@ -33,6 +33,12 @@ interface SleepSettingsRepository {
     // 프리미엄 구독 여부 저장
     suspend fun savePremiumStatus(isPremium: Boolean)
 
+    // 취침 시작 시간 (로컬 세션 보존용)
+    val activeSleepStartAt: Flow<Long>
+
+    // 취침 시작 시간 저장
+    suspend fun saveActiveSleepStartAt(startTime: Long)
+
     // 초기화 (로그아웃 시 등)
     suspend fun clear()
 }
