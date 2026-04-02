@@ -196,22 +196,55 @@ class GlobalSleepViewModel(
         viewModelScope.launch {
             @OptIn(kotlinx.coroutines.FlowPreview::class)
             combine(
-                sleepSettingsRepository.bedtime,
-                sleepSettingsRepository.wakeTime
-            ) { b, w -> b to w }
-                .distinctUntilChanged()
+                listOf(
+                    sleepSettingsRepository.bedtime,
+                    sleepSettingsRepository.wakeTime,
+                    sleepSettingsRepository.sleepAlarmDays,
+                    sleepSettingsRepository.wakeAlarmDays,
+                    sleepSettingsRepository.isSleepAlarmEnabled,
+                    sleepSettingsRepository.isWakeAlarmEnabled
+                )
+            ) { values ->
+                val bedtime = values[0] as String
+                val wakeTime = values[1] as String
+                val sleepDays = values[2] as Set<Int>
+                val wakeDays = values[3] as Set<Int>
+                val sleepEnabled = values[4] as Boolean
+                val wakeEnabled = values[5] as Boolean
+                
+                arrayOf(bedtime, wakeTime, sleepDays, wakeDays, sleepEnabled, wakeEnabled)
+            }
+                .distinctUntilChanged { old, new -> old.contentDeepEquals(new) }
                 .debounce(500L)
-                .collect { (bedtime, wakeTime) ->
+                .collect { values ->
+                    val bedtime = values[0] as String
+                    val wakeTime = values[1] as String
+                    val sleepDays = values[2] as Set<Int>
+                    val wakeDays = values[3] as Set<Int>
+                    val sleepEnabled = values[4] as Boolean
+                    val wakeEnabled = values[5] as Boolean
+                    
                     val uid = currentUid ?: return@collect
                     val remoteState = _state.value.sleepState ?: return@collect
                     
-                    if (remoteState.bedtime != bedtime || remoteState.wakeTime != wakeTime) {
-                        println("SleepBounceDebug: [UpstreamSync] 스케줄 변경 감지! Cloud 업데이트")
+                    val isChanged = remoteState.bedtime != bedtime || 
+                                    remoteState.wakeTime != wakeTime ||
+                                    remoteState.sleepAlarmDays != sleepDays ||
+                                    remoteState.wakeAlarmDays != wakeDays ||
+                                    remoteState.isSleepAlarmEnabled != sleepEnabled ||
+                                    remoteState.isWakeAlarmEnabled != wakeEnabled
+
+                    if (isChanged) {
+                        println("SleepBounceDebug: [UpstreamSync] 알람 설정 변경 감지! Cloud 업데이트")
                         updateUserSleepStateUseCase(
                             uid = uid,
                             isSleeping = null,
                             bedtime = bedtime,
-                            wakeTime = wakeTime
+                            wakeTime = wakeTime,
+                            sleepAlarmDays = sleepDays,
+                            wakeAlarmDays = wakeDays,
+                            isSleepAlarmEnabled = sleepEnabled,
+                            isWakeAlarmEnabled = wakeEnabled
                         )
                     }
                 }
@@ -281,11 +314,20 @@ class GlobalSleepViewModel(
         val uid = currentUid ?: return
         val bedtime = sleepSettingsRepository.bedtime.first()
         val wakeTime = sleepSettingsRepository.wakeTime.first()
+        val sleepDays = sleepSettingsRepository.sleepAlarmDays.first()
+        val wakeDays = sleepSettingsRepository.wakeAlarmDays.first()
+        val sleepEnabled = sleepSettingsRepository.isSleepAlarmEnabled.first()
+        val wakeEnabled = sleepSettingsRepository.isWakeAlarmEnabled.first()
+
         updateUserSleepStateUseCase(
             uid = uid,
             isSleeping = null,
             bedtime = bedtime,
-            wakeTime = wakeTime
+            wakeTime = wakeTime,
+            sleepAlarmDays = sleepDays,
+            wakeAlarmDays = wakeDays,
+            isSleepAlarmEnabled = sleepEnabled,
+            isWakeAlarmEnabled = wakeEnabled
         )
     }
 
@@ -382,12 +424,46 @@ class GlobalSleepViewModel(
                     _state.update { it.copy(sleepState = state) }
                     
                     if (state != null) {
-                        sleepScheduler.scheduleNextEvents(state.bedtime, state.wakeTime)
                         launch {
+                            val bedtime = state.bedtime
+                            val wakeTime = state.wakeTime
+                            val isSleepEnabled = sleepSettingsRepository.isSleepAlarmEnabled.first()
+                            val sleepDays = if (isSleepEnabled) sleepSettingsRepository.sleepAlarmDays.first() else emptySet()
+                            
+                            val isWakeEnabled = sleepSettingsRepository.isWakeAlarmEnabled.first()
+                            val wakeDays = if (isWakeEnabled) sleepSettingsRepository.wakeAlarmDays.first() else emptySet()
+                            
+                            sleepScheduler.scheduleNextEvents(bedtime, wakeTime, sleepDays, wakeDays)
+                            
+                            // [Bug Fix] 서버 데이터가 기본값(lastUpdatedAt=0)이고 로컬에 이미 설정이 있다면 덮어쓰지 않음
                             val localBedtime = sleepSettingsRepository.bedtime.first()
                             val localWakeTime = sleepSettingsRepository.wakeTime.first()
-                            if (state.bedtime != localBedtime || state.wakeTime != localWakeTime) {
-                                sleepSettingsRepository.saveSleepSchedule(state.bedtime, state.wakeTime)
+                            
+                            val isDefaultServerData = state.lastUpdatedAt == 0L
+                            
+                            val localSleepDays = sleepSettingsRepository.sleepAlarmDays.first()
+                            val localWakeDays = sleepSettingsRepository.wakeAlarmDays.first()
+                            val localSleepEnabled = sleepSettingsRepository.isSleepAlarmEnabled.first()
+                            val localWakeEnabled = sleepSettingsRepository.isWakeAlarmEnabled.first()
+                            
+                            val isDifferent = state.bedtime != localBedtime || 
+                                            state.wakeTime != localWakeTime ||
+                                            state.sleepAlarmDays != localSleepDays ||
+                                            state.wakeAlarmDays != localWakeDays ||
+                                            state.isSleepAlarmEnabled != localSleepEnabled ||
+                                            state.isWakeAlarmEnabled != localWakeEnabled
+                            
+                            if (isDifferent) {
+                                if (!isDefaultServerData) {
+                                    println("GlobalSleepVM: 서버 설정으로 로컬 동기화 (Server wins)")
+                                    sleepSettingsRepository.saveSleepSchedule(state.bedtime, state.wakeTime)
+                                    sleepSettingsRepository.saveSleepAlarmDays(state.sleepAlarmDays)
+                                    sleepSettingsRepository.saveWakeAlarmDays(state.wakeAlarmDays)
+                                    sleepSettingsRepository.saveSleepAlarmEnabled(state.isSleepAlarmEnabled)
+                                    sleepSettingsRepository.saveWakeAlarmEnabled(state.isWakeAlarmEnabled)
+                                } else {
+                                    println("GlobalSleepVM: 서버가 기본값이므로 로컬 설정을 유지하고 업로드를 대기함 (Local wins)")
+                                }
                             }
                         }
                     }
@@ -496,7 +572,17 @@ class GlobalSleepViewModel(
                 _state.update { it.copy(sleepState = optimisticState) }
 
                 println("[SleepDebug] 수면 상태 업데이트 시도: isSleeping=$isSleeping")
-                val result = updateUserSleepStateUseCase(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
+                val result = updateUserSleepStateUseCase(
+                    uid = uid, 
+                    isSleeping = isSleeping, 
+                    targetWakeUpTime = targetWakeUpTime, 
+                    bedtime = bedtime, 
+                    wakeTime = wakeTime,
+                    sleepAlarmDays = _state.value.sleepState?.sleepAlarmDays,
+                    wakeAlarmDays = _state.value.sleepState?.wakeAlarmDays,
+                    isSleepAlarmEnabled = _state.value.sleepState?.isSleepAlarmEnabled,
+                    isWakeAlarmEnabled = _state.value.sleepState?.isWakeAlarmEnabled
+                )
                 result.onSuccess {
                     println("[SleepDebug] 수면 상태 업데이트 성공: isSleeping=$isSleeping")
                     // 수면 기록 생성이 이제 '관찰자(startObserving)'에서 이루어지므로 여기서는 상태 변경만 관리합니다.
