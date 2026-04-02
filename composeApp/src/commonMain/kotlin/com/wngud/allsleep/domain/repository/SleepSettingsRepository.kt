@@ -12,11 +12,25 @@ interface SleepSettingsRepository {
     // 기상 시간 (HH:mm)
     val wakeTime: Flow<String>
 
+    // 취침/기상 알람 요일 설정 (0=일, 1=월, ..., 6=토)
+    val sleepAlarmDays: Flow<Set<Int>>
+    val wakeAlarmDays: Flow<Set<Int>>
+
+    // 알람 활성화 여부
+    val isSleepAlarmEnabled: Flow<Boolean>
+    val isWakeAlarmEnabled: Flow<Boolean>
+
     // 온보딩 완료 여부
     val isOnboardingCompleted: Flow<Boolean>
     
     // 설정 저장
     suspend fun saveSleepSchedule(bedtime: String, wakeTime: String)
+
+    suspend fun saveSleepAlarmDays(days: Set<Int>)
+    suspend fun saveWakeAlarmDays(days: Set<Int>)
+
+    suspend fun saveSleepAlarmEnabled(enabled: Boolean)
+    suspend fun saveWakeAlarmEnabled(enabled: Boolean)
 
     // 온보딩 완료 상태 저장
     suspend fun saveOnboardingCompleted(completed: Boolean)

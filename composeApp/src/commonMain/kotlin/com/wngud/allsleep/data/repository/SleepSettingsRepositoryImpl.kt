@@ -25,9 +25,14 @@ class SleepSettingsRepositoryImpl(
         private val KEY_DEVICE_NAME = stringPreferencesKey("device_name")
         private val KEY_IS_PREMIUM = booleanPreferencesKey("is_premium")
         private val KEY_ACTIVE_SLEEP_START_AT = longPreferencesKey("active_sleep_start_at")
+        private val KEY_SLEEP_DAYS = stringPreferencesKey("sleep_alarm_days")
+        private val KEY_WAKE_DAYS = stringPreferencesKey("wake_alarm_days")
+        private val KEY_SLEEP_ENABLED = booleanPreferencesKey("sleep_alarm_enabled")
+        private val KEY_WAKE_ENABLED = booleanPreferencesKey("wake_alarm_enabled")
         
         private const val DEFAULT_BEDTIME = "23:00"
         private const val DEFAULT_WAKE_TIME = "07:00"
+        private const val DEFAULT_DAYS = "1,2,3,4,5" // 월-금 기본값
     }
 
     override val activeSleepStartAt: Flow<Long> = dataStore.data.map { preferences ->
@@ -57,6 +62,48 @@ class SleepSettingsRepositoryImpl(
 
     override val wakeTime: Flow<String> = dataStore.data.map { preferences ->
         preferences[KEY_WAKE_TIME] ?: DEFAULT_WAKE_TIME
+    }
+
+    override val sleepAlarmDays: Flow<Set<Int>> = dataStore.data.map { preferences ->
+        val daysStr = preferences[KEY_SLEEP_DAYS] ?: DEFAULT_DAYS
+        if (daysStr.isEmpty()) emptySet() else daysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    override val wakeAlarmDays: Flow<Set<Int>> = dataStore.data.map { preferences ->
+        val daysStr = preferences[KEY_WAKE_DAYS] ?: DEFAULT_DAYS
+        if (daysStr.isEmpty()) emptySet() else daysStr.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+    }
+
+    override val isSleepAlarmEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[KEY_SLEEP_ENABLED] ?: true
+    }
+
+    override val isWakeAlarmEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[KEY_WAKE_ENABLED] ?: true
+    }
+
+    override suspend fun saveSleepAlarmDays(days: Set<Int>) {
+        dataStore.edit { preferences ->
+            preferences[KEY_SLEEP_DAYS] = days.joinToString(",")
+        }
+    }
+
+    override suspend fun saveWakeAlarmDays(days: Set<Int>) {
+        dataStore.edit { preferences ->
+            preferences[KEY_WAKE_DAYS] = days.joinToString(",")
+        }
+    }
+
+    override suspend fun saveSleepAlarmEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_SLEEP_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun saveWakeAlarmEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_WAKE_ENABLED] = enabled
+        }
     }
 
     override val isOnboardingCompleted: Flow<Boolean> = dataStore.data.map { preferences ->

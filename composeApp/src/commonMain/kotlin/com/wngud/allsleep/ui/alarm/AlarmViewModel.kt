@@ -3,9 +3,12 @@ package com.wngud.allsleep.ui.alarm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import com.wngud.allsleep.platform.SleepScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -14,7 +17,8 @@ import kotlinx.coroutines.launch
  * 취침/기상 알람 시간, 요일 설정, 추가 알람 목록을 관리합니다.
  */
 class AlarmViewModel(
-    private val sleepSettingsRepository: SleepSettingsRepository
+    private val sleepSettingsRepository: SleepSettingsRepository,
+    private val sleepScheduler: SleepScheduler
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AlarmState())
@@ -38,26 +42,60 @@ class AlarmViewModel(
                 _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(hour = h, minute = m)) }
             }
         }
+        viewModelScope.launch {
+            sleepSettingsRepository.sleepAlarmDays.collectLatest { days ->
+                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(selectedDays = days)) }
+            }
+        }
+        viewModelScope.launch {
+            sleepSettingsRepository.wakeAlarmDays.collectLatest { days ->
+                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(selectedDays = days)) }
+            }
+        }
+        viewModelScope.launch {
+            sleepSettingsRepository.isSleepAlarmEnabled.collectLatest { enabled ->
+                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(isEnabled = enabled)) }
+            }
+        }
+        viewModelScope.launch {
+            sleepSettingsRepository.isWakeAlarmEnabled.collectLatest { enabled ->
+                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(isEnabled = enabled)) }
+            }
+        }
     }
 
     fun handleIntent(intent: AlarmIntent) {
         when (intent) {
-            is AlarmIntent.ToggleSleepAlarm ->
-                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(isEnabled = intent.enabled)) }
+            is AlarmIntent.ToggleSleepAlarm -> {
+                viewModelScope.launch {
+                    sleepSettingsRepository.saveSleepAlarmEnabled(intent.enabled)
+                    triggerScheduling()
+                }
+            }
 
-            is AlarmIntent.ToggleWakeAlarm ->
-                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(isEnabled = intent.enabled)) }
+            is AlarmIntent.ToggleWakeAlarm -> {
+                viewModelScope.launch {
+                    sleepSettingsRepository.saveWakeAlarmEnabled(intent.enabled)
+                    triggerScheduling()
+                }
+            }
 
             is AlarmIntent.ToggleSleepDay -> {
                 val current = _state.value.sleepAlarm.selectedDays
                 val updated = if (intent.dayIndex in current) current - intent.dayIndex else current + intent.dayIndex
-                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(selectedDays = updated)) }
+                viewModelScope.launch {
+                    sleepSettingsRepository.saveSleepAlarmDays(updated)
+                    triggerScheduling()
+                }
             }
 
             is AlarmIntent.ToggleWakeDay -> {
                 val current = _state.value.wakeAlarm.selectedDays
                 val updated = if (intent.dayIndex in current) current - intent.dayIndex else current + intent.dayIndex
-                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(selectedDays = updated)) }
+                viewModelScope.launch {
+                    sleepSettingsRepository.saveWakeAlarmDays(updated)
+                    triggerScheduling()
+                }
             }
 
             is AlarmIntent.UpdateSleepTime -> updateSleepTime(intent.time)
@@ -83,6 +121,7 @@ class AlarmViewModel(
         viewModelScope.launch {
             val wakeTime = "${_state.value.wakeAlarm.hour.toString().padStart(2, '0')}:${_state.value.wakeAlarm.minute.toString().padStart(2, '0')}"
             sleepSettingsRepository.saveSleepSchedule(time, wakeTime)
+            triggerScheduling()
         }
     }
 
@@ -90,6 +129,26 @@ class AlarmViewModel(
         viewModelScope.launch {
             val sleepTime = "${_state.value.sleepAlarm.hour.toString().padStart(2, '0')}:${_state.value.sleepAlarm.minute.toString().padStart(2, '0')}"
             sleepSettingsRepository.saveSleepSchedule(sleepTime, time)
+            triggerScheduling()
+        }
+    }
+
+    private fun triggerScheduling() {
+        viewModelScope.launch {
+            val bedtime = sleepSettingsRepository.bedtime.first()
+            val wakeTime = sleepSettingsRepository.wakeTime.first()
+            val sleepDays = if (_state.value.sleepAlarm.isEnabled) {
+                sleepSettingsRepository.sleepAlarmDays.first()
+            } else {
+                emptySet()
+            }
+            val wakeDays = if (_state.value.wakeAlarm.isEnabled) {
+                sleepSettingsRepository.wakeAlarmDays.first()
+            } else {
+                emptySet()
+            }
+            
+            sleepScheduler.scheduleNextEvents(bedtime, wakeTime, sleepDays, wakeDays)
         }
     }
 }
