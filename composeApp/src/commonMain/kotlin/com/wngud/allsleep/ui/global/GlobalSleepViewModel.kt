@@ -75,6 +75,7 @@ class GlobalSleepViewModel(
     }
 
     fun handleIntent(intent: GlobalSleepContract.Intent) {
+        println("[SleepDebug] Intent 수신: $intent")
         when (intent) {
             is GlobalSleepContract.Intent.RequestInitialize -> initializeData()
             is GlobalSleepContract.Intent.RequestLogout -> logout()
@@ -330,7 +331,8 @@ class GlobalSleepViewModel(
                     logout()
                 }
                 .collect { state ->
-                    println("SleepBounceDebug: [startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping}")
+                    val oldState = _state.value.sleepState
+                    println("SleepBounceDebug: [startObserving] Firestore snapshot 받음: isSleeping=${state?.isSleeping} (이전: ${oldState?.isSleeping})")
                     
                     if (state == null && currentUid != null) {
                         println("GlobalSleepVM: [startObserving] 서버 데이터 삭제 확인 -> 로그아웃 수행")
@@ -339,13 +341,44 @@ class GlobalSleepViewModel(
                     }
 
                     if (_state.value.isToggleLoading) {
-                        val current = _state.value.sleepState
-                        if (current?.lastUpdatedAt == 0L && state != null && state.isSleeping != current.isSleeping) {
+                        if (oldState?.lastUpdatedAt == 0L && state != null && state.isSleeping != oldState.isSleeping) {
                             println("SleepBounceDebug: [startObserving] Stale 스냅샷 무시됨")
                             return@collect
                         }
                     }
                     
+                    // 수면 종료 감지 (상태 전이: Sleeping -> Awake)
+                    if (oldState?.isSleeping == true && state?.isSleeping == false) {
+                        println("[SleepDebug] 상태 전환 감지: 수면 종료됨 -> 세션 기록 시도")
+                        launch {
+                            val localStartAt = sleepSettingsRepository.activeSleepStartAt.first()
+                            println("[SleepDebug] 관찰자 내 로컬 시작 시각 확인: $localStartAt")
+
+                            val sleepStartAt = if (localStartAt > 0L) localStartAt else oldState.sleepStartAt
+                            if (sleepStartAt > 0L) {
+                                val wakeNow = platformTimeMillis()
+                                val bedtime = sleepSettingsRepository.bedtime.first()
+                                val wakeTime = sleepSettingsRepository.wakeTime.first()
+                                
+                                println("[SleepDebug] 관찰자 주도로 세션 저장 시작: 시작=$sleepStartAt, 종료=$wakeNow")
+                                recordSleepSessionUseCase(
+                                    uid = uid,
+                                    date = formatCurrentDate(sleepStartAt),
+                                    sleepStartAt = sleepStartAt,
+                                    wakeTimeMs = wakeNow,
+                                    targetBedtime = bedtime,
+                                    targetWakeTime = wakeTime,
+                                    isLockUsed = true
+                                )
+                                // 기록 완료 후 로컬 세션 초기화
+                                sleepSettingsRepository.saveActiveSleepStartAt(0L)
+                                println("[SleepDebug] 관찰자 주도 기록 완료 및 로컬 초기화")
+                            } else {
+                                println("[SleepDebug] 시작 시각을 찾을 수 없어 기록을 건너뜁니다.")
+                            }
+                        }
+                    }
+
                     _state.update { it.copy(sleepState = state) }
                     
                     if (state != null) {
@@ -421,46 +454,59 @@ class GlobalSleepViewModel(
     }
 
     private fun toggleSleepState(isSleeping: Boolean, targetWakeUpTime: Long? = null) {
-        if (_state.value.isToggleLoading) return
-        val uid = currentUid ?: return
+        if (_state.value.isToggleLoading) {
+            println("[SleepDebug] 호출 거부: 이미 토글 중입니다.")
+            return
+        }
+        val uid = currentUid ?: run {
+            println("[SleepDebug] 호출 거부: currentUid가 없습니다.")
+            return
+        }
         
+        println("[SleepDebug] toggleSleepState 실행: isSleeping=$isSleeping")
         viewModelScope.launch {
             _state.update { it.copy(isToggleLoading = true) }
             try {
                 val bedtime = sleepSettingsRepository.bedtime.first()
                 val wakeTime = sleepSettingsRepository.wakeTime.first()
+                val now = platformTimeMillis()
+
+                if (isSleeping) {
+                    println("[SleepDebug] 수면 시작 처리: $now")
+                    // 수면 시작 시 로컬 DataStore에 시작 시각 즉시 저장 (백업용)
+                    sleepSettingsRepository.saveActiveSleepStartAt(now)
+                }
 
                 val optimisticState = _state.value.sleepState?.copy(
                     isSleeping = isSleeping,
                     targetWakeUpTime = targetWakeUpTime,
                     bedtime = bedtime,
                     wakeTime = wakeTime,
+                    sleepStartAt = if (isSleeping) now else 0L,
                     lastUpdatedAt = 0L
-                ) ?: UserSleepState(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
+                ) ?: UserSleepState(
+                    uid = uid, 
+                    isSleeping = isSleeping, 
+                    targetWakeUpTime = targetWakeUpTime, 
+                    bedtime = bedtime, 
+                    wakeTime = wakeTime,
+                    sleepStartAt = if (isSleeping) now else 0L
+                )
                 
                 _state.update { it.copy(sleepState = optimisticState) }
 
+                println("[SleepDebug] 수면 상태 업데이트 시도: isSleeping=$isSleeping")
                 val result = updateUserSleepStateUseCase(uid, isSleeping, targetWakeUpTime, bedtime, wakeTime)
                 result.onSuccess {
-                    // 수면 종료 시 세션 기록 자동 생성
-                    if (!isSleeping) {
-                        val sleepStartAt = _state.value.sleepState?.sleepStartAt ?: 0L
-                        if (sleepStartAt > 0L) {
-                            val now = platformTimeMillis()
-                            recordSleepSessionUseCase(
-                                uid = uid,
-                                date = formatCurrentDate(sleepStartAt), // 취침 시작일 기준
-                                sleepStartAt = sleepStartAt,
-                                wakeTimeMs = now,
-                                targetBedtime = bedtime,
-                                targetWakeTime = wakeTime,
-                                isLockUsed = true // 현재 잠금 시스템이 활성화되었으므로 true
-                            )
-                        }
-                    }
+                    println("[SleepDebug] 수면 상태 업데이트 성공: isSleeping=$isSleeping")
+                    // 수면 기록 생성이 이제 '관찰자(startObserving)'에서 이루어지므로 여기서는 상태 변경만 관리합니다.
                 }.onFailure { e -> 
+                    println("[SleepDebug] 업데이트 실패: ${e.message}")
                     _state.update { it.copy(error = "업데이트 실패: ${e.message}") }
                 }
+            } catch (e: Exception) {
+                println("[SleepDebug] 예외 발생: ${e.message}")
+                _state.update { it.copy(error = "수면 상태 변경 실패: ${e.message}") }
             } finally {
                 _state.update { it.copy(isToggleLoading = false) }
             }
@@ -471,9 +517,6 @@ class GlobalSleepViewModel(
     private fun platformTimeMillis(): Long = com.wngud.allsleep.domain.model.platformTimeMillis()
     
     private fun formatCurrentDate(timestamp: Long): String {
-        // 실제로는 expect/actual이나 kotlinx-datetime을 사용해야 함. 
-        // 일단 "yyyy-MM-dd" 하드코딩 형식으로 반환하거나 유틸 구현.
-        // 여기서는 간단한 변환 로직 (예: 2026-03-31)
         return com.wngud.allsleep.domain.model.formatTimestampToDate(timestamp)
     }
 
@@ -484,4 +527,3 @@ class GlobalSleepViewModel(
         }
     }
 }
-
