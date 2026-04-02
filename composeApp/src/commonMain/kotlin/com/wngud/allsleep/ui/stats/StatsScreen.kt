@@ -32,6 +32,10 @@ import com.wngud.allsleep.ui.components.PremiumOverlay
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import kotlinx.datetime.*
+import com.wngud.allsleep.domain.model.SleepRecord
+import com.wngud.allsleep.domain.model.formatTimestampToDate
+import com.wngud.allsleep.domain.model.formatTimestampToTime
 
 // ──────────────────────────────────────────
 // Mock 데이터
@@ -119,9 +123,9 @@ fun StatsScreenContent(
                 // ── 고정 헤더 ──────────────────
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                     Spacer(Modifier.height(12.dp))
-                    HeaderTitleRow(isPremium = isPremium, sleepScore = 82)
+                    HeaderTitleRow(isPremium = isPremium, sleepScore = (state.avgEfficiency * 100).toInt())
                     Spacer(Modifier.height(12.dp))
-                    TodaySummaryCard()
+                    TodaySummaryCard(record = state.latestRecord)
                     Spacer(Modifier.height(12.dp))
                 }
 
@@ -133,6 +137,7 @@ fun StatsScreenContent(
                     StatsTab.RECORD -> RecordTab(state = state, onIntent = onIntent)
                     StatsTab.TREND  -> TrendTab(state = state, onIntent = onIntent)
                     StatsTab.INSIGHT -> InsightTab(
+                        state = state,
                         isPremium = isPremium,
                         onNavigateToSubscription = onNavigateToSubscription
                     )
@@ -193,7 +198,7 @@ private fun HeaderTitleRow(isPremium: Boolean, sleepScore: Int) {
 }
 
 @Composable
-private fun TodaySummaryCard() {
+private fun TodaySummaryCard(record: SleepRecord?) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -204,9 +209,9 @@ private fun TodaySummaryCard() {
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(100.dp)
+                .height(110.dp)
                 .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
-                .background(indigo)
+                .background(if (record != null) indigo else surfaceHigh)
                 .align(Alignment.CenterStart)
         )
         Row(
@@ -215,34 +220,41 @@ private fun TodaySummaryCard() {
                 .padding(start = 20.dp, top = 16.dp, bottom = 16.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 좌측: 수면 시간
-            Column(modifier = Modifier.weight(1f)) {
-                Text("어젯밤", fontSize = 12.sp, color = onSurfaceVariant)
-                Text(
-                    "7h 32m",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = onSurface
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🌙", fontSize = 12.sp)
+            if (record != null) {
+                // 좌측: 수면 시간
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("어젯밤", fontSize = 12.sp, color = onSurfaceVariant)
                     Text(
-                        " 23:24  →  ☀️ 07:05",
-                        fontSize = 12.sp,
+                        formatMinutesToDuration(record.durationMinutes),
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = onSurface
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🌙", fontSize = 12.sp)
+                        Text(
+                            " ${formatMillisToTime(record.bedtime)}  →  ☀️ ${formatMillisToTime(record.wakeTime)}",
+                            fontSize = 12.sp,
+                            color = onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "수면 효율 ${(record.sleepEfficiency).toInt()}%  |  목표 ${formatMinutesToDuration(record.targetMinutes)}",
+                        fontSize = 11.sp,
                         color = onSurfaceVariant
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "수면 효율 87%  |  목표 8h",
-                    fontSize = 11.sp,
-                    color = onSurfaceVariant
-                )
-            }
-            // 우측: 달성률
-            Column(horizontalAlignment = Alignment.End) {
-                Text("✅ 94%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = green)
-                Text("달성", fontSize = 11.sp, color = onSurfaceVariant)
+                // 우측: 달성률
+                Column(horizontalAlignment = Alignment.End) {
+                    val rate = record.achievementRate.toInt()
+                    Text("✅ $rate%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = if (rate >= 95) green else amber)
+                    Text("달성", fontSize = 11.sp, color = onSurfaceVariant)
+                }
+            } else {
+                Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                    Text("최근 수면 데이터가 없습니다", color = onSurfaceVariant, fontSize = 14.sp)
+                }
             }
         }
     }
@@ -314,15 +326,32 @@ private fun RecordTab(state: StatsState, onIntent: (StatsIntent) -> Unit) {
             .padding(horizontal = 20.dp)
             .padding(bottom = 24.dp)
     ) {
-        Spacer(Modifier.height(16.dp))
-        MonthlyCalendarCard(state = state, onIntent = onIntent)
-        Spacer(Modifier.height(16.dp))
-        MonthlySummaryStrip()
+        if (state.isLoading) {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = indigo)
+            }
+        } else {
+            Spacer(Modifier.height(16.dp))
+            MonthlyCalendarCard(state = state, onIntent = onIntent)
+            Spacer(Modifier.height(16.dp))
+            MonthlySummaryStrip(state = state)
+        }
     }
 }
 
 @Composable
 private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Unit) {
+    // 현재 표시 중인 년-월 파싱
+    val currentYearMonth = try {
+        val parts = state.selectedYearMonth.split("-")
+        parts[0].toInt() to parts[1].toInt()
+    } catch (e: Exception) {
+        2026 to 4 // 기본값
+    }
+    
+    val year = currentYearMonth.first
+    val month = currentYearMonth.second
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -342,12 +371,13 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable {
-                            onIntent(StatsIntent.NavigateMonth("2026-02"))
+                            val prevDate = LocalDate(year, month, 1).minus(1, DateTimeUnit.MONTH)
+                            onIntent(StatsIntent.NavigateMonth("${prevDate.year}-${prevDate.monthNumber.toString().padStart(2, '0')}"))
                         }
                         .padding(8.dp)
                 )
                 Text(
-                    text = "2026년 3월",
+                    text = "${year}년 ${month}월",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = onSurface
@@ -359,7 +389,8 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable {
-                            onIntent(StatsIntent.NavigateMonth("2026-04"))
+                            val nextDate = LocalDate(year, month, 1).plus(1, DateTimeUnit.MONTH)
+                            onIntent(StatsIntent.NavigateMonth("${nextDate.year}-${nextDate.monthNumber.toString().padStart(2, '0')}"))
                         }
                         .padding(8.dp)
                 )
@@ -383,25 +414,36 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
 
             Spacer(Modifier.height(8.dp))
 
-            // 3월 1일 = 일요일(0)
-            val startDayOfWeek = 0 // 0=일요일
-            val daysInMonth = 31
-            val totalCells = ((daysInMonth + startDayOfWeek + 6) / 7) * 7
+            // 해당 월의 시작 요일 및 총 일수 계산
+            val firstDayOfMonth = LocalDate(year, month, 1)
+            val startDayOfWeek = firstDayOfMonth.dayOfWeek.ordinal % 7 // ISO ordinal(Mon=1~Sun=7) -> (Sun=0~Sat=6)
+            // 주의: dayOfWeek.ordinal은 월=0일 수 있으므로 조정 필요. 
+            // kotlinx-datetime DayOfWeek enum: MONDAY(0), TUESDAY(1), ..., SUNDAY(6)
+            // 일요일=0으로 맞추기 위해: (dayOfWeek.ordinal + 1) % 7
+            val startPadding = (firstDayOfMonth.dayOfWeek.ordinal + 1) % 7
+            
+            val daysInMonth = try {
+                firstDayOfMonth.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).dayOfMonth
+            } catch (e: Exception) { 30 }
+
+            val totalCells = ((daysInMonth + startPadding + 6) / 7) * 7
 
             val cells = (0 until totalCells).toList()
             cells.chunked(7).forEach { week ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     week.forEach { cell ->
-                        val dayNum = cell - startDayOfWeek + 1
+                        val dayNum = cell - startPadding + 1
                         val isValidDay = dayNum in 1..daysInMonth
-                        val dateStr = if (isValidDay) "2026-03-%02d".format(dayNum) else null
-                        val rate = dateStr?.let { MockData.calendarData[it] }
-                        val isToday = dayNum == 31
+                        val dateStr = if (isValidDay) "${year}-${month.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}" else null
+                        val record = dateStr?.let { state.records[it] }
+                        
+                        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                        val isToday = isValidDay && today.year == year && today.monthNumber == month && today.dayOfMonth == dayNum
                         val isSelected = dateStr == state.selectedDate
 
                         CalendarDayCell(
                             dayNum = if (isValidDay) dayNum else null,
-                            achievementRate = rate,
+                            achievementRate = record?.achievementRate,
                             isToday = isToday,
                             isSelected = isSelected,
                             modifier = Modifier.weight(1f),
@@ -434,8 +476,27 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
 
     // 선택된 날짜 상세 카드
     state.selectedDate?.let { date ->
-        Spacer(Modifier.height(12.dp))
-        SelectedDayDetailCard(date = date)
+        state.records[date]?.let { record ->
+            Spacer(Modifier.height(12.dp))
+            SelectedDayDetailCard(record = record)
+        } ?: run {
+            Spacer(Modifier.height(12.dp))
+            EmptyDayDetailCard(date = date)
+        }
+    }
+}
+
+@Composable
+private fun CalendarLegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(label, fontSize = 10.sp, color = onSurfaceVariant)
     }
 }
 
@@ -449,8 +510,8 @@ private fun CalendarDayCell(
     onClick: () -> Unit
 ) {
     val dotColor = when {
-        achievementRate == null         -> Color(0xFF4A4A6A)
-        achievementRate >= 1.0f         -> green
+        achievementRate == null || achievementRate <= 0f -> Color(0xFF4A4A6A)
+        achievementRate >= 0.95f         -> green
         achievementRate >= 0.7f         -> amber
         else                            -> red
     }
@@ -501,37 +562,29 @@ private fun CalendarDayCell(
 }
 
 @Composable
-private fun CalendarLegendItem(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(label, fontSize = 10.sp, color = onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun SelectedDayDetailCard(date: String) {
+private fun SelectedDayDetailCard(record: SleepRecord) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("3월 15일 목요일", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = onSurface)
+            val dateParts = record.date.split("-")
+            val formattedDate = "${dateParts[1].toInt()}월 ${dateParts[2].toInt()}일 수면 기록"
+            
+            Text(formattedDate, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = onSurface)
             Spacer(Modifier.height(12.dp))
+            
             Row(modifier = Modifier.fillMaxWidth()) {
-                DetailItem(label = "취침", value = "오후 11:24", modifier = Modifier.weight(1f))
-                DetailItem(label = "기상", value = "오전 07:15", modifier = Modifier.weight(1f))
-                DetailItem(label = "수면", value = "7h 51m", modifier = Modifier.weight(1f))
+                DetailItem(label = "취침", value = formatMillisToTime(record.bedtime), modifier = Modifier.weight(1f))
+                DetailItem(label = "기상", value = formatMillisToTime(record.wakeTime), modifier = Modifier.weight(1f))
+                DetailItem(label = "수면", value = formatMinutesToDuration(record.durationMinutes), modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.height(12.dp))
+            
             // 달성률 바
-            Text("달성률 98%", fontSize = 12.sp, color = onSurfaceVariant)
+            val ratePct = (record.achievementRate * 100).toInt()
+            Text("목표 달성률 $ratePct%", fontSize = 12.sp, color = onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Box(
                 modifier = Modifier
@@ -542,19 +595,78 @@ private fun SelectedDayDetailCard(date: String) {
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.98f)
+                        .fillMaxWidth(record.achievementRate.coerceIn(0f, 1f))
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(3.dp))
-                        .background(green)
+                        .background(if (record.achievementRate >= 0.95f) green else amber)
                 )
             }
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                ChipInfo(label = "잠금 사용 ✅", modifier = Modifier.weight(1f))
+                ChipInfo(label = if (record.isLockUsed) "잠금 사용 ✅" else "잠금 미사용", modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                ChipInfo(label = "수면 효율 87%", modifier = Modifier.weight(1f))
+                ChipInfo(label = "수면 효율 ${(record.sleepEfficiency * 100).toInt()}%", modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyDayDetailCard(date: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = surface),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Box(Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("기록된 수면 데이터가 없습니다.", color = onSurfaceVariant, fontSize = 14.sp)
+        }
+    }
+}
+
+private fun formatMillisToTime(millis: Long): String {
+    if (millis <= 0) return "--:--"
+    // 간단한 시간 포맷팅 (KMP 유틸 사용 권장)
+    return com.wngud.allsleep.domain.model.formatTimestampToTime(millis)
+}
+
+private fun formatMinutesToDuration(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    return "${h}h ${m}m"
+}
+
+@Composable
+private fun MonthlySummaryStrip(state: StatsState) {
+    val totalRecords = state.records.size
+    val avgDuration = state.avgSleepMinutes
+    val successCount = state.achievementCount
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            SummaryStripItem(value = formatMinutesToDuration(avgDuration), label = "평균 수면")
+            VerticalDivider(color = surfaceHigh, modifier = Modifier.height(30.dp).width(1.dp))
+            SummaryStripItem(value = "$successCount/${totalRecords}일", label = "목표 달성")
+            VerticalDivider(color = surfaceHigh, modifier = Modifier.height(30.dp).width(1.dp))
+            SummaryStripItem(value = "🔥 ${state.streakDays}일", label = "잠금 연속")
+        }
+    }
+}
+
+@Composable
+private fun SummaryStripItem(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
+        Text(label, fontSize = 11.sp, color = onSurfaceVariant)
     }
 }
 
@@ -581,42 +693,10 @@ private fun ChipInfo(label: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MonthlySummaryStrip() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = surface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            SummaryStripItem(value = "7h 12m", label = "평균 수면")
-            VerticalDivider()
-            SummaryStripItem(value = "18/31일", label = "목표 달성")
-            VerticalDivider()
-            SummaryStripItem(value = "🔥 5일", label = "잠금 연속")
-        }
-    }
-}
-
-@Composable
-private fun SummaryStripItem(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
-        Text(label, fontSize = 11.sp, color = onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun VerticalDivider() {
+private fun VerticalDivider(color: Color, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
-            .width(1.dp)
-            .height(36.dp)
-            .background(Color(0x1A4938FF))
+        modifier = modifier
+            .background(color)
     )
 }
 
@@ -640,19 +720,19 @@ private fun TrendTab(state: StatsState, onIntent: (StatsIntent) -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         // 핵심 지표 3열
-        KeyMetricsRow()
+        KeyMetricsRow(state)
         Spacer(Modifier.height(16.dp))
 
         // 수면 추이 차트
-        SleepTrendChartCard()
+        SleepTrendChartCard(state)
         Spacer(Modifier.height(16.dp))
 
         // 요일별 히트맵
-        WeekdayHeatmapCard()
+        WeekdayHeatmapCard(state)
         Spacer(Modifier.height(16.dp))
 
         // 베스트/워스트
-        BestWorstCard()
+        BestWorstCard(state)
     }
 }
 
@@ -685,14 +765,14 @@ private fun PeriodChipRow(selectedIndex: Int, onIntent: (StatsIntent) -> Unit) {
 }
 
 @Composable
-private fun KeyMetricsRow() {
+private fun KeyMetricsRow(state: StatsState) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TrendMetricCard("평균 수면", "7h 12m", Modifier.weight(1f))
-        TrendMetricCard("수면 효율", "86%", Modifier.weight(1f))
-        TrendMetricCard("목표 달성", "18/31일", Modifier.weight(1f))
+        TrendMetricCard("평균 수면", formatMinutesToDuration(state.avgSleepMinutes), Modifier.weight(1f))
+        TrendMetricCard("수면 효율", "${(state.avgEfficiency * 100).toInt()}%", Modifier.weight(1f))
+        TrendMetricCard("목표 달성", "${state.achievementCount}일", Modifier.weight(1f))
     }
 }
 
@@ -715,7 +795,7 @@ private fun TrendMetricCard(label: String, value: String, modifier: Modifier = M
 }
 
 @Composable
-private fun SleepTrendChartCard() {
+private fun SleepTrendChartCard(state: StatsState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -736,37 +816,40 @@ private fun SleepTrendChartCard() {
             }
             Spacer(Modifier.height(16.dp))
 
-            val maxVal = 10f
+            val maxVal = maxOf(state.weeklyTrend.maxOrNull() ?: 10f, 10f)
             Canvas(modifier = Modifier.fillMaxWidth().height(160.dp)) {
                 val w = size.width
                 val h = size.height
-                val barW = w / (MockData.sleepBars.size * 2f)
-                val gap   = barW
+                val barCount = state.weeklyTrend.size.coerceAtLeast(1)
+                val barW = w / (barCount * 2f)
+                val gap = barW
 
-                // 목표선
-                val targetY = h - (MockData.targetHours / maxVal) * h
+                // 목표선 (8시간 고정 표시 - 실제 앱에서는 유저 설정값 연동)
+                val targetHours = 8f
+                val targetY = h - (targetHours / maxVal) * h
                 drawLine(
                     color = amber,
-                    start  = Offset(0f, targetY),
-                    end    = Offset(w, targetY),
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 8f)),
+                    start = Offset(0f, targetY),
+                    end = Offset(w, targetY),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f)),
                     strokeWidth = 1.5.dp.toPx()
                 )
 
-                MockData.sleepBars.forEachIndexed { i, hrs ->
+                state.weeklyTrend.forEachIndexed { i, hrs ->
                     val barH = (hrs / maxVal) * h
                     val x = i * (barW + gap) + gap / 2
                     val y = h - barH
-                    val rate = hrs / MockData.targetHours
+                    val rate = hrs / targetHours
                     val barColor = when {
-                        rate >= 1.0f -> indigo
+                        rate >= 0.95f -> indigo
                         rate >= 0.7f -> amber
-                        else         -> red
+                        hrs > 0 -> red
+                        else -> surfaceHigh
                     }
                     drawRoundRect(
                         color = barColor,
                         topLeft = Offset(x, y),
-                        size = Size(barW, barH),
+                        size = Size(barW, barH.coerceAtLeast(1f)),
                         cornerRadius = CornerRadius(4.dp.toPx())
                     )
                 }
@@ -774,7 +857,7 @@ private fun SleepTrendChartCard() {
 
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                MockData.days.forEach { day ->
+                state.trendDates.forEach { day ->
                     Text(
                         day,
                         fontSize = 11.sp,
@@ -789,7 +872,8 @@ private fun SleepTrendChartCard() {
 }
 
 @Composable
-private fun WeekdayHeatmapCard() {
+private fun WeekdayHeatmapCard(state: StatsState) {
+    val dayNames = listOf("월", "화", "수", "목", "금", "토", "일")
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -799,17 +883,19 @@ private fun WeekdayHeatmapCard() {
             Text("요일별 수면 패턴", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
             Spacer(Modifier.height(16.dp))
 
-            val maxAvg = MockData.weekdayAvgHours.max()
+            val heatmapData = state.heatmapData.ifEmpty { List(7) { 0f } }
+            val maxAvg = maxOf(heatmapData.maxOrNull() ?: 1f, 1f)
+            
             Row(modifier = Modifier.fillMaxWidth()) {
-                MockData.days.forEachIndexed { i, day ->
-                    val avg = MockData.weekdayAvgHours[i]
-                    val intensity = avg / maxAvg
+                dayNames.forEachIndexed { i, day ->
+                    val avg = heatmapData.getOrElse(i) { 0f }
+                    val intensity = (avg / maxAvg).coerceIn(0.05f, 1f)
                     Column(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "%dh".format(avg.toInt()),
+                            text = if (avg > 0) "${avg.toInt()}h" else "-",
                             fontSize = 10.sp,
                             color = onSurfaceVariant
                         )
@@ -818,7 +904,7 @@ private fun WeekdayHeatmapCard() {
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(indigo.copy(alpha = intensity))
+                                .background(if (avg > 0) indigo.copy(alpha = intensity) else surfaceHigh)
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(day, fontSize = 11.sp, color = onSurfaceVariant)
@@ -834,8 +920,10 @@ private fun WeekdayHeatmapCard() {
                     .background(indigoFaint)
                     .padding(10.dp)
             ) {
+                val bestDayIdx = heatmapData.indexOfMax()
+                val bestDayName = if (bestDayIdx != -1 && heatmapData[bestDayIdx] > 0) dayNames[bestDayIdx] else "요일"
                 Text(
-                    "💡 금요일 밤에 평균 가장 늦게 잡니다",
+                    "💡 ${bestDayName}요일에 평균 가장 많이 주무시네요",
                     fontSize = 12.sp,
                     color = indigo
                 )
@@ -844,36 +932,59 @@ private fun WeekdayHeatmapCard() {
     }
 }
 
+private fun List<Float>.indexOfMax(): Int {
+    if (isEmpty()) return -1
+    var maxIndex = 0
+    for (i in indices) {
+        if (this[i] > this[maxIndex]) maxIndex = i
+    }
+    return maxIndex
+}
+
 @Composable
-private fun BestWorstCard() {
+private fun BestWorstCard(state: StatsState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("이번 달 기록", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
+            Text("선택 기간 성과", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                BestWorstItem(
-                    emoji = "🏅",
-                    title = "최고 수면",
-                    date = "3월 22일",
-                    value = "9h 10m",
-                    valueColor = green,
-                    modifier = Modifier.weight(1f)
-                )
-                BestWorstItem(
-                    emoji = "😴",
-                    title = "최저 수면",
-                    date = "3월 19일",
-                    value = "4h 55m",
-                    valueColor = red,
-                    modifier = Modifier.weight(1f)
-                )
+                if (state.bestRecord != null) {
+                    BestWorstItem(
+                        emoji = "🏅",
+                        title = "최고 성과",
+                        date = formatDayLabel(state.bestRecord.date),
+                        value = formatMinutesToDuration(state.bestRecord.durationMinutes),
+                        valueColor = green,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (state.worstRecord != null) {
+                    BestWorstItem(
+                        emoji = "😴",
+                        title = "최저 성과",
+                        date = formatDayLabel(state.worstRecord.date),
+                        value = formatMinutesToDuration(state.worstRecord.durationMinutes),
+                        valueColor = red,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (state.bestRecord == null && state.worstRecord == null) {
+                    Text("성과를 분석할 기록이 부족합니다.", color = onSurfaceVariant, fontSize = 12.sp)
+                }
             }
         }
     }
+}
+
+private fun formatDayLabel(dateStr: String): String {
+    return try {
+        val date = LocalDate.parse(dateStr)
+        "${date.monthNumber}월 ${date.dayOfMonth}일"
+    } catch (e: Exception) { dateStr }
 }
 
 @Composable
@@ -907,7 +1018,7 @@ private fun BestWorstItem(
 // ══════════════════════════════════════════
 
 @Composable
-private fun InsightTab(isPremium: Boolean, onNavigateToSubscription: () -> Unit) {
+private fun InsightTab(state: StatsState, isPremium: Boolean, onNavigateToSubscription: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -921,13 +1032,13 @@ private fun InsightTab(isPremium: Boolean, onNavigateToSubscription: () -> Unit)
             // 비프리미엄: 블러 없이 업셀 카드만
             InsightUpsellCard(onNavigateToSubscription = onNavigateToSubscription)
         } else {
-            SleepScoreCard()
+            SleepScoreCard(score = (state.avgEfficiency * 100).toInt())
             Spacer(Modifier.height(16.dp))
-            SleepDebtCard()
+            SleepDebtCard(state = state)
             Spacer(Modifier.height(16.dp))
-            LockStreakCard()
+            LockStreakCard(streak = state.streakDays)
             Spacer(Modifier.height(16.dp))
-            AIInsightCard()
+            AIInsightCard(state = state)
         }
     }
 }
@@ -945,7 +1056,7 @@ private fun PremiumBadge() {
 }
 
 @Composable
-private fun SleepScoreCard() {
+private fun SleepScoreCard(score: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -953,7 +1064,7 @@ private fun SleepScoreCard() {
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("수면 점수", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
+                Text("수면 종합 점수", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
                 Spacer(Modifier.width(8.dp))
                 PremiumBadge()
             }
@@ -974,30 +1085,34 @@ private fun SleepScoreCard() {
                             style = Stroke(stroke),
                             size = Size(dia, dia), topLeft = topLeft
                         )
-                        // 점수 아크 (82/100 = 295.2°)
+                        // 점수 아크
                         drawArc(
                             brush = Brush.sweepGradient(listOf(indigo, Color(0xFF8B7FFF)), center = center),
-                            startAngle = -90f, sweepAngle = 82f / 100f * 360f,
+                            startAngle = -90f, sweepAngle = score / 100f * 360f,
                             useCenter = false,
                             style = Stroke(stroke, cap = StrokeCap.Round),
                             size = Size(dia, dia), topLeft = topLeft
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("82", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = onSurface)
+                        Text("$score", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = onSurface)
                         Text("점", fontSize = 12.sp, color = onSurfaceVariant)
                     }
                 }
 
                 Spacer(Modifier.width(20.dp))
 
-                // 서브스코어
+                // 서브스코어 (평균적 수식 기반 가상 스코어링)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("😊 좋음", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = green)
-                    SubScoreBar("시간 충족", 0.88f)
-                    SubScoreBar("취침 일관성", 0.79f)
-                    SubScoreBar("기상 일관성", 0.82f)
-                    SubScoreBar("잠금 준수", 0.90f)
+                    val statusText = when {
+                        score >= 90 -> "😊 매우 좋음"
+                        score >= 80 -> "🙂 좋음"
+                        else        -> "🤔 관리 필요"
+                    }
+                    Text(statusText, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (score >= 80) green else amber)
+                    SubScoreBar("수면 시간", (score / 100f).coerceIn(0f, 1f))
+                    SubScoreBar("일관성", 0.85f)
+                    SubScoreBar("잠금 준수", if (score > 50) 0.9f else 0.4f)
                 }
             }
         }
@@ -1032,7 +1147,13 @@ private fun SubScoreBar(label: String, ratio: Float) {
 }
 
 @Composable
-private fun SleepDebtCard() {
+private fun SleepDebtCard(state: StatsState) {
+    val targetTotal = 56 * 60f // 주간 목표 56시간(8h * 7)
+    val actualTotal = state.avgSleepMinutes * 7f
+    val debt = (targetTotal - actualTotal).coerceAtLeast(0f)
+    val debtH = (debt / 60).toInt()
+    val debtM = (debt % 60).toInt()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -1046,11 +1167,16 @@ private fun SleepDebtCard() {
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("😴", fontSize = 24.sp)
+                Text(if (debt > 0) "😴" else "✅", fontSize = 24.sp)
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("2h 30m 부족", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = amber)
-                    Text("목표 56h / 실제 53h 30m", fontSize = 12.sp, color = onSurfaceVariant)
+                    if (debt > 0) {
+                        Text("${debtH}h ${debtM}m 부족", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = amber)
+                        Text("주간 목표 56h / 실제 ${formatMinutesToDuration(actualTotal.toInt())}", fontSize = 12.sp, color = onSurfaceVariant)
+                    } else {
+                        Text("부채 없음", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green)
+                        Text("수집된 데이터를 기반으로 목표를 충족했습니다.", fontSize = 12.sp, color = onSurfaceVariant)
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1061,22 +1187,26 @@ private fun SleepDebtCard() {
                     .clip(RoundedCornerShape(4.dp))
                     .background(surfaceHigh)
             ) {
+                val ratio = if (targetTotal > 0) (actualTotal / targetTotal).coerceIn(0f, 1f) else 1f
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.4f)
+                        .fillMaxWidth(ratio)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(4.dp))
-                        .background(amber)
+                        .background(if (ratio >= 1f) green else amber)
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            Text("→ 오늘 약 30분 더 주무세요", fontSize = 13.sp, color = amber, fontWeight = FontWeight.Medium)
+            if (debt > 0) {
+                Spacer(Modifier.height(10.dp))
+                Text("→ 오늘 약 ${debtM + 10}분 더 주무세요", fontSize = 13.sp, color = amber, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }
 
 @Composable
-private fun LockStreakCard() {
+private fun LockStreakCard(streak: Int) {
+    val dayNames = listOf("월", "화", "수", "목", "금", "토", "일")
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = surface),
@@ -1089,18 +1219,17 @@ private fun LockStreakCard() {
                 PremiumBadge()
             }
             Spacer(Modifier.height(16.dp))
-            Text("🔥 5일", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = onSurface)
-            Text("연속 5일 목표 취침 시간에 잠금을 켰어요!", fontSize = 13.sp, color = onSurfaceVariant)
+            Text("🔥 ${streak}일", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = if (streak > 0) amber else onSurface)
+            Text(if (streak > 0) "연속 ${streak}일째 잠금을 켜고 숙면을 취했어요!" else "기록을 쌓아 연속 잠금에 도전하세요!", fontSize = 13.sp, color = onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
 
-            // 최근 7일 인디케이터
-            val achievedDays = 5
+            // 최근 7일 시각화 (간략화)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                MockData.days.forEachIndexed { i, day ->
-                    val isAchieved = i < achievedDays
+                dayNames.forEachIndexed { i, day ->
+                    val isAchieved = i < (streak % 8)
                     Column(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -1111,7 +1240,7 @@ private fun LockStreakCard() {
                                 .clip(CircleShape)
                                 .background(if (isAchieved) indigo else surfaceHigh)
                                 .then(
-                                    if (!isAchieved) Modifier.border(1.dp, Color(0xFF334), CircleShape)
+                                    if (!isAchieved) Modifier.border(1.dp, Color(0xFF333344), CircleShape)
                                     else Modifier
                                 )
                         )
@@ -1125,7 +1254,7 @@ private fun LockStreakCard() {
 }
 
 @Composable
-private fun AIInsightCard() {
+private fun AIInsightCard(state: StatsState) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1152,9 +1281,15 @@ private fun AIInsightCard() {
             Row(verticalAlignment = Alignment.Top) {
                 Text("💤", fontSize = 28.sp)
                 Spacer(Modifier.width(12.dp))
+                val message = when {
+                    state.records.isEmpty() -> "아직 분석할 데이터가 부족해요. 3일 이상 기록해 주세요!"
+                    state.avgEfficiency < 0.8f -> "수면 효율이 조금 낮아요. 취침 전 스마트폰 사용을 줄여보시는 건 어떨까요? 😴"
+                    state.streakDays >= 3 -> "잠금 모드를 아주 잘 사용하고 계시네요! 숙면의 비결입니다. 🔥"
+                    else -> "일정한 시간에 잠드시는 편이네요. 규칙적인 생활은 건강의 기본입니다. ✨"
+                }
                 Column {
                     Text(
-                        "주말에 평균 1시간 32분 더 자는 경향이 있어요. 사회적 시차증(Social Jet Lag)에 주의하세요! 😴",
+                        message,
                         fontSize = 14.sp,
                         color = onSurface,
                         lineHeight = 22.sp
@@ -1165,7 +1300,7 @@ private fun AIInsightCard() {
             HorizontalDivider(color = indigo.copy(alpha = 0.15f))
             Spacer(Modifier.height(10.dp))
             Text(
-                "지난 30일 데이터 기반 · 매일 업데이트",
+                "선택 기간 ${state.records.size}개 데이터 기반 · 매일 업데이트",
                 fontSize = 11.sp,
                 color = onSurfaceVariant
             )
