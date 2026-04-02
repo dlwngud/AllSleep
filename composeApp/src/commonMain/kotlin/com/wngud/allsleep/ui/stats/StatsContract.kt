@@ -30,6 +30,9 @@ data class StatsState(
     val bestRecord: SleepRecord? = null,
     val worstRecord: SleepRecord? = null,
     
+    // 설정에서 가져온 현재 목표 수면 시간 (분)
+    val currentTargetMinutes: Int = 480,         // 기본값 8시간
+    
     val error: String? = null
 )
 

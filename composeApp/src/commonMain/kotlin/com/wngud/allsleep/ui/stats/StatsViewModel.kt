@@ -13,7 +13,8 @@ import kotlinx.datetime.*
 
 class StatsViewModel(
     private val sleepRecordRepository: SleepRecordRepository,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StatsState())
@@ -25,6 +26,35 @@ class StatsViewModel(
         _state.update { it.copy(selectedYearMonth = currentMonth) }
         
         loadInitialData(currentMonth)
+        observeTargetSettings()
+    }
+
+    private fun observeTargetSettings() {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                sleepSettingsRepository.bedtime,
+                sleepSettingsRepository.wakeTime
+            ) { bedtime, wakeTime ->
+                calculateTimeDiffMinutes(bedtime, wakeTime)
+            }.collect { targetMinutes ->
+                _state.update { it.copy(currentTargetMinutes = targetMinutes) }
+                // 목표가 바뀌면 부채 계산 등이 달라지므로 통계 재계산
+                calculateTrendStats()
+            }
+        }
+    }
+
+    private fun calculateTimeDiffMinutes(start: String, end: String): Int {
+        return try {
+            val startParts = start.split(":").map { it.toInt() }
+            val endParts = end.split(":").map { it.toInt() }
+            val startTotal = startParts[0] * 60 + startParts[1]
+            var endTotal = endParts[0] * 60 + endParts[1]
+            if (endTotal <= startTotal) endTotal += 24 * 60
+            endTotal - startTotal
+        } catch (e: Exception) {
+            480
+        }
     }
 
     fun handleIntent(intent: StatsIntent) {

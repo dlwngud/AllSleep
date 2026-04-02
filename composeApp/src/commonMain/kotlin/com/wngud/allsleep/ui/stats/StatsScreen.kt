@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
 import com.wngud.allsleep.ui.components.PremiumOverlay
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import org.koin.compose.koinInject
@@ -269,7 +270,7 @@ private fun StatsTabBar(selectedTab: StatsTab, onIntent: (StatsIntent) -> Unit) 
     val tabs = listOf(
         StatsTab.RECORD  to "기록",
         StatsTab.TREND   to "트렌드",
-        StatsTab.INSIGHT to "인사이트 👑"
+        StatsTab.INSIGHT to "인사이트"
     )
 
     Row(
@@ -439,7 +440,7 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                         
                         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
                         val isToday = isValidDay && today.year == year && today.monthNumber == month && today.dayOfMonth == dayNum
-                        val isSelected = dateStr == state.selectedDate
+                        val isSelected = dateStr != null && dateStr == state.selectedDate
 
                         CalendarDayCell(
                             dayNum = if (isValidDay) dayNum else null,
@@ -468,8 +469,6 @@ private fun MonthlyCalendarCard(state: StatsState, onIntent: (StatsIntent) -> Un
                 CalendarLegendItem(amber, "부족")
                 Spacer(Modifier.width(12.dp))
                 CalendarLegendItem(red, "미달")
-                Spacer(Modifier.width(12.dp))
-                CalendarLegendItem(Color(0xFF4A4A6A), "기록없음")
             }
         }
     }
@@ -510,7 +509,7 @@ private fun CalendarDayCell(
     onClick: () -> Unit
 ) {
     val dotColor = when {
-        achievementRate == null || achievementRate <= 0f -> Color(0xFF4A4A6A)
+        achievementRate == null || achievementRate <= 0f -> Color.Transparent
         achievementRate >= 0.95f         -> green
         achievementRate >= 0.7f         -> amber
         else                            -> red
@@ -518,14 +517,19 @@ private fun CalendarDayCell(
 
     Column(
         modifier = modifier
+            .height(48.dp) // 높이를 일관성 있게 고정
             .clip(RoundedCornerShape(8.dp))
             .then(if (isSelected) Modifier.background(indigo.copy(alpha = 0.25f)) else Modifier)
             .clickable(enabled = dayNum != null) { onClick() }
             .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween // 위쪽 숫자와 아래쪽 점 사이의 균형을 맞춤
     ) {
         if (dayNum != null) {
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.size(30.dp), // 숫자가 들어가는 영역 고정
+                contentAlignment = Alignment.Center
+            ) {
                 if (isToday) {
                     Box(
                         modifier = Modifier
@@ -548,15 +552,17 @@ private fun CalendarDayCell(
                     color = if (isSelected) Color.White else onSurface
                 )
             }
-            Spacer(Modifier.height(3.dp))
+            
             Box(
                 modifier = Modifier
+                    .padding(bottom = 2.dp) // 가장 아래쪽에서 살짝 띄움
                     .size(5.dp)
                     .clip(CircleShape)
                     .background(dotColor)
             )
         } else {
-            Box(modifier = Modifier.height(36.dp))
+            // 패딩 셀도 동일한 높이를 보장
+            Spacer(modifier = Modifier.height(48.dp).alpha(0f))
         }
     }
 }
@@ -805,13 +811,14 @@ private fun SleepTrendChartCard(state: StatsState) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("수면 시간 추이", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
                 Spacer(Modifier.weight(1f))
+                val targetHours = state.currentTargetMinutes / 60f
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(amber.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Text("목표 8h", fontSize = 11.sp, color = amber, fontWeight = FontWeight.Medium)
+                    Text("목표 ${formatMinutesToDuration(state.currentTargetMinutes)}", fontSize = 11.sp, color = amber, fontWeight = FontWeight.Medium)
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -824,8 +831,8 @@ private fun SleepTrendChartCard(state: StatsState) {
                 val barW = w / (barCount * 2f)
                 val gap = barW
 
-                // 목표선 (8시간 고정 표시 - 실제 앱에서는 유저 설정값 연동)
-                val targetHours = 8f
+                // 목표선 (설정된 목표 시간 연동)
+                val targetHours = state.currentTargetMinutes / 60f
                 val targetY = h - (targetHours / maxVal) * h
                 drawLine(
                     color = amber,
@@ -1043,17 +1050,7 @@ private fun InsightTab(state: StatsState, isPremium: Boolean, onNavigateToSubscr
     }
 }
 
-@Composable
-private fun PremiumBadge() {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(amber.copy(alpha = 0.2f))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    ) {
-        Text("👑 프리미엄", fontSize = 10.sp, color = amber, fontWeight = FontWeight.Bold)
-    }
-}
+// PremiumBadge 함수 제거됨 (인사이트 전체가 프리미엄이므로 개별 표시 불필요)
 
 @Composable
 private fun SleepScoreCard(score: Int) {
@@ -1065,8 +1062,6 @@ private fun SleepScoreCard(score: Int) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("수면 종합 점수", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
-                Spacer(Modifier.width(8.dp))
-                PremiumBadge()
             }
             Spacer(Modifier.height(20.dp))
 
@@ -1148,8 +1143,8 @@ private fun SubScoreBar(label: String, ratio: Float) {
 
 @Composable
 private fun SleepDebtCard(state: StatsState) {
-    val targetTotal = 56 * 60f // 주간 목표 56시간(8h * 7)
-    val actualTotal = state.avgSleepMinutes * 7f
+    val targetTotal = state.currentTargetMinutes * 7.0f // 주간 목표 (설정 기반)
+    val actualTotal = state.avgSleepMinutes * 7.0f
     val debt = (targetTotal - actualTotal).coerceAtLeast(0f)
     val debtH = (debt / 60).toInt()
     val debtM = (debt % 60).toInt()
@@ -1162,8 +1157,6 @@ private fun SleepDebtCard(state: StatsState) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("이번 주 수면 부채", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
-                Spacer(Modifier.width(8.dp))
-                PremiumBadge()
             }
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1172,7 +1165,7 @@ private fun SleepDebtCard(state: StatsState) {
                 Column {
                     if (debt > 0) {
                         Text("${debtH}h ${debtM}m 부족", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = amber)
-                        Text("주간 목표 56h / 실제 ${formatMinutesToDuration(actualTotal.toInt())}", fontSize = 12.sp, color = onSurfaceVariant)
+                        Text("주간 목표 ${formatMinutesToDuration(targetTotal.toInt())} / 실제 ${formatMinutesToDuration(actualTotal.toInt())}", fontSize = 12.sp, color = onSurfaceVariant)
                     } else {
                         Text("부채 없음", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = green)
                         Text("수집된 데이터를 기반으로 목표를 충족했습니다.", fontSize = 12.sp, color = onSurfaceVariant)
@@ -1215,8 +1208,6 @@ private fun LockStreakCard(streak: Int) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("잠금 연속 달성", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
-                Spacer(Modifier.width(8.dp))
-                PremiumBadge()
             }
             Spacer(Modifier.height(16.dp))
             Text("🔥 ${streak}일", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = if (streak > 0) amber else onSurface)
@@ -1274,8 +1265,6 @@ private fun AIInsightCard(state: StatsState) {
         Column(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("✨ AI 수면 분석", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = onSurface)
-                Spacer(Modifier.width(8.dp))
-                PremiumBadge()
             }
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.Top) {
