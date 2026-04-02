@@ -9,3 +9,8 @@ expect fun platformTimeMillis(): Long
  * 타임스탬프(ms)를 "yyyy-MM-dd" 형식의 문자열로 변환 (expect)
  */
 expect fun formatTimestampToDate(timestamp: Long): String
+
+/**
+ * 타임스탬프(ms)를 "a hh:mm" 형식의 문자열로 변환 (expect)
+ */
+expect fun formatTimestampToTime(timestamp: Long): String
