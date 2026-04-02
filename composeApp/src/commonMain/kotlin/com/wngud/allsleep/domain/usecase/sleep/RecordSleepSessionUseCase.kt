@@ -28,6 +28,7 @@ class RecordSleepSessionUseCase(
         targetWakeTime: String,
         isLockUsed: Boolean
     ): Result<Unit> {
+        println("[SleepDebug] UseCase 진입: date=$date, start=$sleepStartAt, wake=$wakeTimeMs")
         return try {
             val durationMinutes = ((wakeTimeMs - sleepStartAt) / 60000).toInt().coerceAtLeast(0)
             val targetMinutes = calculateTimeDiffMinutes(targetBedtime, targetWakeTime)
@@ -38,10 +39,11 @@ class RecordSleepSessionUseCase(
             } else 0f
             
             // 수면 효율: (목표 시간 / 실제 수면 시간) * 100 (최대 100%)
-            // (실제로 더 많이 잤더라도 목표 대비 효율로 계산하거나, 단순 수식 적용)
             val sleepEfficiency = if (durationMinutes > 0) {
                 min(targetMinutes.toFloat() / durationMinutes.toFloat(), 1.0f) * 100f
             } else 0f
+
+            println("[SleepDebug] 계산 결과: duration=$durationMinutes, target=$targetMinutes, rate=$achievementRate, efficiency=$sleepEfficiency")
 
             val record = SleepRecord(
                 id = date,
@@ -58,8 +60,10 @@ class RecordSleepSessionUseCase(
                 isLockUsed = isLockUsed
             )
 
+            println("[SleepDebug] 리포지토리 저장 호출 시작")
             repository.saveSleepRecord(record)
         } catch (e: Exception) {
+            println("[SleepDebug] UseCase 에러: ${e.message}")
             Result.failure(e)
         }
     }
