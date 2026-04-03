@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 알람 탭 ViewModel
- * 취침/기상 알람 시간, 요일 설정, 추가 알람 목록을 관리합니다.
+ * 평일(월-금)과 주말(토-일) 고정 루틴 구조로 개편
  */
 class AlarmViewModel(
     private val sleepSettingsRepository: SleepSettingsRepository,
@@ -27,128 +27,125 @@ class AlarmViewModel(
     init {
         // 로컬 저장소(DataStore)의 수면 스케줄을 관찰하여 UI 상태와 동기화
         viewModelScope.launch {
-            sleepSettingsRepository.bedtime.collectLatest { bedtime ->
-                val parts = bedtime.split(":")
-                val h = parts.getOrNull(0)?.toIntOrNull() ?: 23
-                val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
-                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(hour = h, minute = m)) }
+            val weekdayFlow = combine(
+                sleepSettingsRepository.weekdayBedtime,
+                sleepSettingsRepository.weekdayWakeTime,
+                sleepSettingsRepository.isWeekdaySleepEnabled,
+                sleepSettingsRepository.isWeekdayWakeEnabled
+            ) { b, w, se, we -> 
+                RoutineData(b, w, se, we)
             }
-        }
-        viewModelScope.launch {
-            sleepSettingsRepository.wakeTime.collectLatest { wakeTime ->
-                val parts = wakeTime.split(":")
-                val h = parts.getOrNull(0)?.toIntOrNull() ?: 7
-                val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
-                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(hour = h, minute = m)) }
+            
+            val weekendFlow = combine(
+                sleepSettingsRepository.weekendBedtime,
+                sleepSettingsRepository.weekendWakeTime,
+                sleepSettingsRepository.isWeekendSleepEnabled,
+                sleepSettingsRepository.isWeekendWakeEnabled
+            ) { b, w, se, we -> 
+                RoutineData(b, w, se, we)
             }
+
+            combine(weekdayFlow, weekendFlow) { wd, we -> wd to we }
+                .collectLatest { (wd, we) ->
+                    _state.update { 
+                        it.copy(
+                            weekdaySleep = parseToRoutine(wd.bedtime, wd.sleepEnabled),
+                            weekdayWake = parseToRoutine(wd.wakeTime, wd.wakeEnabled),
+                            weekendSleep = parseToRoutine(we.bedtime, we.sleepEnabled),
+                            weekendWake = parseToRoutine(we.wakeTime, we.wakeEnabled)
+                        )
+                    }
+                }
         }
-        viewModelScope.launch {
-            sleepSettingsRepository.sleepAlarmDays.collectLatest { days ->
-                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(selectedDays = days)) }
-            }
-        }
-        viewModelScope.launch {
-            sleepSettingsRepository.wakeAlarmDays.collectLatest { days ->
-                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(selectedDays = days)) }
-            }
-        }
-        viewModelScope.launch {
-            sleepSettingsRepository.isSleepAlarmEnabled.collectLatest { enabled ->
-                _state.update { it.copy(sleepAlarm = it.sleepAlarm.copy(isEnabled = enabled)) }
-            }
-        }
-        viewModelScope.launch {
-            sleepSettingsRepository.isWakeAlarmEnabled.collectLatest { enabled ->
-                _state.update { it.copy(wakeAlarm = it.wakeAlarm.copy(isEnabled = enabled)) }
-            }
-        }
+    }
+
+    private data class RoutineData(
+        val bedtime: String,
+        val wakeTime: String,
+        val sleepEnabled: Boolean,
+        val wakeEnabled: Boolean
+    )
+
+    private fun parseToRoutine(time: String, isEnabled: Boolean): AlarmRoutine {
+        val parts = time.split(":")
+        val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        return AlarmRoutine(h, m, isEnabled)
     }
 
     fun handleIntent(intent: AlarmIntent) {
         when (intent) {
-            is AlarmIntent.ToggleSleepAlarm -> {
+            is AlarmIntent.SelectTab -> {
+                _state.update { it.copy(selectedTab = intent.tab) }
+            }
+
+            is AlarmIntent.UpdateSleepTime -> {
+                val tab = _state.value.selectedTab
                 viewModelScope.launch {
-                    sleepSettingsRepository.saveSleepAlarmEnabled(intent.enabled)
+                    if (tab == AlarmTab.WEEKDAY) {
+                        val currentW = "${_state.value.weekdayWake.hour.toString().padStart(2, '0')}:${_state.value.weekdayWake.minute.toString().padStart(2, '0')}"
+                        sleepSettingsRepository.saveWeekdaySchedule(intent.time, currentW)
+                    } else {
+                        val currentW = "${_state.value.weekendWake.hour.toString().padStart(2, '0')}:${_state.value.weekendWake.minute.toString().padStart(2, '0')}"
+                        sleepSettingsRepository.saveWeekendSchedule(intent.time, currentW)
+                    }
+                    triggerScheduling()
+                }
+            }
+
+            is AlarmIntent.UpdateWakeTime -> {
+                val tab = _state.value.selectedTab
+                viewModelScope.launch {
+                    if (tab == AlarmTab.WEEKDAY) {
+                        val currentS = "${_state.value.weekdaySleep.hour.toString().padStart(2, '0')}:${_state.value.weekdaySleep.minute.toString().padStart(2, '0')}"
+                        sleepSettingsRepository.saveWeekdaySchedule(currentS, intent.time)
+                    } else {
+                        val currentS = "${_state.value.weekendSleep.hour.toString().padStart(2, '0')}:${_state.value.weekendSleep.minute.toString().padStart(2, '0')}"
+                        sleepSettingsRepository.saveWeekendSchedule(currentS, intent.time)
+                    }
+                    triggerScheduling()
+                }
+            }
+
+            is AlarmIntent.ToggleSleepAlarm -> {
+                val tab = _state.value.selectedTab
+                viewModelScope.launch {
+                    if (tab == AlarmTab.WEEKDAY) {
+                        sleepSettingsRepository.saveWeekdaySleepEnabled(intent.enabled)
+                    } else {
+                        sleepSettingsRepository.saveWeekendSleepEnabled(intent.enabled)
+                    }
                     triggerScheduling()
                 }
             }
 
             is AlarmIntent.ToggleWakeAlarm -> {
+                val tab = _state.value.selectedTab
                 viewModelScope.launch {
-                    sleepSettingsRepository.saveWakeAlarmEnabled(intent.enabled)
+                    if (tab == AlarmTab.WEEKDAY) {
+                        sleepSettingsRepository.saveWeekdayWakeEnabled(intent.enabled)
+                    } else {
+                        sleepSettingsRepository.saveWeekendWakeEnabled(intent.enabled)
+                    }
                     triggerScheduling()
                 }
             }
-
-            is AlarmIntent.ToggleSleepDay -> {
-                val current = _state.value.sleepAlarm.selectedDays
-                val updated = if (intent.dayIndex in current) current - intent.dayIndex else current + intent.dayIndex
-                viewModelScope.launch {
-                    sleepSettingsRepository.saveSleepAlarmDays(updated)
-                    triggerScheduling()
-                }
-            }
-
-            is AlarmIntent.ToggleWakeDay -> {
-                val current = _state.value.wakeAlarm.selectedDays
-                val updated = if (intent.dayIndex in current) current - intent.dayIndex else current + intent.dayIndex
-                viewModelScope.launch {
-                    sleepSettingsRepository.saveWakeAlarmDays(updated)
-                    triggerScheduling()
-                }
-            }
-
-            is AlarmIntent.UpdateSleepTime -> updateSleepTime(intent.time)
-            is AlarmIntent.UpdateWakeTime -> updateWakeTime(intent.time)
-
-            is AlarmIntent.ToggleExtraAlarm -> {
-                _state.update {
-                    it.copy(
-                        extraAlarms = it.extraAlarms.map { alarm ->
-                            if (alarm.id == intent.id) alarm.copy(isEnabled = !alarm.isEnabled) else alarm
-                        }
-                    )
-                }
-            }
-
-            is AlarmIntent.AddAlarm -> {
-                // TODO: 알람 추가 다이얼로그 연결
-            }
-        }
-    }
-
-    private fun updateSleepTime(time: String) {
-        viewModelScope.launch {
-            val wakeTime = "${_state.value.wakeAlarm.hour.toString().padStart(2, '0')}:${_state.value.wakeAlarm.minute.toString().padStart(2, '0')}"
-            sleepSettingsRepository.saveSleepSchedule(time, wakeTime)
-            triggerScheduling()
-        }
-    }
-
-    private fun updateWakeTime(time: String) {
-        viewModelScope.launch {
-            val sleepTime = "${_state.value.sleepAlarm.hour.toString().padStart(2, '0')}:${_state.value.sleepAlarm.minute.toString().padStart(2, '0')}"
-            sleepSettingsRepository.saveSleepSchedule(sleepTime, time)
-            triggerScheduling()
         }
     }
 
     private fun triggerScheduling() {
         viewModelScope.launch {
-            val bedtime = sleepSettingsRepository.bedtime.first()
-            val wakeTime = sleepSettingsRepository.wakeTime.first()
-            val sleepDays = if (_state.value.sleepAlarm.isEnabled) {
-                sleepSettingsRepository.sleepAlarmDays.first()
-            } else {
-                emptySet()
-            }
-            val wakeDays = if (_state.value.wakeAlarm.isEnabled) {
-                sleepSettingsRepository.wakeAlarmDays.first()
-            } else {
-                emptySet()
-            }
+            val wdB = sleepSettingsRepository.weekdayBedtime.first()
+            val wdW = sleepSettingsRepository.weekdayWakeTime.first()
+            val wdSE = sleepSettingsRepository.isWeekdaySleepEnabled.first()
             
-            sleepScheduler.scheduleNextEvents(bedtime, wakeTime, sleepDays, wakeDays)
+            val weB = sleepSettingsRepository.weekendBedtime.first()
+            val weW = sleepSettingsRepository.weekendWakeTime.first()
+            val weSE = sleepSettingsRepository.isWeekendSleepEnabled.first()
+            
+            sleepScheduler.scheduleNextEvents(
+                wdB, wdW, wdSE, weB, weW, weSE
+            )
         }
     }
 }

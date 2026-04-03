@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,14 +35,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.wngud.allsleep.ui.theme.*
 
 /**
- * 알람 탭 화면
- *
- * Stitch 디자인 기준:
- * - 상단: 수면 예약 시간 요약 (취침 ~ 기상)
- * - 취침 시간 카드: 원형 시계 + 요일 선택 + ON/OFF
- * - 기상 시간 카드: 원형 시계 + 요일 선택 + ON/OFF
- * - 추가 알람 목록
- * - 새로운 알람 추가 버튼
+ * 알람 탭 화면 (평일/주말 고정 루틴 구조)
  */
 @Composable
 fun AlarmScreen(
@@ -52,6 +46,9 @@ fun AlarmScreen(
     
     var showSleepTimePicker by remember { mutableStateOf(false) }
     var showWakeTimePicker by remember { mutableStateOf(false) }
+
+    val currentSleep = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdaySleep else state.weekendSleep
+    val currentWake = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdayWake else state.weekendWake
 
     AlarmScreenContent(
         contentPadding = contentPadding,
@@ -64,8 +61,8 @@ fun AlarmScreen(
     if (showSleepTimePicker) {
         TimePickerDialog(
             title = "취침 시간 설정",
-            initialHour = state.sleepAlarm.hour,
-            initialMinute = state.sleepAlarm.minute,
+            initialHour = currentSleep.hour,
+            initialMinute = currentSleep.minute,
             onConfirm = { h, m ->
                 val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
                 viewModel.handleIntent(AlarmIntent.UpdateSleepTime(time))
@@ -78,8 +75,8 @@ fun AlarmScreen(
     if (showWakeTimePicker) {
         TimePickerDialog(
             title = "기상 시간 설정",
-            initialHour = state.wakeAlarm.hour,
-            initialMinute = state.wakeAlarm.minute,
+            initialHour = currentWake.hour,
+            initialMinute = currentWake.minute,
             onConfirm = { h, m ->
                 val time = "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}"
                 viewModel.handleIntent(AlarmIntent.UpdateWakeTime(time))
@@ -104,98 +101,124 @@ fun AlarmScreenContent(
             .padding(contentPadding)
             .verticalScroll(rememberScrollState())
     ) {
-        // 헤더
-        AlarmHeader(state)
+        // 1. 상단 루틴 요약 및 설명
+        RoutineHeader(state)
 
-        // 취침 시간 카드
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. 평일/주말 선택 탭
+        TabRow(
+            selectedTabIndex = state.selectedTab.ordinal,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary,
+            divider = {},
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(tabPositions[state.selectedTab.ordinal]),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier.padding(horizontal = 20.dp)
+        ) {
+            AlarmTab.values().forEach { tab ->
+                Tab(
+                    selected = state.selectedTab == tab,
+                    onClick = { onIntent(AlarmIntent.SelectTab(tab)) },
+                    text = {
+                        Text(
+                            text = if (tab == AlarmTab.WEEKDAY) "평일 (월-금)" else "주말 (토-일)",
+                            fontSize = 15.sp,
+                            fontWeight = if (state.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        val currentSleep = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdaySleep else state.weekendSleep
+        val currentWake = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdayWake else state.weekendWake
+
+        // 3. 취침 시간 카드
         AlarmTimeCard(
             icon = "🌙",
             label = "취침 시간",
-            alarm = state.sleepAlarm,
+            routine = currentSleep,
             isAm = false,
+            description = if (state.selectedTab == AlarmTab.WEEKDAY) "일 ~ 목 밤 적용" else "금 ~ 토 밤 적용",
             onToggle = { onIntent(AlarmIntent.ToggleSleepAlarm(it)) },
-            onDayToggle = { onIntent(AlarmIntent.ToggleSleepDay(it)) },
             onTimeClick = onSleepTimeClick
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 기상 시간 카드
+        // 4. 기상 시간 카드
         AlarmTimeCard(
             icon = "☀️",
             label = "기상 시간",
-            alarm = state.wakeAlarm,
+            routine = currentWake,
             isAm = true,
+            description = if (state.selectedTab == AlarmTab.WEEKDAY) "월 ~ 금 아침 적용" else "토 ~ 일 아침 적용",
             onToggle = { onIntent(AlarmIntent.ToggleWakeAlarm(it)) },
-            onDayToggle = { onIntent(AlarmIntent.ToggleWakeDay(it)) },
             onTimeClick = onWakeTimeClick
         )
 
-        // 추가 알람 목록
-        if (state.extraAlarms.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            state.extraAlarms.forEach { alarm ->
-                ExtraAlarmItem(
-                    alarm = alarm,
-                    onToggle = { onIntent(AlarmIntent.ToggleExtraAlarm(alarm.id)) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 새로운 알람 추가 버튼
-        Button(
-            onClick = { onIntent(AlarmIntent.AddAlarm) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .height(52.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "+ 새로운 알람 추가",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 
 @Composable
-private fun AlarmHeader(state: AlarmState) {
-    Row(
+private fun RoutineHeader(state: AlarmState) {
+    val currentSleep = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdaySleep else state.weekendSleep
+    val currentWake = if (state.selectedTab == AlarmTab.WEEKDAY) state.weekdayWake else state.weekendWake
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 20.dp, vertical = 24.dp)
     ) {
-        Column {
-            Text(
-                text = "수면 예약 시간",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-            val sleepTime = "${state.sleepAlarm.hour.toString().padStart(2, '0')}:${state.sleepAlarm.minute.toString().padStart(2, '0')}"
-            val wakeTime = "${state.wakeAlarm.hour.toString().padStart(2, '0')}:${state.wakeAlarm.minute.toString().padStart(2, '0')}"
-            Text(
-                text = "$sleepTime ~ 기상 $wakeTime",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+        Text(
+            text = if (state.selectedTab == AlarmTab.WEEKDAY) "🏃‍♂️ 평일 수면 루틴" else "🛋️ 주말 수면 루틴",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "기상일 요일을 기준으로 루틴이 자동 전환됩니다.",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "현재 선택된 스케줄",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+                val sleepTime = "${currentSleep.hour.toString().padStart(2, '0')}:${currentSleep.minute.toString().padStart(2, '0')}"
+                val wakeTime = "${currentWake.hour.toString().padStart(2, '0')}:${currentWake.minute.toString().padStart(2, '0')}"
+                Text(
+                    text = "$sleepTime ~ 기상 $wakeTime",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(text = if (state.selectedTab == AlarmTab.WEEKDAY) "📅" else "🏖️", fontSize = 28.sp)
         }
-        Text(text = "🌙", fontSize = 24.sp)
     }
 }
 
@@ -203,23 +226,22 @@ private fun AlarmHeader(state: AlarmState) {
 private fun AlarmTimeCard(
     icon: String,
     label: String,
-    alarm: AlarmItem,
+    routine: AlarmRoutine,
     isAm: Boolean,
+    description: String,
     onToggle: (Boolean) -> Unit,
-    onDayToggle: (Int) -> Unit,
     onTimeClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(enabled = alarm.isEnabled, onClick = onTimeClick)
-            .padding(20.dp),
+            .clickable(enabled = routine.isEnabled, onClick = onTimeClick)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 헤더 행
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -227,18 +249,25 @@ private fun AlarmTimeCard(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(text = icon, fontSize = 20.sp)
-                Text(
-                    text = label,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text(text = icon, fontSize = 24.sp)
+                Column {
+                    Text(
+                        text = label,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = description,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
+                }
             }
             Switch(
-                checked = alarm.isEnabled,
+                checked = routine.isEnabled,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
@@ -247,23 +276,22 @@ private fun AlarmTimeCard(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // 원형 시계
         ClockCircle(
-            hour = alarm.hour,
-            minute = alarm.minute,
+            hour = routine.hour,
+            minute = routine.minute,
             isAm = isAm,
-            isEnabled = alarm.isEnabled
+            isEnabled = routine.isEnabled
         )
-
+        
         Spacer(modifier = Modifier.height(16.dp))
-
-        // 요일 선택
-        DaySelector(
-            selectedDays = alarm.selectedDays,
-            isEnabled = alarm.isEnabled,
-            onDayToggle = onDayToggle
+        
+        Text(
+            text = "시간을 눌러 수정",
+            fontSize = 13.sp,
+            color = if (routine.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
         )
     }
 }
@@ -280,11 +308,11 @@ private fun ClockCircle(
     val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
 
     Box(
-        modifier = Modifier.size(140.dp),
+        modifier = Modifier.size(160.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 6.dp.toPx()
+            val strokeWidth = 8.dp.toPx()
             val radius = (size.minDimension - strokeWidth) / 2
 
             // 배경 원
@@ -294,7 +322,7 @@ private fun ClockCircle(
                 style = Stroke(width = strokeWidth)
             )
 
-            // 진행 호 (시침 위치 기준)
+            // 진행 호
             val activeColor = if (isEnabled) primaryColor else disabledColor
             val hourAngle = ((hour % 12) / 12f + minute / 720f) * 360f
             drawArc(
@@ -311,105 +339,18 @@ private fun ClockCircle(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
                 color = if (isEnabled) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
             Text(
                 text = if (isAm) "AM" else "PM",
-                fontSize = 12.sp,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
-    }
-}
-
-@Composable
-private fun DaySelector(
-    selectedDays: Set<Int>,
-    isEnabled: Boolean,
-    onDayToggle: (Int) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        DAYS.forEachIndexed { index, day ->
-            val isSelected = index in selectedDays
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            !isEnabled -> MaterialTheme.colorScheme.surface
-                            isSelected -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.surface
-                        }
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected && isEnabled) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                        shape = CircleShape
-                    )
-                    .clickable(enabled = isEnabled) { onDayToggle(index) },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = day,
-                    fontSize = 12.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = when {
-                        !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        isSelected -> Color.White
-                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    },
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExtraAlarmItem(
-    alarm: AlarmItem,
-    onToggle: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                text = "${alarm.hour.toString().padStart(2, '0')}:${alarm.minute.toString().padStart(2, '0')}",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (alarm.isEnabled) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            )
-            Text(
-                text = alarm.label,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        }
-        Switch(
-            checked = alarm.isEnabled,
-            onCheckedChange = { onToggle() },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
-            )
-        )
     }
 }
 

@@ -2,51 +2,42 @@ package com.wngud.allsleep.ui.alarm
 
 /**
  * 알람 화면의 State와 Intent 정의 (MVI 패턴)
- *
- * Stitch 디자인 기준:
- * - 취침 시간(SleepAlarm): 시간 + 요일 선택 + ON/OFF
- * - 기상 시간(WakeAlarm): 시간 + 요일 선택 + ON/OFF
- * - 추가 알람 목록
+ * 평일(월-금)과 주말(토-일) 고정 루틴 구조로 개편
  */
 
-val DAYS = listOf("일", "월", "화", "수", "목", "금", "토")
+enum class AlarmTab { WEEKDAY, WEEKEND }
 
-data class AlarmItem(
-    val id: Int,
+data class AlarmRoutine(
     val hour: Int,
     val minute: Int,
-    val label: String,
-    val selectedDays: Set<Int>,  // 0=일, 1=월, ..., 6=토
     val isEnabled: Boolean
 )
 
 data class AlarmState(
-    val sleepAlarm: AlarmItem = AlarmItem(
-        id = 0,
-        hour = 23,
-        minute = 0,
-        label = "취침 시간",
-        selectedDays = setOf(1, 2, 3, 4, 5),
-        isEnabled = true
-    ),
-    val wakeAlarm: AlarmItem = AlarmItem(
-        id = 1,
-        hour = 7,
-        minute = 0,
-        label = "기상 시간",
-        selectedDays = setOf(1, 2, 3, 4, 5),
-        isEnabled = true
-    ),
-    val extraAlarms: List<AlarmItem> = emptyList()
+    val selectedTab: AlarmTab = AlarmTab.WEEKDAY,
+    
+    // 평일 루틴 (월-금 기상용)
+    val weekdaySleep: AlarmRoutine = AlarmRoutine(23, 0, true),
+    val weekdayWake: AlarmRoutine = AlarmRoutine(7, 0, true),
+    
+    // 주말 루틴 (토-일 기상용)
+    val weekendSleep: AlarmRoutine = AlarmRoutine(0, 0, true),
+    val weekendWake: AlarmRoutine = AlarmRoutine(9, 0, true)
 )
 
 sealed interface AlarmIntent {
-    data class ToggleSleepAlarm(val enabled: Boolean) : AlarmIntent
-    data class ToggleWakeAlarm(val enabled: Boolean) : AlarmIntent
-    data class ToggleSleepDay(val dayIndex: Int) : AlarmIntent
-    data class ToggleWakeDay(val dayIndex: Int) : AlarmIntent
+    /** 탭 전환 (평일 <-> 주말) */
+    data class SelectTab(val tab: AlarmTab) : AlarmIntent
+    
+    /** 현재 선택된 탭의 취침 시간 업데이트 */
     data class UpdateSleepTime(val time: String) : AlarmIntent
+    
+    /** 현재 선택된 탭의 기상 시간 업데이트 */
     data class UpdateWakeTime(val time: String) : AlarmIntent
-    data class ToggleExtraAlarm(val id: Int) : AlarmIntent
-    data object AddAlarm : AlarmIntent
+    
+    /** 현재 선택된 탭의 취침 알람(잠금) 활성화 토글 */
+    data class ToggleSleepAlarm(val enabled: Boolean) : AlarmIntent
+    
+    /** 현재 선택된 탭의 기상 알람 활성화 토글 */
+    data class ToggleWakeAlarm(val enabled: Boolean) : AlarmIntent
 }
