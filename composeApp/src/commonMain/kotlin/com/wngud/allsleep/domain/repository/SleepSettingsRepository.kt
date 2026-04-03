@@ -6,51 +6,36 @@ import kotlinx.coroutines.flow.Flow
  * 수면 설정 (취침/기상 시간) 저장소 인터페이스
  */
 interface SleepSettingsRepository {
-    // 취침 시간 (HH:mm)
-    val bedtime: Flow<String>
+    // --- 평일 루틴 (월-금 기상용) ---
+    val weekdayBedtime: Flow<String>
+    val weekdayWakeTime: Flow<String>
+    val isWeekdaySleepEnabled: Flow<Boolean>
+    val isWeekdayWakeEnabled: Flow<Boolean>
     
-    // 기상 시간 (HH:mm)
-    val wakeTime: Flow<String>
+    // --- 주말 루틴 (토-일 기상용) ---
+    val weekendBedtime: Flow<String>
+    val weekendWakeTime: Flow<String>
+    val isWeekendSleepEnabled: Flow<Boolean>
+    val isWeekendWakeEnabled: Flow<Boolean>
 
-    // 취침/기상 알람 요일 설정 (0=일, 1=월, ..., 6=토)
-    val sleepAlarmDays: Flow<Set<Int>>
-    val wakeAlarmDays: Flow<Set<Int>>
-
-    // 알람 활성화 여부
-    val isSleepAlarmEnabled: Flow<Boolean>
-    val isWakeAlarmEnabled: Flow<Boolean>
-
-    // 온보딩 완료 여부
+    // --- 공통 설정 ---
     val isOnboardingCompleted: Flow<Boolean>
-    
-    // 설정 저장
-    suspend fun saveSleepSchedule(bedtime: String, wakeTime: String)
-
-    suspend fun saveSleepAlarmDays(days: Set<Int>)
-    suspend fun saveWakeAlarmDays(days: Set<Int>)
-
-    suspend fun saveSleepAlarmEnabled(enabled: Boolean)
-    suspend fun saveWakeAlarmEnabled(enabled: Boolean)
-
-    // 온보딩 완료 상태 저장
-    suspend fun saveOnboardingCompleted(completed: Boolean)
-
-    // 기기 이름 (로컬 캐시)
     val deviceName: Flow<String?>
-
-    // 기기 이름 저장
-    suspend fun saveDeviceName(name: String)
-    
-    // 프리미엄 구독 여부
     val isPremium: Flow<Boolean>
-
-    // 프리미엄 구독 여부 저장
-    suspend fun savePremiumStatus(isPremium: Boolean)
-
-    // 취침 시작 시간 (로컬 세션 보존용)
     val activeSleepStartAt: Flow<Long>
 
-    // 취침 시작 시간 저장
+    // --- 저장 메서드 ---
+    suspend fun saveWeekdaySchedule(bedtime: String, wakeTime: String)
+    suspend fun saveWeekdaySleepEnabled(enabled: Boolean)
+    suspend fun saveWeekdayWakeEnabled(enabled: Boolean)
+
+    suspend fun saveWeekendSchedule(bedtime: String, wakeTime: String)
+    suspend fun saveWeekendSleepEnabled(enabled: Boolean)
+    suspend fun saveWeekendWakeEnabled(enabled: Boolean)
+
+    suspend fun saveOnboardingCompleted(completed: Boolean)
+    suspend fun saveDeviceName(name: String)
+    suspend fun savePremiumStatus(isPremium: Boolean)
     suspend fun saveActiveSleepStartAt(startTime: Long)
 
     // 초기화 (로그아웃 시 등)
