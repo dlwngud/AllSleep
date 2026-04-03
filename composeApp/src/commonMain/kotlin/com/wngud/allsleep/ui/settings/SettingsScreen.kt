@@ -240,12 +240,14 @@ fun SettingsScreenContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 프리미엄 상태/업그레이드 카드
-        if (state.isPremium) {
-            PremiumActiveCard(onManageClick = { onIntent(SettingsIntent.ManageSubscription) })
-        } else {
-            PremiumUpgradeCard(onUpgradeClick = { onIntent(SettingsIntent.UpgradePremium) })
-        }
+        // 프리미엄 멤버십 카드 (새 개편 디자인: 프로필과 동일 높이)
+        PremiumMembershipCard(
+            isPremium = state.isPremium,
+            onActionClick = {
+                if (state.isPremium) onIntent(SettingsIntent.ManageSubscription)
+                else onIntent(SettingsIntent.UpgradePremium)
+            }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -287,6 +289,53 @@ fun SettingsScreenContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 고객 지원
+        SettingsSection(title = "고객 지원") {
+            SettingsRowArrow(
+                emoji = "❓",
+                label = "자주 묻는 질문",
+                onClick = { /* TODO: FAQ 링크 */ }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "⭐",
+                label = "앱 리뷰 남기기",
+                onClick = { /* TODO: 스토어 이동 */ }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "✉️",
+                label = "의견 보내기",
+                onClick = { /* TODO: 이메일 전송 */ }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 서비스 정보
+        SettingsSection(title = "서비스 정보") {
+            SettingsRowArrow(
+                emoji = "📜",
+                label = "이용 약관",
+                onClick = { /* TODO: 약관 뷰어 */ }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "🛡️",
+                label = "개인정보 처리방침",
+                onClick = { /* TODO: 방침 뷰어 */ }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "📱",
+                label = "버전 정보",
+                trailing = "v1.1.0",
+                onClick = { }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // 계정
         SettingsSection(title = "계정") {
             SettingsRowArrow(
@@ -309,19 +358,8 @@ fun SettingsScreenContent(
             )
         }
 
-        // 하단 버전 정보
+        // 하단 여백
         Spacer(modifier = Modifier.height(32.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "v1.1.0",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
     }
 
     // 다이얼로그들 (생략 가능하면 생략하거나 유지)
@@ -416,39 +454,69 @@ private fun ProfileCard(user: User, onEditClick: () -> Unit) {
 }
 
 @Composable
-private fun PremiumUpgradeCard(onUpgradeClick: () -> Unit) {
-    Column(
+private fun PremiumMembershipCard(
+    isPremium: Boolean,
+    onActionClick: () -> Unit
+) {
+    val title = if (isPremium) "연간 구독 중" else "Premium으로 업그레이드"
+    val subtitle = if (isPremium) "2026.04.10 갱신 예정" else "무제한 기기 동기화 및 전용 혜택"
+    
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(colors = listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))))
-            .padding(20.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF4938FF), Color(0xFF8B5CF6))
+                )
+            )
+            .clickable(onClick = onActionClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("AllSleep Premium", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = onUpgradeClick,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF6366F1)),
-            shape = RoundedCornerShape(12.dp)
+        // 좌측 다이아몬드 아이콘
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
         ) {
-            Text("지금 업그레이드", fontWeight = FontWeight.Bold)
+            Text("💎", fontSize = 18.sp)
         }
-    }
-}
-
-@Composable
-private fun PremiumActiveCard(onManageClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(colors = listOf(Color(0xFF4938FF), Color(0xFFA855F7))))
-            .padding(20.dp)
-    ) {
-        Text("Premium 활성", color = Color.White, fontWeight = FontWeight.Bold)
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // 중앙 텍스트 (한 줄씩 유지)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1
+            )
+            Text(
+                text = subtitle,
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        // 우측 화살표 버튼 (박스 형태)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("›", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
