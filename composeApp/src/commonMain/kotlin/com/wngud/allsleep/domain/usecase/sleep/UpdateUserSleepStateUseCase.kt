@@ -9,16 +9,27 @@ class UpdateUserSleepStateUseCase(
         uid: String, 
         isSleeping: Boolean? = null, 
         targetWakeUpTime: Long? = null,
-        bedtime: String? = null,
-        wakeTime: String? = null,
-        sleepAlarmDays: Set<Int>? = null,
-        wakeAlarmDays: Set<Int>? = null,
-        isSleepAlarmEnabled: Boolean? = null,
-        isWakeAlarmEnabled: Boolean? = null
+        weekdayBedtime: String? = null,
+        weekdayWakeTime: String? = null,
+        isWeekdaySleepEnabled: Boolean? = null,
+        isWeekdayWakeEnabled: Boolean? = null,
+        weekendBedtime: String? = null,
+        weekendWakeTime: String? = null,
+        isWeekendSleepEnabled: Boolean? = null,
+        isWeekendWakeEnabled: Boolean? = null
     ): Result<Unit> {
         return sleepSyncRepository.updateUserSleepState(
-            uid, isSleeping, targetWakeUpTime, bedtime, wakeTime,
-            sleepAlarmDays, wakeAlarmDays, isSleepAlarmEnabled, isWakeAlarmEnabled
+            uid = uid,
+            isSleeping = isSleeping,
+            targetWakeUpTime = targetWakeUpTime,
+            weekdayBedtime = weekdayBedtime,
+            weekdayWakeTime = weekdayWakeTime,
+            isWeekdaySleepEnabled = isWeekdaySleepEnabled,
+            isWeekdayWakeEnabled = isWeekdayWakeEnabled,
+            weekendBedtime = weekendBedtime,
+            weekendWakeTime = weekendWakeTime,
+            isWeekendSleepEnabled = isWeekendSleepEnabled,
+            isWeekendWakeEnabled = isWeekendWakeEnabled
         )
     }
 }
