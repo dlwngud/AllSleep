@@ -133,8 +133,14 @@ class SleepLockService : Service(), KoinComponent {
                             uid = user.uid,
                             isSleeping = false,
                             targetWakeUpTime = null,
-                            bedtime = null,
-                            wakeTime = null
+                            weekdayBedtime = null,
+                            weekdayWakeTime = null,
+                            isWeekdaySleepEnabled = null,
+                            isWeekdayWakeEnabled = null,
+                            weekendBedtime = null,
+                            weekendWakeTime = null,
+                            isWeekendSleepEnabled = null,
+                            isWeekendWakeEnabled = null
                         ).onSuccess {
                             println("[SleepDebug] 오버레이 해제: Firestore 상태 업데이트 성공")
                         }.onFailure { e ->

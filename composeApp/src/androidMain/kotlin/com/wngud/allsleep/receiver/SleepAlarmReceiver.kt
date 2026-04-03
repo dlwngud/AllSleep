@@ -35,13 +35,31 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
                 return@launch
             }
 
+            val wdB = sleepSettingsRepository.weekdayBedtime.first()
+            val wdW = sleepSettingsRepository.weekdayWakeTime.first()
+            val wdSE = sleepSettingsRepository.isWeekdaySleepEnabled.first()
+            val wdWE = sleepSettingsRepository.isWeekdayWakeEnabled.first()
+            
+            val weB = sleepSettingsRepository.weekendBedtime.first()
+            val weW = sleepSettingsRepository.weekendWakeTime.first()
+            val weSE = sleepSettingsRepository.isWeekendSleepEnabled.first()
+            val weWE = sleepSettingsRepository.isWeekendWakeEnabled.first()
+
             when (action) {
                 ACTION_START_SLEEP -> {
                     Log.d("SleepAlarmReceiver", "Auto-starting sleep mode for user: ${user.uid}")
                     updateUserSleepStateUseCase(
                         uid = user.uid,
                         isSleeping = true,
-                        targetWakeUpTime = calculateWakeUpTime()
+                        targetWakeUpTime = calculateWakeUpTime(wdW, weW),
+                        weekdayBedtime = wdB,
+                        weekdayWakeTime = wdW,
+                        isWeekdaySleepEnabled = wdSE,
+                        isWeekdayWakeEnabled = wdWE,
+                        weekendBedtime = weB,
+                        weekendWakeTime = weW,
+                        isWeekendSleepEnabled = weSE,
+                        isWeekendWakeEnabled = weWE
                     )
                 }
                 ACTION_STOP_SLEEP -> {
@@ -49,44 +67,53 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
                     updateUserSleepStateUseCase(
                         uid = user.uid,
                         isSleeping = false,
-                        targetWakeUpTime = null
+                        targetWakeUpTime = null,
+                        weekdayBedtime = wdB,
+                        weekdayWakeTime = wdW,
+                        isWeekdaySleepEnabled = wdSE,
+                        isWeekdayWakeEnabled = wdWE,
+                        weekendBedtime = weB,
+                        weekendWakeTime = weW,
+                        isWeekendSleepEnabled = weSE,
+                        isWeekendWakeEnabled = weWE
                     )
                 }
             }
             
             // 다음 알람 재스케줄링 (24시간 주기 순환을 위해)
-            val bedtime = sleepSettingsRepository.bedtime.first()
-            val wakeTime = sleepSettingsRepository.wakeTime.first()
-            
-            val isSleepEnabled = sleepSettingsRepository.isSleepAlarmEnabled.first()
-            val sleepDays = if (isSleepEnabled) sleepSettingsRepository.sleepAlarmDays.first() else emptySet()
-            
-            val isWakeEnabled = sleepSettingsRepository.isWakeAlarmEnabled.first()
-            val wakeDays = if (isWakeEnabled) sleepSettingsRepository.wakeAlarmDays.first() else emptySet()
-
-            sleepScheduler.scheduleNextEvents(bedtime, wakeTime, sleepDays, wakeDays)
+            sleepScheduler.scheduleNextEvents(wdB, wdW, wdSE, weB, weW, weSE)
         }
     }
 
-    private suspend fun calculateWakeUpTime(): Long {
-        // 현재 설정된 기상 시각(HH:mm)을 바탕으로 오늘 혹은 내일의 타임스탬프 계산
-        val wakeTimeStr = sleepSettingsRepository.wakeTime.first()
+    private fun calculateWakeUpTime(wdW: String, weW: String): Long {
+        val calendar = java.util.Calendar.getInstance()
+        
+        // 정오 이후라면 기상일은 내일로 간주
+        if (calendar.get(java.util.Calendar.HOUR_OF_DAY) >= 12) {
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+        
+        val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
+        // 차기 기상일이 평일(월-금)인지 주말(토-일)인지 판단
+        val isNextWakeWeekday = dayOfWeek !in listOf(java.util.Calendar.SATURDAY, java.util.Calendar.SUNDAY)
+        val wakeTimeStr = if (isNextWakeWeekday) wdW else weW
+        
         val parts = wakeTimeStr.split(":")
         if (parts.size != 2) return System.currentTimeMillis() + 8 * 3600 * 1000
 
         val hour = parts[0].toInt()
         val minute = parts[1].toInt()
 
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, hour)
-            set(java.util.Calendar.MINUTE, minute)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, hour)
+        calendar.set(java.util.Calendar.MINUTE, minute)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
 
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(java.util.Calendar.DAY_OF_YEAR, 1)
-            }
+        // 이미 지난 시각이면(예: 새벽 1시인데 기상 타겟이 어제 오전 7시로 잡히는 경우) 내일로 보정
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
         }
+        
         return calendar.timeInMillis
     }
 
