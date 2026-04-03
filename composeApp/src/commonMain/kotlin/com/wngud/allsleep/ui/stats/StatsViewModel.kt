@@ -32,12 +32,17 @@ class StatsViewModel(
     private fun observeTargetSettings() {
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
-                sleepSettingsRepository.bedtime,
-                sleepSettingsRepository.wakeTime
-            ) { bedtime, wakeTime ->
-                calculateTimeDiffMinutes(bedtime, wakeTime)
-            }.collect { targetMinutes ->
-                _state.update { it.copy(currentTargetMinutes = targetMinutes) }
+                sleepSettingsRepository.weekdayBedtime,
+                sleepSettingsRepository.weekdayWakeTime,
+                sleepSettingsRepository.weekendBedtime,
+                sleepSettingsRepository.weekendWakeTime
+            ) { wdB, wdW, weB, weW ->
+                val wdTarget = calculateTimeDiffMinutes(wdB, wdW)
+                val weTarget = calculateTimeDiffMinutes(weB, weW)
+                // 주간 총 목표 시간의 평균 (평일 5일 + 주말 2일)
+                (wdTarget * 5 + weTarget * 2) / 7
+            }.collect { avgTargetMinutes ->
+                _state.update { it.copy(currentTargetMinutes = avgTargetMinutes) }
                 // 목표가 바뀌면 부채 계산 등이 달라지므로 통계 재계산
                 calculateTrendStats()
             }

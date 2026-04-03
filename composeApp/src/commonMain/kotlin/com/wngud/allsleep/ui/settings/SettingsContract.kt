@@ -4,10 +4,6 @@ import com.wngud.allsleep.domain.model.DeviceState
 
 /**
  * 설정 화면 State/Intent (MVI 패턴)
- *
- * 최근 개편 기준:
- * - 수면 설정 (취침/기상 시간, 권한(알림/접근성))
- * - 계정/기기 관리 (동기화된 기기 목록, 로그아웃, 계정 삭제)
  */
 
 data class SettingsState(
@@ -17,8 +13,14 @@ data class SettingsState(
     // 수면 설정 및 권한
     val isNotificationEnabled: Boolean = true,
     val isAccessibilityEnabled: Boolean = false, // 커스텀 접근성 서비스 상태
-    val bedtime: String = "23:00",
-    val wakeTime: String = "07:00",
+    
+    // 평일 루틴
+    val weekdayBedtime: String = "23:00",
+    val weekdayWakeTime: String = "07:00",
+    
+    // 주말 루틴
+    val weekendBedtime: String = "00:00",
+    val weekendWakeTime: String = "09:00",
     
     // 연결된 기기 목록
     val devices: List<DeviceState> = emptyList(),
@@ -42,8 +44,6 @@ sealed interface SettingsIntent {
     data object ManageSubscription : SettingsIntent
     data class ToggleNotification(val enabled: Boolean) : SettingsIntent
     data object OpenAccessibilitySettings : SettingsIntent // 접근성 설정 화면 이동
-    data class UpdateBedtime(val time: String) : SettingsIntent
-    data class UpdateWakeTime(val time: String) : SettingsIntent
     
     data object ShowEditNameDialog : SettingsIntent // 프로필 이름 수정 다이얼로그 노출
     data class UpdateDisplayName(val name: String) : SettingsIntent // 프로필 이름 수정 수행
@@ -60,4 +60,3 @@ sealed interface SettingsIntent {
     data object ConfirmDeleteAccount : SettingsIntent
     data object DismissDialog : SettingsIntent
 }
-
