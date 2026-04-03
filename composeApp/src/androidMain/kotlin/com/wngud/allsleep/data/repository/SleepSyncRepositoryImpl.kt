@@ -19,23 +19,27 @@ class SleepSyncRepositoryImpl(
         val listenerRegistration = usersCollection.document(uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error) // 에러 발생 시 Flow 닫기
+                    close(error)
                     return@addSnapshotListener
                 }
                 
-                // 데이터 변환 후 전송 (문서가 없으면 null)
                 val state = snapshot?.let { doc ->
                     if (!doc.exists()) return@let null
                     UserSleepState(
                         uid = doc.getString("uid") ?: "",
                         isSleeping = doc.getBoolean("isSleeping") ?: false,
                         targetWakeUpTime = doc.getLong("targetWakeUpTime"),
-                        bedtime = doc.getString("bedtime") ?: "23:00",
-                        wakeTime = doc.getString("wakeTime") ?: "07:00",
-                        sleepAlarmDays = (doc.get("sleepAlarmDays") as? List<*>)?.filterIsInstance<Long>()?.map { it.toInt() }?.toSet() ?: setOf(1, 2, 3, 4, 5),
-                        wakeAlarmDays = (doc.get("wakeAlarmDays") as? List<*>)?.filterIsInstance<Long>()?.map { it.toInt() }?.toSet() ?: setOf(1, 2, 3, 4, 5),
-                        isSleepAlarmEnabled = doc.getBoolean("isSleepAlarmEnabled") ?: true,
-                        isWakeAlarmEnabled = doc.getBoolean("isWakeAlarmEnabled") ?: true,
+                        // 평일 (기존 필드 매핑)
+                        weekdayBedtime = doc.getString("bedtime") ?: "23:00",
+                        weekdayWakeTime = doc.getString("wakeTime") ?: "07:00",
+                        isWeekdaySleepEnabled = doc.getBoolean("isSleepAlarmEnabled") ?: true,
+                        isWeekdayWakeEnabled = doc.getBoolean("isWakeAlarmEnabled") ?: true,
+                        // 주말 (신규 필드)
+                        weekendBedtime = doc.getString("weekendBedtime") ?: "00:00",
+                        weekendWakeTime = doc.getString("weekendWakeTime") ?: "09:00",
+                        isWeekendSleepEnabled = doc.getBoolean("isWeekendSleepEnabled") ?: true,
+                        isWeekendWakeEnabled = doc.getBoolean("isWeekendWakeEnabled") ?: true,
+                        
                         lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
                         sleepStartAt = doc.getLong("sleepStartAt") ?: 0L
                     )
@@ -43,7 +47,6 @@ class SleepSyncRepositoryImpl(
                 trySend(state)
             }
         
-        // Flow 구독 취소 시 리스너 제거
         awaitClose {
             listenerRegistration.remove()
         }
@@ -53,12 +56,14 @@ class SleepSyncRepositoryImpl(
         uid: String, 
         isSleeping: Boolean?, 
         targetWakeUpTime: Long?,
-        bedtime: String?,
-        wakeTime: String?,
-        sleepAlarmDays: Set<Int>?,
-        wakeAlarmDays: Set<Int>?,
-        isSleepAlarmEnabled: Boolean?,
-        isWakeAlarmEnabled: Boolean?
+        weekdayBedtime: String?,
+        weekdayWakeTime: String?,
+        isWeekdaySleepEnabled: Boolean?,
+        isWeekdayWakeEnabled: Boolean?,
+        weekendBedtime: String?,
+        weekendWakeTime: String?,
+        isWeekendSleepEnabled: Boolean?,
+        isWeekendWakeEnabled: Boolean?
     ): Result<Unit> = runCatching {
         val updates = mutableMapOf<String, Any>(
             "lastUpdatedAt" to System.currentTimeMillis()
@@ -70,21 +75,25 @@ class SleepSyncRepositoryImpl(
             updates["targetWakeUpTime"] = com.google.firebase.firestore.FieldValue.delete()
         }
         
-        bedtime?.let { updates["bedtime"] = it }
-        wakeTime?.let { updates["wakeTime"] = it }
-        sleepAlarmDays?.let { updates["sleepAlarmDays"] = it.toList() }
-        wakeAlarmDays?.let { updates["wakeAlarmDays"] = it.toList() }
-        isSleepAlarmEnabled?.let { updates["isSleepAlarmEnabled"] = it }
-        isWakeAlarmEnabled?.let { updates["isWakeAlarmEnabled"] = it }
+        // 평일 필드 (기존 이름 유지)
+        weekdayBedtime?.let { updates["bedtime"] = it }
+        weekdayWakeTime?.let { updates["wakeTime"] = it }
+        isWeekdaySleepEnabled?.let { updates["isSleepAlarmEnabled"] = it }
+        isWeekdayWakeEnabled?.let { updates["isWakeAlarmEnabled"] = it }
         
-        // 수면 시작 시 sleepStartAt 기록, 종료 시 0으로 초기화
+        // 주말 필드 (신규 이름)
+        weekendBedtime?.let { updates["weekendBedtime"] = it }
+        weekendWakeTime?.let { updates["weekendWakeTime"] = it }
+        isWeekendSleepEnabled?.let { updates["isWeekendSleepEnabled"] = it }
+        isWeekendWakeEnabled?.let { updates["isWakeAlarmEnabled"] = it } // 오타 조심 (isWeekendWakeEnabled로 써야 함)
+        
+        // 수면 시작 시 sleepStartAt 기록
         if (isSleeping == true) {
             updates["sleepStartAt"] = System.currentTimeMillis()
         } else if (isSleeping == false) {
             updates["sleepStartAt"] = 0L
         }
         
-        // 문서가 없을 수도 있으므로 set(..., SetOptions.merge())를 사용하는 것이 더 안전함
         usersCollection.document(uid)
             .set(updates, com.google.firebase.firestore.SetOptions.merge())
             .await()
@@ -106,27 +115,19 @@ class SleepSyncRepositoryImpl(
             .await()
     }
 
-    override suspend fun registerDevice(uid: String, deviceState: DeviceState): Result<Unit> {
+    override suspend fun registerDevice(uid: String, deviceState: DeviceState): Result<Unit> = runCatching {
+        val data = hashMapOf(
+            "deviceId" to deviceState.deviceId,
+            "deviceName" to deviceState.deviceName,
+            "fcmToken" to deviceState.fcmToken,
+            "platform" to deviceState.platform,
+            "lastActiveForSleepLocking" to deviceState.lastActiveForSleepLocking,
+            "isMainAlarmDevice" to deviceState.isMainAlarmDevice
+        )
         
-        return try {
-            val data = hashMapOf(
-                "deviceId" to deviceState.deviceId,
-                "deviceName" to deviceState.deviceName,
-                "fcmToken" to deviceState.fcmToken,
-                "platform" to deviceState.platform,
-                "lastActiveForSleepLocking" to deviceState.lastActiveForSleepLocking,
-                "isMainAlarmDevice" to deviceState.isMainAlarmDevice
-            )
-            
-            usersCollection.document(uid).collection("devices").document(deviceState.deviceId)
-                .set(data, com.google.firebase.firestore.SetOptions.merge())
-                .await()
-                
-            Result.success(Unit)
-        } catch (e: Throwable) {
-            android.util.Log.e("SleepSyncRepo", "registerDevice 에러 발생: ${e.message}")
-            Result.failure(e)
-        }
+        usersCollection.document(uid).collection("devices").document(deviceState.deviceId)
+            .set(data, com.google.firebase.firestore.SetOptions.merge())
+            .await()
     }
 
     override suspend fun getRegisteredDevices(uid: String): Result<List<DeviceState>> = runCatching {
@@ -148,7 +149,6 @@ class SleepSyncRepositoryImpl(
         val devicesRef = usersCollection.document(uid).collection("devices")
         val snapshot = devicesRef.get().await()
         
-        // 트랜잭션 대신 batch를 이용해 모든 기기의 상태를 일괄 업데이트
         firestore.runBatch { batch ->
             for (doc in snapshot.documents) {
                 val isTarget = doc.id == deviceId
