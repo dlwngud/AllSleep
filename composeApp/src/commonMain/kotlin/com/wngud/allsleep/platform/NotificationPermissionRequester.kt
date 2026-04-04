@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 interface NotificationPermissionRequester {
     fun isGranted(): Boolean
     fun requestPermission()
+    fun openSettings()
 }
 
 @Composable
