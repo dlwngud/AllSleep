@@ -16,6 +16,7 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 fun BottomNavScaffold(
     navController: NavHostController,
+    snackbarHostState: SnackbarHostState,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -51,6 +52,7 @@ fun BottomNavScaffold(
                     )
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues -> content(paddingValues) }
 }

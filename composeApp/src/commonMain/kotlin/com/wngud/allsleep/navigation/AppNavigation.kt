@@ -1,6 +1,7 @@
 package com.wngud.allsleep.navigation
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -15,12 +16,13 @@ import com.wngud.allsleep.ui.subscription.SubscriptionScreen
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    snackbarHostState: SnackbarHostState,
     startDestination: String = Screen.Onboarding.route,
     contentPadding: PaddingValues = PaddingValues()
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
         onboardingGraph(navController)
-        composable(Screen.Home.route) { HomeScreen(contentPadding = contentPadding) }
+        composable(Screen.Home.route) { HomeScreen(contentPadding = contentPadding, snackbarHostState = snackbarHostState) }
         composable(Screen.Stats.route) { 
             StatsScreen(
                 contentPadding = contentPadding,
@@ -36,7 +38,8 @@ fun AppNavigation(
                 onNavigateToSubscription = {
                     navController.navigate(Screen.Subscription.route)
                 },
-                contentPadding = contentPadding
+                contentPadding = contentPadding,
+                snackbarHostState = snackbarHostState
             ) 
         }
         
