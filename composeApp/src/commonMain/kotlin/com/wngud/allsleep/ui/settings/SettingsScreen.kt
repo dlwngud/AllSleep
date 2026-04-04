@@ -9,9 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +25,7 @@ import com.wngud.allsleep.navigation.Screen
 import com.wngud.allsleep.platform.rememberAccessibilityPermissionRequester
 import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
 import com.wngud.allsleep.ui.components.DeviceListContent
+import com.wngud.allsleep.ui.components.NotificationRationaleDialog
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -33,6 +36,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SettingsScreen(
     navController: androidx.navigation.NavController,
     onNavigateToSubscription: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
@@ -54,6 +58,15 @@ fun SettingsScreen(
         viewModel.onNotificationPermissionResult(granted)
     }
 
+    val scope = rememberCoroutineScope()
+    var showNotificationRationale by remember { mutableStateOf(false) }
+
+    // 알림 권한 상태 실시간 체크
+    val isNotificationGranted = notificationRequester.isGranted()
+    LaunchedEffect(isNotificationGranted) {
+        viewModel.onNotificationPermissionResult(isNotificationGranted)
+    }
+
     SettingsScreenContent(
         contentPadding = contentPadding,
         state = state,
@@ -66,10 +79,12 @@ fun SettingsScreen(
                     onNavigateToSubscription()
                 }
                 is SettingsIntent.ToggleNotification -> {
-                    if (intent.enabled) {
-                        notificationRequester.requestPermission()
+                    if (notificationRequester.isGranted()) {
+                        // 이미 허용된 경우 시스템 설정으로 바로 이동 (선택 가능하게)
+                        notificationRequester.openSettings()
                     } else {
-                        viewModel.handleIntent(intent)
+                        // 권한이 없으면 안내 다이얼로그 노출
+                        showNotificationRationale = true
                     }
                 }
                 is SettingsIntent.OpenAccessibilitySettings -> {
@@ -90,6 +105,21 @@ fun SettingsScreen(
             }
         }
     )
+
+    if (showNotificationRationale) {
+        NotificationRationaleDialog(
+            onDismissRequest = { 
+                showNotificationRationale = false 
+                scope.launch {
+                    snackbarHostState.showSnackbar("알림 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            },
+            onConfirmClick = {
+                showNotificationRationale = false
+                notificationRequester.openSettings()
+            }
+        )
+    }
 
     if (showDeviceSheet) {
         DeviceManagementBottomSheet(
@@ -216,6 +246,8 @@ fun SettingsScreenContent(
     onIntent: (SettingsIntent) -> Unit,
     onRoutineClick: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -279,11 +311,11 @@ fun SettingsScreenContent(
                 onClick = onRoutineClick
             )
             SettingsDivider()
-            SettingsRowToggle(
+            SettingsRowArrow(
                 emoji = "🔔",
-                label = "알림 설정",
-                checked = state.isNotificationEnabled,
-                onCheckedChange = { onIntent(SettingsIntent.ToggleNotification(it)) }
+                label = "알림 권한 상태",
+                trailing = if (state.isNotificationEnabled) "허용됨" else "설정 필요 ⚠️",
+                onClick = { onIntent(SettingsIntent.ToggleNotification(!state.isNotificationEnabled)) }
             )
         }
 
@@ -294,19 +326,34 @@ fun SettingsScreenContent(
             SettingsRowArrow(
                 emoji = "❓",
                 label = "자주 묻는 질문",
-                onClick = { /* TODO: FAQ 링크 */ }
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-FAQ-33892d663636805481d6ec75e097676c") }
             )
             SettingsDivider()
             SettingsRowArrow(
                 emoji = "⭐",
                 label = "앱 리뷰 남기기",
-                onClick = { /* TODO: 스토어 이동 */ }
+                onClick = {
+                    val packageName = "com.wngud.allsleep"
+                    uriHandler.openUri("https://play.google.com/store/apps/details?id=$packageName")
+                }
             )
             SettingsDivider()
             SettingsRowArrow(
                 emoji = "✉️",
                 label = "의견 보내기",
-                onClick = { /* TODO: 이메일 전송 */ }
+                onClick = {
+                    val email = "official.allsleep@gmail.com"
+                    // 제목: [AllSleep 의견 제보] v1.1.0
+                    val subject = "%5BAllSleep%20%EC%9D%98%EA%B2%AC%20%EC%A0%9C%EB%B3%B4%5D%20v1.1.0"
+                    // 본문:
+                    // 앱 버전: 1.1.0
+                    // 기기: android
+                    //
+                    // 문의 내용:
+                    // (여기에 유저가 작성)
+                    val body = "%EC%95%B1%20%EB%B2%84%EC%A0%84:%201.1.0%0A%EA%B8%B0%EA%B8%B0:%20android%0A%0A%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9:%0A"
+                    uriHandler.openUri("mailto:$email?subject=$subject&body=$body")
+                }
             )
         }
 
@@ -317,13 +364,13 @@ fun SettingsScreenContent(
             SettingsRowArrow(
                 emoji = "📜",
                 label = "이용 약관",
-                onClick = { /* TODO: 약관 뷰어 */ }
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35") }
             )
             SettingsDivider()
             SettingsRowArrow(
                 emoji = "🛡️",
                 label = "개인정보 처리방침",
-                onClick = { /* TODO: 방침 뷰어 */ }
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") }
             )
             SettingsDivider()
             SettingsRowArrow(
