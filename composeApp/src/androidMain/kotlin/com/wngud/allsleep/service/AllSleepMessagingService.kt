@@ -35,8 +35,21 @@ class AllSleepMessagingService : FirebaseMessagingService() {
             when (command) {
                 "START_SLEEP" -> {
                     Log.d("AllSleepFCM", "Remote START_SLEEP triggered")
-                    // 수면 모드 시작 (서비스 실행 및 오버레이 점등)
-                    com.wngud.allsleep.service.SleepLockService.start(this)
+                    // 수면 모드 시작 전 알림 권한 체크 (Android 13+ 필수)
+                    val isGranted = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            this,
+                            android.Manifest.permission.POST_NOTIFICATIONS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    } else {
+                        true
+                    }
+
+                    if (isGranted) {
+                        com.wngud.allsleep.service.SleepLockService.start(this)
+                    } else {
+                        Log.w("AllSleepFCM", "알림 권한이 없어 FCM을 통한 수면 모드 시작을 차단합니다.")
+                    }
                 }
                 "STOP_SLEEP" -> {
                     Log.d("AllSleepFCM", "Remote STOP_SLEEP triggered")
