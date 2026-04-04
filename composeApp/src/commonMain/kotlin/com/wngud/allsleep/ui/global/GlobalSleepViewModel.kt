@@ -65,6 +65,7 @@ class GlobalSleepViewModel(
     private var devicesJob: Job? = null
     private var deviceRegisterJob: Job? = null
     private var hasBeenRegisteredInThisSession = false
+    private var isReplacingDevice = false
 
     init {
         handleIntent(GlobalSleepContract.Intent.RequestInitialize)
@@ -97,6 +98,7 @@ class GlobalSleepViewModel(
     }
 
     private fun cancelDeviceRegistration() {
+        if (isReplacingDevice) return
         _state.update { it.copy(showDeviceLimitDialog = false, cachedDeviceStateToRegister = null) }
         handleIntent(GlobalSleepContract.Intent.RequestLogout)
     }
@@ -105,14 +107,30 @@ class GlobalSleepViewModel(
         val uid = currentUid ?: return
         val deviceToRegister = _state.value.cachedDeviceStateToRegister ?: return
         _state.update { it.copy(showDeviceLimitDialog = false, cachedDeviceStateToRegister = null) }
+        
+        isReplacingDevice = true
+        
         viewModelScope.launch {
             try {
                 val devices = observeRegisteredDevicesUseCase(uid).first()
-                devices.forEach { device -> unregisterDeviceUseCase(uid, device.deviceId) }
+                val currentId = deviceInfoProvider.getDeviceId()
+                
+                // 1. 현재 기기가 아닌 다른 기기들만 모두 등록 해제
+                devices.filter { it.deviceId != currentId }.forEach { device -> 
+                    unregisterDeviceUseCase(uid, device.deviceId) 
+                }
+                
+                // 2. 새로운 현재 기기 등록 시도
                 registerDeviceUseCase(uid, deviceToRegister, isPremium = true).onFailure { e ->
+                    isReplacingDevice = false
                     _state.update { it.copy(error = "기기 교체 실패: ${e.message}") }
                 }
+                
+                // 전역 관찰자(devicesJob)가 충분히 서버 상태를 수동 동기화할 수 있도록 마지막에 플래그 해제
+                kotlinx.coroutines.delay(1000)
+                isReplacingDevice = false
             } catch (e: Exception) {
+                isReplacingDevice = false
                 _state.update { it.copy(error = "기기 교체 중 오류: ${e.message}") }
             }
         }
@@ -337,7 +355,10 @@ class GlobalSleepViewModel(
                     if (devices.any { it.deviceId == currentId }) {
                         hasBeenRegisteredInThisSession = true
                     } else if (hasBeenRegisteredInThisSession && devices.isNotEmpty()) {
-                        logout()
+                        // 교체 중(isReplacingDevice == true)일 때는 서버 상태가 불안정하므로 로그아웃 트리거를 일시 중지함.
+                        if (!isReplacingDevice) {
+                            logout()
+                        }
                     }
                 }
         }
