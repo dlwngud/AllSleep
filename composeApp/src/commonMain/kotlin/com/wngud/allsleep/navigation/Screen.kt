@@ -19,6 +19,8 @@ sealed class Screen(val route: String) {
     // 인증 (로그아웃 후 재로그인 등)
     data object Auth : Screen("auth") {
         data object Login : Screen("auth/login")
+        data object EmailLogin : Screen("auth/email_login")
+        data object EmailSignup : Screen("auth/email_signup")
     }
     
     // 메인 홈

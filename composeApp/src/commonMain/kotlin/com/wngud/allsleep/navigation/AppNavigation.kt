@@ -8,6 +8,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.wngud.allsleep.ui.alarm.AlarmScreen
 import com.wngud.allsleep.ui.auth.login.GlobalLoginScreen
+import com.wngud.allsleep.ui.auth.login.EmailLoginScreen
+import com.wngud.allsleep.ui.auth.login.EmailSignupScreen
 import com.wngud.allsleep.ui.home.HomeScreen
 import com.wngud.allsleep.ui.settings.SettingsScreen
 import com.wngud.allsleep.ui.stats.StatsScreen
@@ -48,11 +50,44 @@ fun AppNavigation(
         }
 
         composable(Screen.Auth.Login.route) {
-            GlobalLoginScreen(onLoginSuccess = {
-                navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Auth.Login.route) { inclusive = true }
+            GlobalLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Auth.Login.route) { inclusive = true }
+                    }
+                },
+                onEmailLogin = {
+                    navController.navigate(Screen.Auth.EmailLogin.route)
                 }
-            })
+            )
+        }
+
+        composable(Screen.Auth.EmailLogin.route) {
+            EmailLoginScreen(
+                onBack = { navController.popBackStack() },
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Auth.Login.route) { inclusive = true }
+                    }
+                },
+                onNavigateToSignup = {
+                    navController.navigate(Screen.Auth.EmailSignup.route)
+                }
+            )
+        }
+
+        composable(Screen.Auth.EmailSignup.route) {
+            EmailSignupScreen(
+                onBack = { navController.popBackStack() },
+                onSignupSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Auth.Login.route) { inclusive = true }
+                    }
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Auth.EmailLogin.route)
+                }
+            )
         }
     }
 }
