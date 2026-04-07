@@ -481,18 +481,30 @@ private fun ProfileCard(user: User, onEditClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             val initial = user.displayName?.firstOrNull()?.toString() ?: "?"
-            Text(initial, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(initial, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(user.displayName ?: "사용자", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(user.email ?: "", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            Text(
+                text = user.displayName ?: "사용자", 
+                fontSize = 15.sp, 
+                fontWeight = FontWeight.Bold, 
+                maxLines = 1, 
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = user.email ?: "", 
+                fontSize = 12.sp, 
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), 
+                maxLines = 1, 
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
         IconButton(onClick = onEditClick) {
             Text("편집", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
