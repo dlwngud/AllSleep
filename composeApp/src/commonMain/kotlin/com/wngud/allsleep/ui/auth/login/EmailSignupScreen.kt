@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.wngud.allsleep.ui.theme.*
+import com.wngud.allsleep.domain.model.AuthProvider
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,10 +30,21 @@ fun EmailSignupScreen(
     val state by viewModel.state.collectAsState()
     var isPasswordVisible by remember { mutableStateOf(false) }
     var agreedToTerms by remember { mutableStateOf(false) }
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+    val emailRegex = remember { Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$") }
+    val isEmailValid = state.email.isEmpty() || emailRegex.matches(state.email)
 
     LaunchedEffect(state.user) {
         if (state.user != null) {
             onSignupSuccess()
+        }
+    }
+
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.handleIntent(AuthIntent.DismissError)
         }
     }
 
@@ -47,7 +59,8 @@ fun EmailSignupScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -92,8 +105,18 @@ fun EmailSignupScreen(
                 value = state.email,
                 onValueChange = { viewModel.handleIntent(AuthIntent.UpdateEmail(it)) },
                 placeholder = "example@email.com",
-                leadingIcon = "✉\uFE0F"
+                leadingIcon = "✉\uFE0F",
+                isError = !isEmailValid
             )
+            
+            if (!isEmailValid) {
+                Text(
+                    text = "올바른 이메일 형식을 입력해 주세요.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = FontSize.labelSmall,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(Spacing.large))
 
@@ -102,12 +125,35 @@ fun EmailSignupScreen(
                 label = "비밀번호",
                 value = state.password,
                 onValueChange = { viewModel.handleIntent(AuthIntent.UpdatePassword(it)) },
-                placeholder = "비밀번호를 입력하세요",
+                placeholder = "비밀번호를 입력하세요 (6자 이상)",
                 leadingIcon = "🔒",
                 isPassword = true,
                 isPasswordVisible = isPasswordVisible,
                 onVisibilityToggle = { isPasswordVisible = !isPasswordVisible }
             )
+
+            // 비밀번호 확인 입력
+            var isConfirmPasswordVisible by remember { mutableStateOf(false) }
+            AuthInputField(
+                label = "비밀번호 확인",
+                value = state.confirmPassword,
+                onValueChange = { viewModel.handleIntent(AuthIntent.UpdateConfirmPassword(it)) },
+                placeholder = "비밀번호를 다시 입력하세요",
+                leadingIcon = "🔒",
+                isPassword = true,
+                isPasswordVisible = isConfirmPasswordVisible,
+                onVisibilityToggle = { isConfirmPasswordVisible = !isConfirmPasswordVisible },
+                isError = state.confirmPassword.isNotEmpty() && state.password != state.confirmPassword
+            )
+            
+            if (state.confirmPassword.isNotEmpty() && state.password != state.confirmPassword) {
+                Text(
+                    text = "비밀번호가 일치하지 않습니다.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = FontSize.labelSmall,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(Spacing.large))
 
@@ -163,6 +209,7 @@ fun EmailSignupScreen(
             Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
 
             // 가입 버튼
+            val isLoading = state.loadingProvider == AuthProvider.EMAIL
             Button(
                 onClick = { viewModel.handleIntent(AuthIntent.SignUpWithEmail) },
                 modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
@@ -171,10 +218,19 @@ fun EmailSignupScreen(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
-                enabled = state.name.isNotBlank() && state.email.isNotBlank() && 
-                          state.password.isNotBlank() && agreedToTerms
+                enabled = !isLoading && state.name.isNotBlank() && state.email.isNotBlank() && 
+                          isEmailValid && state.password.length >= 6 && 
+                          state.password == state.confirmPassword && agreedToTerms
             ) {
-                Text("회원가입", fontSize = FontSize.labelLarge, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("회원가입", fontSize = FontSize.labelLarge, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(Spacing.large))
@@ -195,7 +251,7 @@ fun EmailSignupScreen(
                     fontSize = FontSize.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.clickable { onNavigateToLogin() }
+                    modifier = Modifier.clickable(enabled = !isLoading) { onNavigateToLogin() }
                 )
             }
             
@@ -213,7 +269,8 @@ private fun AuthInputField(
     leadingIcon: String,
     isPassword: Boolean = false,
     isPasswordVisible: Boolean = false,
-    onVisibilityToggle: (() -> Unit)? = null
+    onVisibilityToggle: (() -> Unit)? = null,
+    isError: Boolean = false
 ) {
     Column {
         Text(
@@ -239,10 +296,13 @@ private fun AuthInputField(
             visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             shape = RoundedCornerShape(CornerRadius.medium),
             singleLine = true,
+            isError = isError,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                cursorColor = MaterialTheme.colorScheme.primary
+                cursorColor = MaterialTheme.colorScheme.primary,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                errorLeadingIconColor = MaterialTheme.colorScheme.error
             )
         )
     }

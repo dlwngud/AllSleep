@@ -14,6 +14,7 @@ sealed interface AuthIntent {
     // 이메일 로그인 관련
     data class UpdateEmail(val email: String) : AuthIntent
     data class UpdatePassword(val password: String) : AuthIntent
+    data class UpdateConfirmPassword(val confirmPassword: String) : AuthIntent
     data class UpdateName(val name: String) : AuthIntent
     data object LoginWithEmail : AuthIntent
     data object SignUpWithEmail : AuthIntent
