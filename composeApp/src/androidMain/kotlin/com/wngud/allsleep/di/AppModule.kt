@@ -19,6 +19,8 @@ import com.wngud.allsleep.domain.usecase.auth.LoginWithKakaoUseCase
 import com.wngud.allsleep.domain.usecase.auth.SignOutUseCase
 import com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase
 import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
+import com.wngud.allsleep.domain.usecase.auth.LoginWithEmailUseCase
+import com.wngud.allsleep.domain.usecase.auth.SignUpWithEmailUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.CompleteOnboardingUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.ObserveOnboardingCompletedUseCase
 import com.wngud.allsleep.domain.usecase.sleep.ObserveRegisteredDevicesUseCase
@@ -101,6 +103,8 @@ val appModule = module {
     factoryOf(::CompleteOnboardingUseCase)
     factoryOf(::DeleteAccountUseCase)
     factoryOf(::ValidateSessionUseCase)
+    factoryOf(::LoginWithEmailUseCase)
+    factoryOf(::SignUpWithEmailUseCase)
     factoryOf(::RecordSleepSessionUseCase)
     factoryOf(::GetSleepStatsUseCase)
     factoryOf(::GetMonthlyCalendarUseCase)
