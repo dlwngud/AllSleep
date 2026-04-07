@@ -25,6 +25,7 @@ fun LoginButtonGroup(
     onKakaoLogin: () -> Unit,
     onGoogleLogin: () -> Unit,
     onAppleLogin: () -> Unit,
+    onEmailLogin: () -> Unit,
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -32,6 +33,7 @@ fun LoginButtonGroup(
 
     Column(
         modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // 1. 카카오 로그인
@@ -116,7 +118,8 @@ fun LoginButtonGroup(
             }
         }
 
-        // 3. Apple 로그인
+        // 3. Apple 로그인 (요청에 따라 주석 처리)
+        /*
         OutlinedButton(
             onClick = onAppleLogin,
             modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
@@ -140,9 +143,57 @@ fun LoginButtonGroup(
                     contentDescription = "Apple Logo",
                     modifier = Modifier.size(32.dp)
                 )
-                Spacer(modifier = Modifier.width(Spacing.small))
+                Spacer(modifier = Modifier.width(Spacing.itemContent))
                 Text(
                     text = "Apple로 계속하기",
+                    fontSize = FontSize.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+        */
+
+        // 구분선 (항상 노출 또는 이메일 로그인 전)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = OnSurfaceVariant.copy(alpha = 0.2f))
+            Text(
+                text = "또는",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                fontSize = FontSize.bodySmall,
+                color = OnSurfaceVariant
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = OnSurfaceVariant.copy(alpha = 0.2f))
+        }
+
+        // 이메일 로그인 버튼
+        OutlinedButton(
+            onClick = onEmailLogin,
+            modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outline
+            ),
+            shape = RoundedCornerShape(CornerRadius.medium),
+            enabled = !isAnyLoading
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "✉\uFE0F", // 이메일 텍스트 아이콘 (이모지 활용)
+                    fontSize = FontSize.labelLarge,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(
+                    text = "이메일로 계속하기",
                     fontSize = FontSize.labelMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -151,49 +202,19 @@ fun LoginButtonGroup(
 
         // 건너뛰기 버튼 (온보딩에서만 노출 가능)
         if (onSkip != null) {
-            // 구분선
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HorizontalDivider(modifier = Modifier.weight(1f))
-                Text(
-                    text = "또는",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    fontSize = FontSize.bodySmall,
-                    color = OnSurfaceVariant
-                )
-                HorizontalDivider(modifier = Modifier.weight(1f))
-            }
-
-            OutlinedButton(
+            TextButton(
                 onClick = onSkip,
-                modifier = Modifier.fillMaxWidth().height(ButtonSize.heightMedium),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    BorderWidth.medium,
-                    MaterialTheme.colorScheme.primary
-                ),
-                shape = RoundedCornerShape(CornerRadius.medium),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 enabled = !isAnyLoading
             ) {
                 Text(
                     text = "건너뛰기 (현재 기기만 사용)",
-                    fontSize = FontSize.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = FontSize.bodySmall,
+                    color = OnSurfaceVariant,
+                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
                 )
             }
-
-            Text(
-                text = "로컬 모드에서는 현재 기기만 잠글 수 있어요",
-                fontSize = FontSize.bodySmall,
-                color = OnSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            )
         }
+
     }
 }
