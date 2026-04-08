@@ -501,8 +501,8 @@ private fun CalendarDayCell(
 ) {
     val dotColor = when {
         achievementRate == null || achievementRate <= 0f -> Color.Transparent
-        achievementRate >= 0.95f -> green
-        achievementRate >= 0.7f -> amber
+        achievementRate >= 95f -> green
+        achievementRate >= 70f -> amber
         else -> red
     }
 
@@ -592,7 +592,7 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
             Spacer(Modifier.height(12.dp))
 
             // 달성률 바
-            val ratePct = (record.achievementRate * 100).toInt()
+            val ratePct = record.achievementRate.toInt()
             Text("목표 달성률 $ratePct%", fontSize = 12.sp, color = onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Box(
@@ -604,10 +604,10 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(record.achievementRate.coerceIn(0f, 1f))
+                        .fillMaxWidth(record.achievementRate / 100f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(3.dp))
-                        .background(if (record.achievementRate >= 0.95f) green else amber)
+                        .background(if (record.achievementRate >= 95f) green else amber)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -618,7 +618,7 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
                 )
                 Spacer(Modifier.width(8.dp))
                 ChipInfo(
-                    label = "수면 효율 ${(record.sleepEfficiency * 100).toInt()}%",
+                    label = "수면 효율 ${record.sleepEfficiency.toInt()}%",
                     modifier = Modifier.weight(1f)
                 )
             }
