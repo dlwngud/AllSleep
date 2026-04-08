@@ -33,14 +33,16 @@ class RecordSleepSessionUseCase(
             val durationMinutes = ((wakeTimeMs - sleepStartAt) / 60000).toInt().coerceAtLeast(0)
             val targetMinutes = calculateTimeDiffMinutes(targetBedtime, targetWakeTime)
             
-            // 달성률: (실제 수면 시간 / 목표 수면 시간) * 100
+            // 달성률: (실제 수면 시간 / 목표 수면 시간) * 100 (최대 100%)
             val achievementRate = if (targetMinutes > 0) {
                 min(durationMinutes.toFloat() / targetMinutes.toFloat(), 1.0f) * 100f
             } else 0f
             
-            // 수면 효율: (목표 시간 / 실제 수면 시간) * 100 (최대 100%)
-            val sleepEfficiency = if (durationMinutes > 0) {
-                min(targetMinutes.toFloat() / durationMinutes.toFloat(), 1.0f) * 100f
+            // 수면 효율: 목표 수면량과의 합치도 (부족/과수면 모두 패널티 적용)
+            val sleepEfficiency = if (durationMinutes > 0 && targetMinutes > 0) {
+                val ratio1 = durationMinutes.toFloat() / targetMinutes.toFloat()
+                val ratio2 = targetMinutes.toFloat() / durationMinutes.toFloat()
+                min(ratio1, ratio2) * 100f
             } else 0f
 
             println("[SleepDebug] 계산 결과: duration=$durationMinutes, target=$targetMinutes, rate=$achievementRate, efficiency=$sleepEfficiency")
