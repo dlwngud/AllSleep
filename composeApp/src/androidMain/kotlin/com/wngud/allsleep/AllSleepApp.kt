@@ -4,10 +4,14 @@ import android.app.Application
 import com.wngud.allsleep.data.source.local.initDataStore
 import com.wngud.allsleep.di.appModule
 import com.wngud.allsleep.platform.DeviceInfoProvider
+import com.google.android.gms.ads.MobileAds
 import com.kakao.sdk.common.KakaoSdk
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Application 클래스
@@ -17,6 +21,11 @@ class AllSleepApp : Application() {
     
     override fun onCreate() {
         super.onCreate()
+        
+        // AdMob 초기화
+        CoroutineScope(Dispatchers.IO).launch {
+            MobileAds.initialize(this@AllSleepApp) {}
+        }
         
         // DataStore 초기화 (Koin보다 먼저!)
         initDataStore(this)

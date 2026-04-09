@@ -31,6 +31,8 @@ import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase
 import com.wngud.allsleep.domain.usecase.sleep.GetSleepStatsUseCase
 import com.wngud.allsleep.domain.usecase.sleep.GetMonthlyCalendarUseCase
+import com.wngud.allsleep.platform.AppOpenAdManager
+import com.wngud.allsleep.platform.AppOpenAdManagerImpl
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import com.wngud.allsleep.platform.DeviceInfoProviderImpl
 import com.wngud.allsleep.platform.SleepScheduler
@@ -42,6 +44,7 @@ import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import com.wngud.allsleep.ui.settings.SettingsViewModel
 import com.wngud.allsleep.ui.stats.StatsViewModel
+import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.dsl.singleOf
@@ -81,6 +84,7 @@ val appModule = module {
     // ── Platform Services ──────────────────────────────────────────
     single<SleepScheduler> { SleepSchedulerImpl(androidContext()) }
     single<DeviceInfoProvider> { DeviceInfoProviderImpl(androidContext()) }
+    single<AppOpenAdManager> { AppOpenAdManagerImpl(androidApplication(), get(), get()) }
 
     // ── DataStore ─────────────────────────────────────────────────
     single { createDataStore() }

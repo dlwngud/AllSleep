@@ -1,26 +1,38 @@
 package com.wngud.allsleep
  
 import android.os.Bundle
-
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.wngud.allsleep.platform.AppOpenAdManager
 import com.wngud.allsleep.service.SleepLockService
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.activity.ComponentActivity
+
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
 
     private val globalSleepViewModel: GlobalSleepViewModel by viewModel()
+    private val appOpenAdManager: AppOpenAdManager by inject()
     private var lastSleepingState: Boolean? = null
+    
+    // 콜드 스타트 완료 여부를 추적하는 상태값
+    private var isColdStartFinished by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Compose 그리기 전에 AndroidX 네이티브 스플래시 스크린 초기화
+        val splashScreen = installSplashScreen()
+
         // 잠금 화면 위에서도 앱이 나타나고 화면을 강제로 켜도록 설정 (Android 10+)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -36,6 +48,9 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // 광고나 타임아웃이 끝날 때까지 기기의 기본 아이콘 스플래시 화면을 유지
+        splashScreen.setKeepOnScreenCondition { !isColdStartFinished }
 
         // 전역 수면 상태 관찰 시작 (실시간 동기화 핵심)
         lifecycleScope.launch {
@@ -74,8 +89,20 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 콜드 스타트 광고 요청 (최대 3초 대기)
+        appOpenAdManager.requestColdStartAd {
+            isColdStartFinished = true
+        }
+
         setContent {
+            // 대기화면은 네이티브 스플래시가 책임지므로, 여기서는 무조건 App()만 호출 (바로 안 보임)
             App()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 포그라운드 복귀 시 쿨타임 확인 후 광고 노출
+        appOpenAdManager.checkAndShowAdIfAvailable()
     }
 }
