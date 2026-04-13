@@ -35,6 +35,8 @@ import com.wngud.allsleep.platform.AppOpenAdManager
 import com.wngud.allsleep.platform.AppOpenAdManagerImpl
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import com.wngud.allsleep.platform.DeviceInfoProviderImpl
+import com.wngud.allsleep.platform.BillingProvider
+import com.wngud.allsleep.platform.BillingProviderImpl
 import com.wngud.allsleep.platform.SleepScheduler
 import com.wngud.allsleep.platform.SleepSchedulerImpl
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
@@ -85,6 +87,7 @@ val appModule = module {
     single<SleepScheduler> { SleepSchedulerImpl(androidContext()) }
     single<DeviceInfoProvider> { DeviceInfoProviderImpl(androidContext()) }
     single<AppOpenAdManager> { AppOpenAdManagerImpl(androidApplication(), get(), get()) }
+    single<BillingProvider> { BillingProviderImpl(androidApplication()) }
 
     // ── DataStore ─────────────────────────────────────────────────
     single { createDataStore() }
