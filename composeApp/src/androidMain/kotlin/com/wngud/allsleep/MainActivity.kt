@@ -17,6 +17,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
@@ -28,6 +33,17 @@ class MainActivity : ComponentActivity() {
     
     // 콜드 스타트 완료 여부를 추적하는 상태값
     private var isColdStartFinished by mutableStateOf(false)
+
+    // 알림 권한 요청 런처
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            android.util.Log.d("MainActivity", "Notification permission GRANTED")
+        } else {
+            android.util.Log.w("MainActivity", "Notification permission DENIED")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Compose 그리기 전에 AndroidX 네이티브 스플래시 스크린 초기화
@@ -48,6 +64,13 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Android 13 이상 알림 권한 요청
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         // 광고나 타임아웃이 끝날 때까지 기기의 기본 아이콘 스플래시 화면을 유지
         splashScreen.setKeepOnScreenCondition { !isColdStartFinished }

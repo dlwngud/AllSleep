@@ -49,6 +49,7 @@ class GlobalSleepViewModel(
     private val validateSessionUseCase: com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase,
     private val recordSleepSessionUseCase: com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase,
     private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository,
+    private val billingProvider: com.wngud.allsleep.platform.BillingProvider,
     private val sleepScheduler: SleepScheduler,
     private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
@@ -267,7 +268,10 @@ class GlobalSleepViewModel(
             if (user.uid != currentUid) {
                 currentUid = user.uid
                 hasBeenRegisteredInThisSession = false
-                viewModelScope.launch { updateUserProfileUseCase(user) }
+                viewModelScope.launch { 
+                    updateUserProfileUseCase(user)
+                    billingProvider.loginUser(user.uid) 
+                }
                 startObserving(user.uid)
                 registerCurrentUIDDevice(user.uid)
             }
@@ -392,6 +396,7 @@ class GlobalSleepViewModel(
         viewModelScope.launch {
             unregisterDeviceUseCase(uid, deviceInfoProvider.getDeviceId())
             signOutUseCase()
+            billingProvider.logoutUser()
             currentUid = null
             hasBeenRegisteredInThisSession = false
             _state.update { it.copy(currentUser = null, sleepState = null, registeredDevices = emptyList()) }
