@@ -46,7 +46,9 @@ fun AppNavigation(
         }
         
         composable(Screen.Subscription.route) {
-            SubscriptionScreen()
+            SubscriptionScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.Auth.Login.route) {
