@@ -45,6 +45,7 @@ fun SettingsScreen(
     var deviceToRename by remember { mutableStateOf<DeviceState?>(null) }
     var renameText by remember { mutableStateOf("") }
     var showDeviceSheet by remember { mutableStateOf(false) }
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
 
     // 접근성 서비스 상태 실시간 체크
     val accessibilityRequester = rememberAccessibilityPermissionRequester { }
@@ -88,7 +89,7 @@ fun SettingsScreen(
                     }
                 }
                 is SettingsIntent.OpenAccessibilitySettings -> {
-                    accessibilityRequester.requestPermission()
+                    showAccessibilityDisclosure = true
                 }
                 is SettingsIntent.NavigateDeviceManagement -> {
                     showDeviceSheet = true
@@ -105,6 +106,21 @@ fun SettingsScreen(
             }
         }
     )
+
+    if (showAccessibilityDisclosure) {
+        com.wngud.allsleep.ui.components.AccessibilityDisclosureDialog(
+            onConfirm = {
+                showAccessibilityDisclosure = false
+                accessibilityRequester.requestPermission()
+            },
+            onDismiss = {
+                showAccessibilityDisclosure = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("접근성 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            }
+        )
+    }
 
     if (showNotificationRationale) {
         NotificationRationaleDialog(
@@ -517,8 +533,8 @@ private fun PremiumMembershipCard(
     isPremium: Boolean,
     onActionClick: () -> Unit
 ) {
-    val title = if (isPremium) "연간 구독 중" else "Premium으로 업그레이드"
-    val subtitle = if (isPremium) "2026.04.10 갱신 예정" else "무제한 기기 동기화 및 전용 혜택"
+    val title = if (isPremium) "Premium 멤버십 이용 중" else "Premium으로 업그레이드"
+    val subtitle = if (isPremium) "모든 프리미엄 기능을 무제한으로 이용 중입니다." else "무제한 기기 동기화 및 전용 혜택"
     
     Row(
         modifier = Modifier
