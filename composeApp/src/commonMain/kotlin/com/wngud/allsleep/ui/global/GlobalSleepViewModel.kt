@@ -302,12 +302,13 @@ class GlobalSleepViewModel(
                                 val currentIsWeekday = isWeekday()
                                 val targetBedtime = if (currentIsWeekday) sleepSettingsRepository.weekdayBedtime.first() else sleepSettingsRepository.weekendBedtime.first()
                                 val targetWakeTime = if (currentIsWeekday) sleepSettingsRepository.weekdayWakeTime.first() else sleepSettingsRepository.weekendWakeTime.first()
+                                val wakeTimeMs = platformTimeMillis()
 
                                 recordSleepSessionUseCase(
                                     uid = uid,
-                                    date = formatCurrentDate(sleepStartAt),
+                                    date = formatCurrentDate(wakeTimeMs),
                                     sleepStartAt = sleepStartAt,
-                                    wakeTimeMs = platformTimeMillis(),
+                                    wakeTimeMs = wakeTimeMs,
                                     targetBedtime = targetBedtime,
                                     targetWakeTime = targetWakeTime,
                                     isLockUsed = true
