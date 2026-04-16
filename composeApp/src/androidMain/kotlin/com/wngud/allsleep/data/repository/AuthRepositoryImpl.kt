@@ -27,6 +27,55 @@ class AuthRepositoryImpl(
     override suspend fun loginWithGoogle(context: PlatformContext): Result<User> =
         googleAuthDataSource.signIn(context)
 
+    override suspend fun loginWithEmail(email: String, password: String): Result<User> = runCatching {
+        val user = firebaseAuthDataSource.signInWithEmail(email, password)
+        // Firestore에서 프리미엄 정보 등 최신화하여 반환
+        getCurrentUser() ?: user
+    }.recoverCatching { e ->
+        throw mapAuthException(e)
+    }
+
+    override suspend fun signUpWithEmail(email: String, password: String, name: String): Result<User> = runCatching {
+        // 1. Auth 계정 생성
+        val user = firebaseAuthDataSource.createUserWithEmail(email, password, name)
+        
+        // 2. Firestore 유저 문서 초기화
+        try {
+            val userMap = mapOf(
+                "uid" to user.uid,
+                "email" to user.email,
+                "displayName" to name,
+                "provider" to "EMAIL",
+                "isPremium" to false,
+                "createdAt" to com.google.firebase.Timestamp.now()
+            )
+            firestore.collection("users").document(user.uid).set(userMap).await()
+            
+            // 프리미엄 정보 등이 포함된 최신 유저 정보 반환
+            getCurrentUser() ?: user
+        } catch (e: Exception) {
+            // 3. Firestore 실패 시 생성된 Auth 계정 삭제 (Rollback)
+            firebaseAuthDataSource.deleteCurrentUser()
+            throw Exception("회원 정보 저장 중 오류가 발생했습니다. 다시 시도해 주세요.")
+        }
+    }.recoverCatching { e ->
+        throw if (e.message?.contains("회원 정보 저장") == true) e else mapAuthException(e)
+    }
+
+    private fun mapAuthException(e: Throwable): Throwable {
+        return when (e) {
+            is com.google.firebase.auth.FirebaseAuthUserCollisionException -> 
+                Exception("이미 가입된 이메일이거나 소셜 로그인으로 사용 중인 계정입니다.")
+            is com.google.firebase.auth.FirebaseAuthWeakPasswordException -> 
+                Exception("비밀번호가 너무 취약합니다. (최소 6자리 이상)")
+            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> 
+                Exception("유효하지 않은 이메일 형식이거나 비밀번호가 틀렸습니다.")
+            is com.google.firebase.FirebaseNetworkException -> 
+                Exception("네트워크 연결을 확인해 주세요.")
+            else -> e
+        }
+    }
+
     override suspend fun logout(): Result<Unit> = runCatching {
         firebaseAuthDataSource.signOut()
     }

@@ -9,9 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +25,7 @@ import com.wngud.allsleep.navigation.Screen
 import com.wngud.allsleep.platform.rememberAccessibilityPermissionRequester
 import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
 import com.wngud.allsleep.ui.components.DeviceListContent
+import com.wngud.allsleep.ui.components.NotificationRationaleDialog
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -33,6 +36,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SettingsScreen(
     navController: androidx.navigation.NavController,
     onNavigateToSubscription: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
 ) {
@@ -41,6 +45,7 @@ fun SettingsScreen(
     var deviceToRename by remember { mutableStateOf<DeviceState?>(null) }
     var renameText by remember { mutableStateOf("") }
     var showDeviceSheet by remember { mutableStateOf(false) }
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
 
     // 접근성 서비스 상태 실시간 체크
     val accessibilityRequester = rememberAccessibilityPermissionRequester { }
@@ -52,6 +57,15 @@ fun SettingsScreen(
     // 알림 권한 요청자
     val notificationRequester = rememberNotificationPermissionRequester { granted ->
         viewModel.onNotificationPermissionResult(granted)
+    }
+
+    val scope = rememberCoroutineScope()
+    var showNotificationRationale by remember { mutableStateOf(false) }
+
+    // 알림 권한 상태 실시간 체크
+    val isNotificationGranted = notificationRequester.isGranted()
+    LaunchedEffect(isNotificationGranted) {
+        viewModel.onNotificationPermissionResult(isNotificationGranted)
     }
 
     SettingsScreenContent(
@@ -66,14 +80,16 @@ fun SettingsScreen(
                     onNavigateToSubscription()
                 }
                 is SettingsIntent.ToggleNotification -> {
-                    if (intent.enabled) {
-                        notificationRequester.requestPermission()
+                    if (notificationRequester.isGranted()) {
+                        // 이미 허용된 경우 시스템 설정으로 바로 이동 (선택 가능하게)
+                        notificationRequester.openSettings()
                     } else {
-                        viewModel.handleIntent(intent)
+                        // 권한이 없으면 안내 다이얼로그 노출
+                        showNotificationRationale = true
                     }
                 }
                 is SettingsIntent.OpenAccessibilitySettings -> {
-                    accessibilityRequester.requestPermission()
+                    showAccessibilityDisclosure = true
                 }
                 is SettingsIntent.NavigateDeviceManagement -> {
                     showDeviceSheet = true
@@ -90,6 +106,36 @@ fun SettingsScreen(
             }
         }
     )
+
+    if (showAccessibilityDisclosure) {
+        com.wngud.allsleep.ui.components.AccessibilityDisclosureDialog(
+            onConfirm = {
+                showAccessibilityDisclosure = false
+                accessibilityRequester.requestPermission()
+            },
+            onDismiss = {
+                showAccessibilityDisclosure = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("접근성 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            }
+        )
+    }
+
+    if (showNotificationRationale) {
+        NotificationRationaleDialog(
+            onDismissRequest = { 
+                showNotificationRationale = false 
+                scope.launch {
+                    snackbarHostState.showSnackbar("알림 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            },
+            onConfirmClick = {
+                showNotificationRationale = false
+                notificationRequester.openSettings()
+            }
+        )
+    }
 
     if (showDeviceSheet) {
         DeviceManagementBottomSheet(
@@ -216,6 +262,8 @@ fun SettingsScreenContent(
     onIntent: (SettingsIntent) -> Unit,
     onRoutineClick: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -240,12 +288,14 @@ fun SettingsScreenContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // 프리미엄 상태/업그레이드 카드
-        if (state.isPremium) {
-            PremiumActiveCard(onManageClick = { onIntent(SettingsIntent.ManageSubscription) })
-        } else {
-            PremiumUpgradeCard(onUpgradeClick = { onIntent(SettingsIntent.UpgradePremium) })
-        }
+        // 프리미엄 멤버십 카드 (새 개편 디자인: 프로필과 동일 높이)
+        PremiumMembershipCard(
+            isPremium = state.isPremium,
+            onActionClick = {
+                if (state.isPremium) onIntent(SettingsIntent.ManageSubscription)
+                else onIntent(SettingsIntent.UpgradePremium)
+            }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -277,11 +327,73 @@ fun SettingsScreenContent(
                 onClick = onRoutineClick
             )
             SettingsDivider()
-            SettingsRowToggle(
+            SettingsRowArrow(
                 emoji = "🔔",
-                label = "알림 설정",
-                checked = state.isNotificationEnabled,
-                onCheckedChange = { onIntent(SettingsIntent.ToggleNotification(it)) }
+                label = "알림 권한 상태",
+                trailing = if (state.isNotificationEnabled) "허용됨" else "설정 필요 ⚠️",
+                onClick = { onIntent(SettingsIntent.ToggleNotification(!state.isNotificationEnabled)) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 고객 지원
+        SettingsSection(title = "고객 지원") {
+            SettingsRowArrow(
+                emoji = "❓",
+                label = "자주 묻는 질문",
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-FAQ-33892d663636805481d6ec75e097676c") }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "⭐",
+                label = "앱 리뷰 남기기",
+                onClick = {
+                    val packageName = "com.wngud.allsleep"
+                    uriHandler.openUri("https://play.google.com/store/apps/details?id=$packageName")
+                }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "✉️",
+                label = "의견 보내기",
+                onClick = {
+                    val email = "official.allsleep@gmail.com"
+                    // 제목: [AllSleep 의견 제보] v1.1.0
+                    val subject = "%5BAllSleep%20%EC%9D%98%EA%B2%AC%20%EC%A0%9C%EB%B3%B4%5D%20v1.1.0"
+                    // 본문:
+                    // 앱 버전: 1.1.0
+                    // 기기: android
+                    //
+                    // 문의 내용:
+                    // (여기에 유저가 작성)
+                    val body = "%EC%95%B1%20%EB%B2%84%EC%A0%84:%201.1.0%0A%EA%B8%B0%EA%B8%B0:%20android%0A%0A%EB%AC%B8%EC%9D%98%20%EB%82%B4%EC%9A%A9:%0A"
+                    uriHandler.openUri("mailto:$email?subject=$subject&body=$body")
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 서비스 정보
+        SettingsSection(title = "서비스 정보") {
+            SettingsRowArrow(
+                emoji = "📜",
+                label = "이용 약관",
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35") }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "🛡️",
+                label = "개인정보 처리방침",
+                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") }
+            )
+            SettingsDivider()
+            SettingsRowArrow(
+                emoji = "📱",
+                label = "버전 정보",
+                trailing = "v1.1.0",
+                onClick = { }
             )
         }
 
@@ -309,19 +421,8 @@ fun SettingsScreenContent(
             )
         }
 
-        // 하단 버전 정보
+        // 하단 여백
         Spacer(modifier = Modifier.height(32.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "v1.1.0",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            )
-        }
-        Spacer(modifier = Modifier.height(24.dp))
     }
 
     // 다이얼로그들 (생략 가능하면 생략하거나 유지)
@@ -396,18 +497,30 @@ private fun ProfileCard(user: User, onEditClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
             val initial = user.displayName?.firstOrNull()?.toString() ?: "?"
-            Text(initial, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(initial, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(user.displayName ?: "사용자", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(user.email ?: "", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            Text(
+                text = user.displayName ?: "사용자", 
+                fontSize = 15.sp, 
+                fontWeight = FontWeight.Bold, 
+                maxLines = 1, 
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = user.email ?: "", 
+                fontSize = 12.sp, 
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), 
+                maxLines = 1, 
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
         IconButton(onClick = onEditClick) {
             Text("편집", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
@@ -416,39 +529,69 @@ private fun ProfileCard(user: User, onEditClick: () -> Unit) {
 }
 
 @Composable
-private fun PremiumUpgradeCard(onUpgradeClick: () -> Unit) {
-    Column(
+private fun PremiumMembershipCard(
+    isPremium: Boolean,
+    onActionClick: () -> Unit
+) {
+    val title = if (isPremium) "Premium 멤버십 이용 중" else "Premium으로 업그레이드"
+    val subtitle = if (isPremium) "모든 프리미엄 기능을 무제한으로 이용 중입니다." else "무제한 기기 동기화 및 전용 혜택"
+    
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(colors = listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))))
-            .padding(20.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF4938FF), Color(0xFF8B5CF6))
+                )
+            )
+            .clickable(onClick = onActionClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("AllSleep Premium", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = onUpgradeClick,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF6366F1)),
-            shape = RoundedCornerShape(12.dp)
+        // 좌측 다이아몬드 아이콘
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
         ) {
-            Text("지금 업그레이드", fontWeight = FontWeight.Bold)
+            Text("💎", fontSize = 18.sp)
         }
-    }
-}
-
-@Composable
-private fun PremiumActiveCard(onManageClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(colors = listOf(Color(0xFF4938FF), Color(0xFFA855F7))))
-            .padding(20.dp)
-    ) {
-        Text("Premium 활성", color = Color.White, fontWeight = FontWeight.Bold)
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // 중앙 텍스트 (한 줄씩 유지)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1
+            )
+            Text(
+                text = subtitle,
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        // 우측 화살표 버튼 (박스 형태)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("›", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold)
+        }
     }
 }
 

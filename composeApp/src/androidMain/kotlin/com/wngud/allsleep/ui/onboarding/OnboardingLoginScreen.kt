@@ -26,6 +26,7 @@ import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.ui.auth.login.AuthIntent
 import com.wngud.allsleep.ui.auth.login.AuthViewModel
 import com.wngud.allsleep.ui.auth.login.LoginButtonGroup
+import com.wngud.allsleep.ui.auth.login.AuthFooter
 import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
@@ -121,9 +122,16 @@ actual fun OnboardingLoginScreen(
                 state = state,
                 onKakaoLogin = { viewModel.handleIntent(AuthIntent.LoginWithKakao) },
                 onGoogleLogin = { viewModel.handleIntent(AuthIntent.LoginWithGoogle(activity)) },
-                onAppleLogin = { onNext() }, // TODO: 실제 애플 로그인 연동
+                onAppleLogin = { /* TODO */ },
+                onEmailLogin = onEmailLogin,
                 onSkip = onSkip
             )
+            
+            Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
+            
+            AuthFooter()
+            
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

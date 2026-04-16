@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 interface AuthRepository {
     suspend fun loginWithKakao(): Result<User>
     suspend fun loginWithGoogle(context: PlatformContext): Result<User>
+    suspend fun loginWithEmail(email: String, password: String): Result<User>
+    suspend fun signUpWithEmail(email: String, password: String, name: String): Result<User>
     suspend fun logout(): Result<Unit>
     suspend fun deleteAccount(): Result<Unit>
     suspend fun validateSession(): Result<Unit>

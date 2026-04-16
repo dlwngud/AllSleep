@@ -128,7 +128,8 @@ fun AlarmScreenContent(
                         Text(
                             text = if (tab == AlarmTab.WEEKDAY) "평일 (월-금)" else "주말 (토-일)",
                             fontSize = 15.sp,
-                            fontWeight = if (state.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (state.selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                            color = if (state.selectedTab == tab) MaterialTheme.colorScheme.primary else Color.White
                         )
                     }
                 )

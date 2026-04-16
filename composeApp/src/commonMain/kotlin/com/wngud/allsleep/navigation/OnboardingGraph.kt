@@ -163,7 +163,9 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                     },
                     onKakaoLogin = { },
                     onAppleLogin = { },
-                    onEmailLogin = { }
+                    onEmailLogin = { 
+                        navController.navigate(Screen.Auth.EmailLogin.route)
+                    }
                 )
             } else {
                 // 준비 완료 화면 (8단계 중 8단계 최종)

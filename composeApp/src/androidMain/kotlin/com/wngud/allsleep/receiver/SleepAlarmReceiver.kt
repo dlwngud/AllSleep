@@ -48,6 +48,8 @@ class SleepAlarmReceiver : BroadcastReceiver(), KoinComponent {
             when (action) {
                 ACTION_START_SLEEP -> {
                     Log.d("SleepAlarmReceiver", "Auto-starting sleep mode for user: ${user.uid}")
+                    val now = System.currentTimeMillis()
+                    sleepSettingsRepository.saveActiveSleepStartAt(now)
                     updateUserSleepStateUseCase(
                         uid = user.uid,
                         isSleeping = true,

@@ -38,6 +38,7 @@ class KakaoAuthDataSource(private val context: Context) {
 
         @Suppress("UNCHECKED_CAST")
         val resultMap = result.data as Map<String, Any?>
+        println("KakaoAuthDataSource [DEBUG] verifyKakaoToken response: $resultMap")
         val customToken = resultMap["customToken"] as String
         val uid = resultMap["uid"] as String
         val displayName = resultMap["displayName"] as? String

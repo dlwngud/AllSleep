@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -32,8 +34,8 @@ fun App() {
         val navController = rememberNavController()
         val globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
         
-        val stateFlow = globalSleepViewModel.state
-        val state by stateFlow.collectAsState()
+        val snackbarHostState = remember { SnackbarHostState() }
+        val state by globalSleepViewModel.state.collectAsState()
         val isInitialized = state.isStateInitialized
         
         // 전역 Effect 수집
@@ -44,7 +46,7 @@ fun App() {
                         navController.navigate(Screen.Subscription.route)
                     }
                     is GlobalSleepContract.Effect.ShowSnackbar -> {
-                        // TODO: 전역 스낵바 처리 필요 시 구현
+                        snackbarHostState.showSnackbar(effect.message)
                     }
                 }
             }
@@ -72,49 +74,6 @@ fun App() {
         val shouldShowLimitDialog = state.showDeviceLimitDialog || 
             (state.cachedDeviceStateToRegister != null && !isSubscriptionScreen && !isLoginScreen && user != null)
             
-        if (shouldShowLimitDialog) {
-            AlertDialog(
-                onDismissRequest = { 
-                    // 빈 여백(Scrim) 터치나 뒤로가기 시 인증 취소 및 로그아웃 처리
-                    globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) 
-                },
-                title = { 
-                    androidx.compose.foundation.layout.Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Text("기기 1대 연결 한도 초과", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) 
-                        androidx.compose.material3.IconButton(
-                            onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) }
-                        ) {
-                            Text(
-                                text = "✕",
-                                style = androidx.compose.material3.MaterialTheme.typography.titleLarge
-                            )
-                        }
-                    }
-                },
-                text = { Text("무료 버전은 기기 1대만 연결할 수 있습니다.\n계속하시려면 현재 기기로 완전히 교체하거나 프리미엄으로 업그레이드하세요.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.UpgradeToPremium) }
-                    ) {
-                        Text("👑 프리미엄 구독", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.ReplaceDevice) }
-                    ) {
-                        Text("기존 기기 연결 끊기", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
         
         // 모든 정보가 준비되었을 때, 동적으로 딱 알맞은 Start 화면을 결정함. (온보딩을 잠깐 거치는 일 방지)
         val initialStartDestination = remember {
@@ -171,11 +130,62 @@ fun App() {
         }
 
         AllSleepTheme {
-            Scaffold(containerColor = MaterialTheme.colorScheme.background) { _ ->
+            if (shouldShowLimitDialog) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        // 빈 여백(Scrim) 터치나 뒤로가기 시 인증 취소 및 로그아웃 처리
+                        globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) 
+                    },
+                    title = { 
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            Text("기기 1대 연결 한도 초과", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) 
+                            androidx.compose.material3.IconButton(
+                                onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) }
+                            ) {
+                                Text(
+                                    text = "✕",
+                                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge
+                                )
+                            }
+                        }
+                    },
+                    text = { Text("무료 버전은 기기 1대만 연결할 수 있습니다.\n계속하시려면 현재 기기로 완전히 교체하거나 프리미엄으로 업그레이드하세요.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.UpgradeToPremium) }
+                        ) {
+                            Text("👑 프리미엄 구독", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.ReplaceDevice) }
+                        ) {
+                            Text("기존 기기 연결 끊기", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background,
+                snackbarHost = { if (!showBottomNav) SnackbarHost(snackbarHostState) }
+            ) { _ ->
                 if (showBottomNav) {
-                    BottomNavScaffold(navController = navController) { paddingValues ->
+                    BottomNavScaffold(
+                        navController = navController,
+                        snackbarHostState = snackbarHostState
+                    ) { paddingValues ->
                         AppNavigation(
                             navController = navController,
+                            snackbarHostState = snackbarHostState,
                             startDestination = initialStartDestination,
                             contentPadding = paddingValues
                         )
@@ -183,6 +193,7 @@ fun App() {
                 } else {
                     AppNavigation(
                         navController = navController,
+                        snackbarHostState = snackbarHostState,
                         startDestination = initialStartDestination
                     )
                 }

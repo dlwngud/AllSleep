@@ -74,12 +74,21 @@ class StatsViewModel(
                 _state.update { it.copy(selectedPeriodIndex = intent.index) }
                 calculateTrendStats()
             }
+            StatsIntent.Refresh -> {
+                loadInitialData(_state.value.selectedYearMonth, isRefresh = true)
+            }
         }
     }
 
-    private fun loadInitialData(yearMonth: String) {
+    private fun loadInitialData(yearMonth: String, isRefresh: Boolean = false) {
         viewModelScope.launch {
-            val user = getCurrentUserUseCase() ?: return@launch
+            if (isRefresh) {
+                _state.update { it.copy(isRefreshing = true, error = null) }
+            }
+            val user = getCurrentUserUseCase() ?: run {
+                if (isRefresh) _state.update { it.copy(isRefreshing = false) }
+                return@launch
+            }
             
             // 1. 최신 수면 기록 로드 (헤더용)
             val latestResult = sleepRecordRepository.getLatestRecord(user.uid)
@@ -92,6 +101,10 @@ class StatsViewModel(
 
             // 3. 전체 기록 로드 (통계 분석용)
             loadTrendRecords()
+            
+            if (isRefresh) {
+                _state.update { it.copy(isRefreshing = false) }
+            }
         }
     }
 
@@ -103,8 +116,10 @@ class StatsViewModel(
             
             val result = sleepRecordRepository.getRecordsByRange(user.uid, twoYearsAgo.toString(), today.toString())
             result.onSuccess { recordList ->
-                _state.update { it.copy(trendRecords = recordList) }
+                _state.update { it.copy(trendRecords = recordList, isLoading = false) }
                 calculateTrendStats()
+            }.onFailure { e ->
+                _state.update { it.copy(error = "기본 데이터 로드 실패: ${e.message}", isLoading = false) }
             }
         }
     }
@@ -118,12 +133,12 @@ class StatsViewModel(
                     val result = sleepRecordRepository.getRecordsByMonth(user.uid, yearMonth)
                     result.onSuccess { recordList ->
                         val recordsMap = recordList.associateBy { it.date }
-                        _state.update { it.copy(records = recordsMap) }
+                        _state.update { it.copy(records = recordsMap, isLoading = false) }
                         
                         // 통계 계산 실행
                         calculateTrendStats()
                     }.onFailure { e ->
-                        _state.update { it.copy(error = "기록 로드 실패: ${e.message}") }
+                        _state.update { it.copy(error = "기록 로드 실패: ${e.message}", isLoading = false) }
                     }
                 }
             } finally {

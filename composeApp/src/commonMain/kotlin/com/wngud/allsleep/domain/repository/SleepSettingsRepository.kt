@@ -23,6 +23,7 @@ interface SleepSettingsRepository {
     val deviceName: Flow<String?>
     val isPremium: Flow<Boolean>
     val activeSleepStartAt: Flow<Long>
+    val lastAppOpenAdShownAt: Flow<Long>
 
     // --- 저장 메서드 ---
     suspend fun saveWeekdaySchedule(bedtime: String, wakeTime: String)
@@ -37,6 +38,7 @@ interface SleepSettingsRepository {
     suspend fun saveDeviceName(name: String)
     suspend fun savePremiumStatus(isPremium: Boolean)
     suspend fun saveActiveSleepStartAt(startTime: Long)
+    suspend fun saveLastAppOpenAdShownAt(time: Long)
 
     // 초기화 (로그아웃 시 등)
     suspend fun clear()

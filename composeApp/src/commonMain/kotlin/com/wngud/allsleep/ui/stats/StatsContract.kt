@@ -10,6 +10,7 @@ enum class StatsTab { RECORD, TREND, INSIGHT }
 
 data class StatsState(
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val selectedTab: StatsTab = StatsTab.RECORD,
     val selectedDate: String? = null,           // 캘린더에서 선택된 날짜
     val selectedYearMonth: String = "",         // 캘린더 현재 표시 월 (초기화 시 설정)
@@ -66,4 +67,5 @@ sealed interface StatsIntent {
     data class SelectDate(val date: String) : StatsIntent
     data class NavigateMonth(val yearMonth: String) : StatsIntent
     data class SelectPeriod(val index: Int) : StatsIntent
+    object Refresh : StatsIntent
 }

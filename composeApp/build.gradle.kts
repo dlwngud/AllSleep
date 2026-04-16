@@ -10,7 +10,11 @@ plugins {
 }
 
 kotlin {
-    androidTarget()
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
     
     listOf(
         iosArm64(),
@@ -30,6 +34,10 @@ kotlin {
             implementation(libs.androidx.lifecycle.process)
             // 카카오 SDK (Android 전용)
             implementation("com.kakao.sdk:v2-user:2.20.6")
+
+            // RevenueCat
+            implementation(libs.revenuecat.purchases)
+            implementation(libs.revenuecat.ui)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -55,6 +63,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
@@ -74,10 +83,23 @@ android {
         applicationId = "com.wngud.allsleep"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
         // 카카오 로그인 콜백 scheme 주입 (kakao + 네이티브앱키)
         manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
+
+        // RevenueCat API Key 주입
+        val props = Properties().apply {
+            val localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                load(localPropertiesFile.inputStream())
+            }
+        }
+        val rcApiKey = props.getProperty("revenueCat.apiKey") ?: ""
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"$rcApiKey\"")
+    }
+    buildFeatures {
+        buildConfig = true
     }
     packaging {
         resources {
@@ -105,8 +127,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
@@ -122,6 +144,9 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    
+    implementation("com.google.android.gms:play-services-ads:23.0.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     
     // Koin
     implementation(libs.koin.core)

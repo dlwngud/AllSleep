@@ -20,7 +20,8 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 actual fun GlobalLoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onEmailLogin: () -> Unit
 ) {
     val activity = LocalContext.current as PlatformContext
     val viewModel = koinViewModel<AuthViewModel>()
@@ -53,8 +54,7 @@ actual fun GlobalLoginScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 48.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
@@ -89,8 +89,15 @@ actual fun GlobalLoginScreen(
                 onKakaoLogin = { viewModel.handleIntent(AuthIntent.LoginWithKakao) },
                 onGoogleLogin = { viewModel.handleIntent(AuthIntent.LoginWithGoogle(activity)) },
                 onAppleLogin = { /* TODO */ },
+                onEmailLogin = onEmailLogin,
                 onSkip = null // 일반 로그인 시 건너뛰기 불가
             )
+            
+            Spacer(modifier = Modifier.height(Spacing.extraExtraLarge))
+            
+            AuthFooter()
+            
+            Spacer(modifier = Modifier.height(48.dp))
         }
     }
 }

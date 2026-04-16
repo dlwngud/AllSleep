@@ -4,5 +4,6 @@ import androidx.compose.runtime.Composable
 
 @Composable
 expect fun GlobalLoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onEmailLogin: () -> Unit
 )

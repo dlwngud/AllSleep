@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -42,67 +43,56 @@ import com.wngud.allsleep.ui.theme.OnSurfaceVariant
 import com.wngud.allsleep.ui.components.BatteryOptimizationGuideDialog
 import com.wngud.allsleep.domain.model.UserSleepState
 import com.wngud.allsleep.domain.model.DeviceState
+import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
+import com.wngud.allsleep.ui.components.NotificationRationaleDialog
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.global.GlobalSleepContract
 
-/**
- * 홈 탭 화면
- * 멀티디바이스 동기화(Sync)와 일괄 차단을 시각화한 럭셔리 대시보드 테마입니다.
- */
 @Composable
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     viewModel: HomeViewModel = koinViewModel(),
     globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
 ) {
     val state by viewModel.state.collectAsState()
     val globalState by globalSleepViewModel.state.collectAsState(GlobalSleepContract.State())
     
-    val sleepState = globalState.sleepState
     val devices = globalState.registeredDevices
     val isToggleLoading = globalState.isToggleLoading
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        HomeScreenContent(
-            contentPadding = contentPadding,
-            state = state,
-            devices = devices,
-            isSleepModeActive = sleepState?.isSleeping ?: false,
-            onStartSleep = { 
-                viewModel.handleIntent(HomeIntent.StartSleep)
-                globalSleepViewModel.handleIntent(
-                    GlobalSleepContract.Intent.ToggleSleepState(isSleeping = true)
-                )
-            },
-            onWakeUpTest = {
-                globalSleepViewModel.handleIntent(
-                    GlobalSleepContract.Intent.ToggleSleepState(isSleeping = false)
-                )
-            }
-        )
+    HomeScreenContent(
+        contentPadding = contentPadding,
+        state = state,
+        devices = devices,
+        snackbarHostState = snackbarHostState,
+        onStartSleep = { 
+            viewModel.handleIntent(HomeIntent.StartSleep)
+            globalSleepViewModel.handleIntent(
+                GlobalSleepContract.Intent.ToggleSleepState(isSleeping = true)
+            )
+        }
+    )
 
-        // 화면 딜레이 동안 중복 터치를 막는 로딩 화면 (핑퐁 더블 탭 버그 방지)
-        if (isToggleLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    // 터치 이벤트를 소모하여 하위 컨텐츠 조작 방지
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                event.changes.forEach { it.consume() }
-                            }
+    if (isToggleLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                            event.changes.forEach { it.consume() }
                         }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 4.dp
-                )
-            }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4.dp
+            )
         }
     }
 }
@@ -111,17 +101,22 @@ fun HomeScreen(
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     state: HomeState,
-    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
-    isSleepModeActive: Boolean,
-    onStartSleep: () -> Unit,
-    onWakeUpTest: () -> Unit
+    devices: List<DeviceState>,
+    snackbarHostState: SnackbarHostState,
+    onStartSleep: () -> Unit
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showNotificationRationale by remember { mutableStateOf(false) }
     var showBatteryGuideDialog by remember { mutableStateOf(false) }
     var showForcedBatteryDialog by remember { mutableStateOf(false) }
+    var showAccessibilityDisclosure by remember { mutableStateOf(false) }
     
+    val scope = rememberCoroutineScope()
     val sleepServiceController = rememberSleepServiceController()
+    
+    val notificationPermissionRequester = rememberNotificationPermissionRequester { _ -> }
+
     val accessibilityPermissionRequester = rememberAccessibilityPermissionRequester { isGranted ->
         if (isGranted) {
             onStartSleep()
@@ -134,12 +129,12 @@ fun HomeScreenContent(
                 onStartSleep()
                 sleepServiceController.start()
             } else {
-                accessibilityPermissionRequester.requestPermission()
+                showAccessibilityDisclosure = true
             }
         }
     }
 
-    val batteryPermissionRequester = rememberPermissionRequester { /* Not used here directly */ }
+    val batteryPermissionRequester = rememberPermissionRequester { }
     val isBatteryOptimized by batteryPermissionRequester.isBatteryOptimized.collectAsState()
 
     if (showPermissionDialog) {
@@ -153,14 +148,19 @@ fun HomeScreenContent(
                     if (!permissionRequester.isGranted()) {
                         permissionRequester.requestPermission()
                     } else if (!accessibilityPermissionRequester.isGranted()) {
-                        accessibilityPermissionRequester.requestPermission()
+                        showAccessibilityDisclosure = true
                     }
                 }) {
                     Text("설정으로 이동", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
+                TextButton(onClick = { 
+                    showPermissionDialog = false 
+                    scope.launch {
+                        snackbarHostState.showSnackbar("필수 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                    }
+                }) {
                     Text("나중에 가기")
                 }
             },
@@ -170,7 +170,21 @@ fun HomeScreenContent(
         )
     }
 
-    // 배터리 설정 가이드 다이얼로그 (Stitch 고수준 디자인 반영)
+    if (showNotificationRationale) {
+        NotificationRationaleDialog(
+            onDismissRequest = { 
+                showNotificationRationale = false 
+                scope.launch {
+                    snackbarHostState.showSnackbar("알림 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            },
+            onConfirmClick = {
+                showNotificationRationale = false
+                notificationPermissionRequester.openSettings()
+            }
+        )
+    }
+
     if (showBatteryGuideDialog || showForcedBatteryDialog) {
         BatteryOptimizationGuideDialog(
             isForced = showForcedBatteryDialog,
@@ -185,9 +199,21 @@ fun HomeScreenContent(
             }
         )
     }
+    if (showAccessibilityDisclosure) {
+        com.wngud.allsleep.ui.components.AccessibilityDisclosureDialog(
+            onConfirm = {
+                showAccessibilityDisclosure = false
+                accessibilityPermissionRequester.requestPermission()
+            },
+            onDismiss = {
+                showAccessibilityDisclosure = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("접근성 권한 없이는 수면 잠금을 사용할 수 없습니다.")
+                }
+            }
+        )
+    }
 
-    
-    // 럭셔리 다크 네이비 배경 (#0B0C10)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -198,8 +224,7 @@ fun HomeScreenContent(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Stage 2: 생존 배너 (Survival Banner)
-            if (!isBatteryOptimized && !isSleepModeActive) {
+            if (!isBatteryOptimized) {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -232,52 +257,8 @@ fun HomeScreenContent(
                 }
             }
 
-            // [NEW] 권한 배너: 수면 모드이나 화면이 잠기지 않은 경우 (태블릿 동기화 등)
-            val isOverlayGranted = permissionRequester.isGranted()
-            val isAccessibilityGranted = accessibilityPermissionRequester.isGranted()
-            if (isSleepModeActive && (!isOverlayGranted || !isAccessibilityGranted)) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clickable { 
-                            if (!isOverlayGranted) {
-                                permissionRequester.requestPermission()
-                            } else {
-                                accessibilityPermissionRequester.requestPermission()
-                            }
-                        },
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text("🛡️", fontSize = 16.sp)
-                        Text(
-                            text = "수면 모드 중입니다. 완벽한 화면 잠금을 위해 추가 권한 허용이 필요합니다.",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "허용하기",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 1. 중앙 영역: 거대한 동기화 링(Sync Ring)과 상태 메시지
-            // (위성 배치 로직으로 통합됨, 기기 탭 시 바텀시트 활성화)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -286,29 +267,25 @@ fun HomeScreenContent(
             ) {
                 OrbitalSyncHub(
                     devices = devices,
-                    isSleepModeActive = isSleepModeActive,
                     onDeviceClick = { showDeviceSheet = true }
                 )
             }
 
-            // 3. 하단 슬라이더: 무의식적인 탭 방지, 의도적인 수면 시작
             BottomSwipeArea(
                 sleepGoal = state.sleepGoal,
-                isSleepModeActive = isSleepModeActive,
                 onStartSleep = {
-                    // Stage 3: 수면 시작 가드 (Force Guard)
-                    if (!batteryPermissionRequester.isIgnoringBatteryOptimizations()) {
+                    if (!notificationPermissionRequester.isGranted()) {
+                        showNotificationRationale = true
+                    } else if (!batteryPermissionRequester.isIgnoringBatteryOptimizations()) {
                         showForcedBatteryDialog = true
                     } else if (permissionRequester.isGranted() && accessibilityPermissionRequester.isGranted()) {
                         onStartSleep()
                         sleepServiceController.start()
+                    } else if (!permissionRequester.isGranted()) {
+                        permissionRequester.requestPermission()
                     } else {
-                        showPermissionDialog = true
+                        showAccessibilityDisclosure = true
                     }
-                },
-                onWakeUpTest = {
-                    onWakeUpTest()
-                    sleepServiceController.stop()
                 }
             )
         }
@@ -322,7 +299,6 @@ fun HomeScreenContent(
     }
 }
 
-// 기기 정보에 따른 아이콘 매핑 유틸리티
 @Composable
 private fun getDeviceIcon(platform: String): DrawableResource {
     return when (platform.lowercase()) {
@@ -333,12 +309,10 @@ private fun getDeviceIcon(platform: String): DrawableResource {
     }
 }
 
-    // TopConnectionStatus 제거 (OrbitalSyncHub의 위성으로 통합)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceBottomSheet(
-    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
+    devices: List<DeviceState>,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -358,25 +332,19 @@ private fun DeviceBottomSheet(
             devices = devices,
             showHeader = true
         )
-
     }
 }
 
 @Composable
 private fun OrbitalSyncHub(
-    devices: List<com.wngud.allsleep.domain.model.DeviceState>,
-    isSleepModeActive: Boolean, 
+    devices: List<DeviceState>,
     onDeviceClick: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition()
-
-    // 궤도 무한 회전 애니메이션용 반지름 관리
     val orbitRadius = 140.dp.value
-    // 기기 개수에 따른 궤도 간격
     val deviceCount = devices.size
     val angleStep = if (deviceCount > 0) 360f / deviceCount else 0f
 
-    // 2초 간격으로 빛이 깜빡이는(숨쉬는) 펄스 애니메이션
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.8f,
@@ -395,14 +363,12 @@ private fun OrbitalSyncHub(
             modifier = Modifier.size(340.dp).padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            // 거대한 동기화 링(Sync Ring) 궤도선 표시
             Box(
                 modifier = Modifier
                     .size(280.dp)
                     .border(1.dp, Color(0xFF3BA5F5).copy(alpha = 0.15f), CircleShape)
             )
 
-            // 중앙 허브 애니메이션 (구름/달 캐릭터 등)
             Box(
                 modifier = Modifier
                     .size(280.dp)
@@ -417,11 +383,8 @@ private fun OrbitalSyncHub(
                 )
             }
 
-            // 연결된 기기 위성(Satellite) 애니메이션 리스트
             devices.forEachIndexed { index, device ->
-                // 각 기기마다의 고유 시작 각도
                 val startAngle = index * angleStep
-                // 360도 회전 애니메이션
                 val rotation by infiniteTransition.animateFloat(
                     initialValue = startAngle,
                     targetValue = startAngle + 360f,
@@ -438,7 +401,6 @@ private fun OrbitalSyncHub(
             }
         }
 
-        // 중앙 상태 메시지
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -470,28 +432,24 @@ private fun DeviceIcon(
     val x = (orbitRadius * cos(radians)).dp
     val y = (orbitRadius * sin(radians)).dp
 
-    // 테마 메인 색상(보라색) 롤백 및 하이라이트 투명도 최대로 올려 쨍하게
     val activeColor = MaterialTheme.colorScheme.primary
     val iconColor = if (isSynced) activeColor else Color.Gray
 
     Box(
         modifier = Modifier
             .offset(x = x, y = y)
-            .size(56.dp), // 아우라(Glow) 효과가 밖으로 퍼질 수 있는 충분한 공간 확보
+            .size(56.dp),
         contentAlignment = Alignment.Center
     ) {
-        // 활성화된 경우에만 뒤에 흐릿한 네온 글로우 이펙트(Blur) 깔기
         if (isSynced) {
             Box(
                 modifier = Modifier
-                    .size(68.dp) // 아우라 범위를 넉넉하게
-                    // blur(12.dp)의 박스 한계로 사각형 잘림(Clipping)이 발생하는 것을 방지하기 위해 
-                    // 중앙부터 바깥으로 부드럽게 완전 투명(Transparent)해지는 진짜 원형(Circle) 파장 브러시 사용
+                    .size(68.dp)
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                activeColor.copy(alpha = pulseAlpha), // 안쪽: 빛의 중심지
-                                activeColor.copy(alpha = 0f)          // 바깥쪽: 완전 투명하게 발산
+                                activeColor.copy(alpha = pulseAlpha),
+                                activeColor.copy(alpha = 0f)
                             )
                         ),
                         shape = CircleShape
@@ -499,11 +457,9 @@ private fun DeviceIcon(
             )
         }
 
-        // 실제 하드웨어 칩 (내부 컨테이너)
         Box(
             modifier = Modifier
                 .size(44.dp)
-                // 활성화 시 보라색(Primary) 틴트를 아주 살짝 섞어서 럭셔리한 느낌 추가
                 .background(if (isSynced) activeColor.copy(alpha = 0.1f) else Color(0xFF131821), CircleShape)
                 .border(1.5.dp, if (isSynced) activeColor.copy(alpha = 0.3f) else Color(0xFF1C2431), CircleShape),
             contentAlignment = Alignment.Center
@@ -521,9 +477,7 @@ private fun DeviceIcon(
 @Composable
 private fun BottomSwipeArea(
     sleepGoal: String, 
-    isSleepModeActive: Boolean,
-    onStartSleep: () -> Unit,
-    onWakeUpTest: () -> Unit
+    onStartSleep: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -533,29 +487,8 @@ private fun BottomSwipeArea(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 목표 텍스트
         Text("이번 밤 목표: $sleepGoal", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
-
-        // 슬라이더 버튼 영역
-        if (isSleepModeActive) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(Color(0xFF131A26).copy(alpha = 0.5f), RoundedCornerShape(32.dp))
-                    .border(1.dp, Color(0xFF1E2633).copy(alpha = 0.3f), RoundedCornerShape(32.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "🔒 수면 분석 데이터 보호 중",
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        } else {
-            SwipeToSleepButton(onSwipeComplete = onStartSleep)
-        }
+        SwipeToSleepButton(onSwipeComplete = onStartSleep)
     }
 }
 
@@ -579,18 +512,14 @@ private fun SwipeToSleepButton(
         var offsetX by remember { mutableStateOf(0f) }
         var isSwiped by remember { mutableStateOf(false) }
 
-        // 수면 모드 진입이 취소되었을 때(예: 권한 거부) 버튼을 원래 상태로 복구
         LaunchedEffect(isSwiped) {
             if (isSwiped) {
                 kotlinx.coroutines.delay(500)
-                if (isSwiped) {
-                    isSwiped = false
-                    offsetX = 0f
-                }
+                isSwiped = false
+                offsetX = 0f
             }
         }
 
-        // 중앙 텍스트
         Text(
             text = if (isSwiped) "수면 모드 활성화됨" else "밀어서 수면 모드 켜기",
             color = Color.White.copy(alpha = if (isSwiped) 1f else 0.4f),
@@ -599,7 +528,6 @@ private fun SwipeToSleepButton(
             modifier = Modifier.align(Alignment.Center)
         )
 
-        // 드래그 가능한 손잡이 (Thumb)
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
@@ -610,12 +538,10 @@ private fun SwipeToSleepButton(
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             if (offsetX > swipeAreaWidthPx * 0.8f) {
-                                // 80% 이상 밀었을 때 활성화
                                 offsetX = swipeAreaWidthPx
                                 isSwiped = true
                                 onSwipeComplete()
                             } else {
-                                // 중간에 놓으면 원상복구
                                 offsetX = 0f
                             }
                         }
@@ -647,9 +573,8 @@ fun HomeScreenPreview() {
             contentPadding = PaddingValues(),
             state = HomeState(),
             devices = emptyList(),
-            isSleepModeActive = false,
-            onStartSleep = {},
-            onWakeUpTest = {}
+            snackbarHostState = SnackbarHostState(),
+            onStartSleep = {}
         )
     }
 }

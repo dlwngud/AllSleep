@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +70,11 @@ fun StatsScreen(
     val state by viewModel.state.collectAsState()
     val globalState by globalViewModel.state.collectAsState()
     val isPremium = globalState.isPremium
+
+    // 화면 진입 시 자동 새로고침 활성화
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(StatsIntent.Refresh)
+    }
 
     StatsScreenContent(
         contentPadding = contentPadding,
@@ -291,24 +298,31 @@ private fun StatsTabBar(selectedTab: StatsTab, onIntent: (StatsIntent) -> Unit) 
 // TAB 1 — 기록 (캘린더)
 // ══════════════════════════════════════════
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecordTab(state: StatsState, onIntent: (StatsIntent) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 24.dp)
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = { onIntent(StatsIntent.Refresh) },
+        modifier = Modifier.fillMaxSize()
     ) {
-        if (state.isLoading) {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = indigo)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            if (state.isLoading && !state.isRefreshing) {
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = indigo)
+                }
+            } else {
+                Spacer(Modifier.height(16.dp))
+                MonthlyCalendarCard(state = state, onIntent = onIntent)
+                Spacer(Modifier.height(16.dp))
+                MonthlySummaryStrip(state = state)
             }
-        } else {
-            Spacer(Modifier.height(16.dp))
-            MonthlyCalendarCard(state = state, onIntent = onIntent)
-            Spacer(Modifier.height(16.dp))
-            MonthlySummaryStrip(state = state)
         }
     }
 }
@@ -501,8 +515,8 @@ private fun CalendarDayCell(
 ) {
     val dotColor = when {
         achievementRate == null || achievementRate <= 0f -> Color.Transparent
-        achievementRate >= 0.95f -> green
-        achievementRate >= 0.7f -> amber
+        achievementRate >= 95f -> green
+        achievementRate >= 70f -> amber
         else -> red
     }
 
@@ -592,7 +606,7 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
             Spacer(Modifier.height(12.dp))
 
             // 달성률 바
-            val ratePct = (record.achievementRate * 100).toInt()
+            val ratePct = record.achievementRate.toInt()
             Text("목표 달성률 $ratePct%", fontSize = 12.sp, color = onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             Box(
@@ -604,10 +618,10 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(record.achievementRate.coerceIn(0f, 1f))
+                        .fillMaxWidth(record.achievementRate / 100f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(3.dp))
-                        .background(if (record.achievementRate >= 0.95f) green else amber)
+                        .background(if (record.achievementRate >= 95f) green else amber)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -618,7 +632,7 @@ private fun SelectedDayDetailCard(record: SleepRecord) {
                 )
                 Spacer(Modifier.width(8.dp))
                 ChipInfo(
-                    label = "수면 효율 ${(record.sleepEfficiency * 100).toInt()}%",
+                    label = "수면 효율 ${record.sleepEfficiency.toInt()}%",
                     modifier = Modifier.weight(1f)
                 )
             }

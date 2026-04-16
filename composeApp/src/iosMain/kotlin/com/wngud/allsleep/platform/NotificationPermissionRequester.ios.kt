@@ -9,5 +9,11 @@ actual fun rememberNotificationPermissionRequester(
     return object : NotificationPermissionRequester {
         override fun isGranted() = true
         override fun requestPermission() { onResult(true) }
+        override fun openSettings() {
+            val url = platform.Foundation.NSURL.URLWithString(platform.UIKit.UIApplicationOpenSettingsURLString)
+            if (url != null) {
+                platform.UIKit.UIApplication.sharedApplication.openURL(url)
+            }
+        }
     }
 }

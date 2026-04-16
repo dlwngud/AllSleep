@@ -35,6 +35,7 @@ class SleepSettingsRepositoryImpl(
         private val KEY_DEVICE_NAME = stringPreferencesKey("device_name")
         private val KEY_IS_PREMIUM = booleanPreferencesKey("is_premium")
         private val KEY_ACTIVE_SLEEP_START_AT = longPreferencesKey("active_sleep_start_at")
+        private val KEY_LAST_APP_OPEN_AD_SHOWN_AT = longPreferencesKey("last_app_open_ad_shown_at")
         
         private const val DEFAULT_WEEKDAY_BEDTIME = "23:00"
         private const val DEFAULT_WEEKDAY_WAKE_TIME = "07:00"
@@ -154,6 +155,16 @@ class SleepSettingsRepositoryImpl(
     override suspend fun saveActiveSleepStartAt(startTime: Long) {
         dataStore.edit { preferences ->
             preferences[KEY_ACTIVE_SLEEP_START_AT] = startTime
+        }
+    }
+
+    override val lastAppOpenAdShownAt: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[KEY_LAST_APP_OPEN_AD_SHOWN_AT] ?: 0L
+    }
+
+    override suspend fun saveLastAppOpenAdShownAt(time: Long) {
+        dataStore.edit { preferences ->
+            preferences[KEY_LAST_APP_OPEN_AD_SHOWN_AT] = time
         }
     }
 

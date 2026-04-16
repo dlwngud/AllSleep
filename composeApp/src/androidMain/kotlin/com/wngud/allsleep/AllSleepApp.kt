@@ -4,10 +4,17 @@ import android.app.Application
 import com.wngud.allsleep.data.source.local.initDataStore
 import com.wngud.allsleep.di.appModule
 import com.wngud.allsleep.platform.DeviceInfoProvider
+import com.google.android.gms.ads.MobileAds
 import com.kakao.sdk.common.KakaoSdk
+import com.revenuecat.purchases.LogLevel
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesConfiguration
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Application 클래스
@@ -17,6 +24,18 @@ class AllSleepApp : Application() {
     
     override fun onCreate() {
         super.onCreate()
+
+        /* RevenueCat 초기화 (설정 완료 후 주석 해제)
+        Purchases.logLevel = LogLevel.DEBUG
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_API_KEY).build()
+        )
+        */
+        
+        // AdMob 초기화
+        CoroutineScope(Dispatchers.IO).launch {
+            MobileAds.initialize(this@AllSleepApp) {}
+        }
         
         // DataStore 초기화 (Koin보다 먼저!)
         initDataStore(this)

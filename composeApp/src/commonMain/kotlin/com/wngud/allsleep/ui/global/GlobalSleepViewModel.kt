@@ -49,6 +49,7 @@ class GlobalSleepViewModel(
     private val validateSessionUseCase: com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase,
     private val recordSleepSessionUseCase: com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase,
     private val sleepSettingsRepository: com.wngud.allsleep.domain.repository.SleepSettingsRepository,
+    private val billingProvider: com.wngud.allsleep.platform.BillingProvider,
     private val sleepScheduler: SleepScheduler,
     private val deviceInfoProvider: DeviceInfoProvider
 ) : ViewModel() {
@@ -65,6 +66,7 @@ class GlobalSleepViewModel(
     private var devicesJob: Job? = null
     private var deviceRegisterJob: Job? = null
     private var hasBeenRegisteredInThisSession = false
+    private var isReplacingDevice = false
 
     init {
         handleIntent(GlobalSleepContract.Intent.RequestInitialize)
@@ -97,6 +99,7 @@ class GlobalSleepViewModel(
     }
 
     private fun cancelDeviceRegistration() {
+        if (isReplacingDevice) return
         _state.update { it.copy(showDeviceLimitDialog = false, cachedDeviceStateToRegister = null) }
         handleIntent(GlobalSleepContract.Intent.RequestLogout)
     }
@@ -105,14 +108,30 @@ class GlobalSleepViewModel(
         val uid = currentUid ?: return
         val deviceToRegister = _state.value.cachedDeviceStateToRegister ?: return
         _state.update { it.copy(showDeviceLimitDialog = false, cachedDeviceStateToRegister = null) }
+        
+        isReplacingDevice = true
+        
         viewModelScope.launch {
             try {
                 val devices = observeRegisteredDevicesUseCase(uid).first()
-                devices.forEach { device -> unregisterDeviceUseCase(uid, device.deviceId) }
+                val currentId = deviceInfoProvider.getDeviceId()
+                
+                // 1. 현재 기기가 아닌 다른 기기들만 모두 등록 해제
+                devices.filter { it.deviceId != currentId }.forEach { device -> 
+                    unregisterDeviceUseCase(uid, device.deviceId) 
+                }
+                
+                // 2. 새로운 현재 기기 등록 시도
                 registerDeviceUseCase(uid, deviceToRegister, isPremium = true).onFailure { e ->
+                    isReplacingDevice = false
                     _state.update { it.copy(error = "기기 교체 실패: ${e.message}") }
                 }
+                
+                // 전역 관찰자(devicesJob)가 충분히 서버 상태를 수동 동기화할 수 있도록 마지막에 플래그 해제
+                kotlinx.coroutines.delay(1000)
+                isReplacingDevice = false
             } catch (e: Exception) {
+                isReplacingDevice = false
                 _state.update { it.copy(error = "기기 교체 중 오류: ${e.message}") }
             }
         }
@@ -249,7 +268,10 @@ class GlobalSleepViewModel(
             if (user.uid != currentUid) {
                 currentUid = user.uid
                 hasBeenRegisteredInThisSession = false
-                viewModelScope.launch { updateUserProfileUseCase(user) }
+                viewModelScope.launch { 
+                    updateUserProfileUseCase(user)
+                    billingProvider.loginUser(user.uid) 
+                }
                 startObserving(user.uid)
                 registerCurrentUIDDevice(user.uid)
             }
@@ -280,12 +302,13 @@ class GlobalSleepViewModel(
                                 val currentIsWeekday = isWeekday()
                                 val targetBedtime = if (currentIsWeekday) sleepSettingsRepository.weekdayBedtime.first() else sleepSettingsRepository.weekendBedtime.first()
                                 val targetWakeTime = if (currentIsWeekday) sleepSettingsRepository.weekdayWakeTime.first() else sleepSettingsRepository.weekendWakeTime.first()
+                                val wakeTimeMs = platformTimeMillis()
 
                                 recordSleepSessionUseCase(
                                     uid = uid,
-                                    date = formatCurrentDate(sleepStartAt),
+                                    date = formatCurrentDate(wakeTimeMs),
                                     sleepStartAt = sleepStartAt,
-                                    wakeTimeMs = platformTimeMillis(),
+                                    wakeTimeMs = wakeTimeMs,
                                     targetBedtime = targetBedtime,
                                     targetWakeTime = targetWakeTime,
                                     isLockUsed = true
@@ -337,7 +360,10 @@ class GlobalSleepViewModel(
                     if (devices.any { it.deviceId == currentId }) {
                         hasBeenRegisteredInThisSession = true
                     } else if (hasBeenRegisteredInThisSession && devices.isNotEmpty()) {
-                        logout()
+                        // 교체 중(isReplacingDevice == true)일 때는 서버 상태가 불안정하므로 로그아웃 트리거를 일시 중지함.
+                        if (!isReplacingDevice) {
+                            logout()
+                        }
                     }
                 }
         }
@@ -371,6 +397,7 @@ class GlobalSleepViewModel(
         viewModelScope.launch {
             unregisterDeviceUseCase(uid, deviceInfoProvider.getDeviceId())
             signOutUseCase()
+            billingProvider.logoutUser()
             currentUid = null
             hasBeenRegisteredInThisSession = false
             _state.update { it.copy(currentUser = null, sleepState = null, registeredDevices = emptyList()) }
