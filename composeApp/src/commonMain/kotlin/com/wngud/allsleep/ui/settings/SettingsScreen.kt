@@ -51,12 +51,12 @@ fun SettingsScreen(
     val accessibilityRequester = rememberAccessibilityPermissionRequester { }
     val isAccessibilityGranted = accessibilityRequester.isGranted()
     LaunchedEffect(isAccessibilityGranted) {
-        viewModel.updateAccessibilityStatus(isAccessibilityGranted)
+        viewModel.handleIntent(SettingsIntent.UpdateAccessibilityStatus(isAccessibilityGranted))
     }
 
     // 알림 권한 요청자
     val notificationRequester = rememberNotificationPermissionRequester { granted ->
-        viewModel.onNotificationPermissionResult(granted)
+        viewModel.handleIntent(SettingsIntent.UpdateNotificationStatus(granted))
     }
 
     val scope = rememberCoroutineScope()
@@ -65,7 +65,7 @@ fun SettingsScreen(
     // 알림 권한 상태 실시간 체크
     val isNotificationGranted = notificationRequester.isGranted()
     LaunchedEffect(isNotificationGranted) {
-        viewModel.onNotificationPermissionResult(isNotificationGranted)
+        viewModel.handleIntent(SettingsIntent.UpdateNotificationStatus(isNotificationGranted))
     }
 
     SettingsScreenContent(

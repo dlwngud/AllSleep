@@ -125,10 +125,9 @@ class GlobalSleepViewModel(
                 registerDeviceUseCase(uid, deviceToRegister, isPremium = true).onFailure { e ->
                     isReplacingDevice = false
                     _state.update { it.copy(error = "기기 교체 실패: ${e.message}") }
+                    return@launch
                 }
                 
-                // 전역 관찰자(devicesJob)가 충분히 서버 상태를 수동 동기화할 수 있도록 마지막에 플래그 해제
-                kotlinx.coroutines.delay(1000)
                 isReplacingDevice = false
             } catch (e: Exception) {
                 isReplacingDevice = false

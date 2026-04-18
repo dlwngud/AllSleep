@@ -52,10 +52,8 @@ import com.wngud.allsleep.ui.global.GlobalSleepContract
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    viewModel: HomeViewModel = koinViewModel(),
     globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
 ) {
-    val state by viewModel.state.collectAsState()
     val globalState by globalSleepViewModel.state.collectAsState(GlobalSleepContract.State())
     
     val devices = globalState.registeredDevices
@@ -63,11 +61,10 @@ fun HomeScreen(
 
     HomeScreenContent(
         contentPadding = contentPadding,
-        state = state,
+        sleepGoal = "8h 30m", // 임시 하드코딩. 향후 GlobalSleepViewModel에서 목표 계산하여 전달
         devices = devices,
         snackbarHostState = snackbarHostState,
         onStartSleep = { 
-            viewModel.handleIntent(HomeIntent.StartSleep)
             globalSleepViewModel.handleIntent(
                 GlobalSleepContract.Intent.ToggleSleepState(isSleeping = true)
             )
@@ -100,7 +97,7 @@ fun HomeScreen(
 @Composable
 fun HomeScreenContent(
     contentPadding: PaddingValues,
-    state: HomeState,
+    sleepGoal: String,
     devices: List<DeviceState>,
     snackbarHostState: SnackbarHostState,
     onStartSleep: () -> Unit
@@ -272,7 +269,7 @@ fun HomeScreenContent(
             }
 
             BottomSwipeArea(
-                sleepGoal = state.sleepGoal,
+                sleepGoal = sleepGoal,
                 onStartSleep = {
                     if (!notificationPermissionRequester.isGranted()) {
                         showNotificationRationale = true
@@ -571,7 +568,7 @@ fun HomeScreenPreview() {
     MaterialTheme(colorScheme = darkColorScheme()) {
         HomeScreenContent(
             contentPadding = PaddingValues(),
-            state = HomeState(),
+            sleepGoal = "8h 30m",
             devices = emptyList(),
             snackbarHostState = SnackbarHostState(),
             onStartSleep = {}

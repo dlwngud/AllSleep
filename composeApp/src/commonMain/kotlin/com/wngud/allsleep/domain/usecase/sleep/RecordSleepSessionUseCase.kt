@@ -88,6 +88,7 @@ class RecordSleepSessionUseCase(
             
             endTotal - startTotal
         } catch (e: Exception) {
+            println("RecordSleepSessionUseCase Error: 파싱 에러 발생 (start=$start, end=$end). 기본값 달성. Exception: ${e.message}")
             480 // 파싱 실패 시 기본 8시간
         }
     }
