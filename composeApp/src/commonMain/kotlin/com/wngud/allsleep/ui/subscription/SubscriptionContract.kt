@@ -3,29 +3,28 @@ package com.wngud.allsleep.ui.subscription
 import com.wngud.allsleep.platform.SubscriptionPackage
 
 /**
- * 구독(Premium) 화면의 MVI 컨트랙트
+ * 구독 결제 관련 MVI 규약
  */
-class SubscriptionContract {
-
+interface SubscriptionContract {
     data class State(
         val isLoading: Boolean = false,
         val isPurchasing: Boolean = false,
+        val isSuccess: Boolean = false,
         val packages: List<SubscriptionPackage> = emptyList(),
         val selectedPackageId: String? = null,
-        val error: String? = null,
-        val isSuccess: Boolean = false
+        val error: String? = null
     )
 
     sealed interface Intent {
-        data object LoadPackages : Intent
+        object LoadPackages : Intent
         data class SelectPackage(val id: String) : Intent
-        data object PurchaseSelected : Intent
-        data object RestorePurchases : Intent
-        data object DismissError : Intent
+        object PurchaseSelected : Intent
+        object RestorePurchases : Intent
+        object DismissError : Intent
     }
 
     sealed interface Effect {
         data class ShowSnackbar(val message: String) : Effect
-        data object NavigateBack : Effect
+        object NavigateBack : Effect
     }
 }

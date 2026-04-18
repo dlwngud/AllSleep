@@ -42,7 +42,8 @@ class SubscriptionViewModel(
                     it.copy(
                         isLoading = false, 
                         packages = packages,
-                        selectedPackageId = packages.firstOrNull()?.id
+                        selectedPackageId = packages.find { p -> p.type == com.wngud.allsleep.platform.PackageType.ANNUAL }?.id 
+                            ?: packages.firstOrNull()?.id
                     ) 
                 }
             } catch (e: Exception) {

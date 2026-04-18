@@ -32,6 +32,7 @@ import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.activity.compose.LocalActivity
 import com.wngud.allsleep.platform.PlatformContext
 
 /**

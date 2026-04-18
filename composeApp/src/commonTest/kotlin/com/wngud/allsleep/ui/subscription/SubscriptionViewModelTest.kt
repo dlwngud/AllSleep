@@ -1,53 +1,28 @@
 package com.wngud.allsleep.ui.subscription
 
 import com.wngud.allsleep.platform.BillingProvider
+import com.wngud.allsleep.platform.PackageType
 import com.wngud.allsleep.platform.PlatformContext
 import com.wngud.allsleep.platform.PurchaseResult
 import com.wngud.allsleep.platform.SubscriptionPackage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.*
-import kotlin.test.AfterTest
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SubscriptionViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
-
-    private class FakeBillingProvider : BillingProvider {
-        var offerings = listOf(
-            SubscriptionPackage(
-                id = "monthly_id",
-                title = "Monthly Premium",
-                priceString = "\$4.99",
-                isMonthly = true,
-                hasFreeTrial = true,
-                freeTrialDays = 7
-            )
-        )
-
-        override suspend fun loginUser(uid: String) {}
-        override suspend fun logoutUser() {}
-        override suspend fun getOfferings(): List<SubscriptionPackage> = offerings
-        
-        override suspend fun purchasePackage(
-            packageId: String,
-            context: PlatformContext
-        ): Result<PurchaseResult> {
-            return Result.success(PurchaseResult(isSuccess = true, isPremiumNow = true))
-        }
-
-        override suspend fun restorePurchases(): Result<Unit> = Result.success(Unit)
-    }
-
     private lateinit var viewModel: SubscriptionViewModel
     private lateinit var billingProvider: FakeBillingProvider
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
@@ -55,34 +30,57 @@ class SubscriptionViewModelTest {
         viewModel = SubscriptionViewModel(billingProvider)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @AfterTest
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun loadPackages_updates_state_with_packages() = runTest {
+    fun `LoadPackages 성공 시 ANNUAL 플랜이 기본 선택되어야 한다`() = runTest {
         // Given
-        viewModel.handleIntent(SubscriptionContract.Intent.LoadPackages)
-        
+        val packages = listOf(
+            SubscriptionPackage("m", "월", "₩4,900", PackageType.MONTHLY, null, null, false, 0),
+            SubscriptionPackage("a", "년", "₩39,000", PackageType.ANNUAL, "인기", "34% 할인", true, 7),
+            SubscriptionPackage("l", "평생", "₩99,000", PackageType.LIFETIME, "추천", "영구", false, 0)
+        )
+        billingProvider.packages = packages
+
         // When
+        viewModel.handleIntent(SubscriptionContract.Intent.LoadPackages)
         advanceUntilIdle()
-        
+
         // Then
-        assertFalse(viewModel.state.value.isLoading)
-        assertEquals(1, viewModel.state.value.packages.size)
-        assertEquals("monthly_id", viewModel.state.value.selectedPackageId)
+        val state = viewModel.state.value
+        assertEquals(3, state.packages.size)
+        assertEquals("a", state.selectedPackageId) // ANNUAL (id: "a") 가 자동 선택됨
+        assertEquals(null, state.error)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun selectPackage_updates_selected_id() = runTest {
+    fun `SelectPackage 호출 시 선택된 ID가 업데이트되어야 한다`() = runTest {
+        // Given
+        val packages = listOf(
+            SubscriptionPackage("m", "월", "₩4,900", PackageType.MONTHLY, null, null, false, 0),
+            SubscriptionPackage("l", "평생", "₩99,000", PackageType.LIFETIME, "추천", "영구", false, 0)
+        )
+        billingProvider.packages = packages
+        viewModel.handleIntent(SubscriptionContract.Intent.LoadPackages)
+        advanceUntilIdle()
+
         // When
-        viewModel.handleIntent(SubscriptionContract.Intent.SelectPackage("new_id"))
-        
+        viewModel.handleIntent(SubscriptionContract.Intent.SelectPackage("l"))
+
         // Then
-        assertEquals("new_id", viewModel.state.value.selectedPackageId)
+        assertEquals("l", viewModel.state.value.selectedPackageId)
     }
+}
+
+class FakeBillingProvider : BillingProvider {
+    var packages: List<SubscriptionPackage> = emptyList()
+    var purchaseResult: Result<PurchaseResult> = Result.success(PurchaseResult(true, true))
+
+    override suspend fun getOfferings(): List<SubscriptionPackage> = packages
+    
+    override suspend fun purchasePackage(packageId: String, context: PlatformContext): Result<PurchaseResult> = purchaseResult
+    
+    override suspend fun restorePurchases(): Result<Unit> = Result.success(Unit)
+    
+    override suspend fun loginUser(uid: String) {}
+    
+    override suspend fun logoutUser() {}
 }
