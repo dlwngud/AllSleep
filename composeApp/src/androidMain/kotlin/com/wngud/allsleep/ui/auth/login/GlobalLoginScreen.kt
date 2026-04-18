@@ -20,9 +20,13 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 actual fun GlobalLoginScreen(
+    title: String?,
+    subtitle: String?,
     onLoginSuccess: () -> Unit,
     onEmailLogin: () -> Unit
 ) {
+    val displayTitle = title ?: "다시 만나서 반가워요!"
+    val displaySubtitle = subtitle ?: "로그인하여 모든 기기의 수면 상태를\n실시간으로 확인하세요"
     val activity = LocalActivity.current as PlatformContext
     val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.state.collectAsState()
@@ -66,14 +70,14 @@ actual fun GlobalLoginScreen(
                 Text(text = "🌙", fontSize = FontSize.iconExtraLarge)
                 Spacer(modifier = Modifier.height(Spacing.small))
                 Text(
-                    text = "다시 만나서 반가워요!",
+                    text = displayTitle,
                     fontSize = FontSize.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "로그인하여 모든 기기의 수면 상태를\n실시간으로 확인하세요",
+                    text = displaySubtitle,
                     fontSize = FontSize.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = OnSurfaceVariant,

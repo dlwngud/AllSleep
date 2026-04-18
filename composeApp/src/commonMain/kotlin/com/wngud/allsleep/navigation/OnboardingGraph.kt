@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.wngud.allsleep.ui.onboarding.OnboardingCompleteScreen
 import com.wngud.allsleep.ui.onboarding.*
+import com.wngud.allsleep.ui.auth.login.GlobalLoginScreen
 import com.wngud.allsleep.platform.rememberPermissionRequester
 import com.wngud.allsleep.platform.rememberOverlayPermissionRequester
 import org.koin.compose.viewmodel.koinViewModel
@@ -153,16 +154,18 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                 viewModel.handleIntent(OnboardingIntent.LoadCurrentUser)
             }
 
-            if (state.user == null && state.userName == "사용자") {
-                // 로그인 화면 (8단계 중 8단계)
-                OnboardingLoginScreen(
-                    onNext = { /* state.user 변화로 인해 하단의 else 블록으로 재생성됨 */ },
-                    onSkip = {
-                        // 게스트로 시작 (Complete 화면으로)
-                        viewModel.handleIntent(OnboardingIntent.UpdateUserName("손님"))
+            // 사용자 정보가 로드되었거나 로그인이 완료된 상태면 완료 화면으로, 아니면 로그인 화면으로
+            val isUserLoggedIn = state.user != null
+            
+            if (!isUserLoggedIn) {
+                // 로그인 화면 (8단계 중 8단계) - 통합 로그인 화면 사용
+                GlobalLoginScreen(
+                    title = "설정을 저장하고\n모든 기기를 연결하세요",
+                    subtitle = "로그인하면 방금 설정한 시간이\n모든 기기에 자동으로 적용됩니다",
+                    onLoginSuccess = { 
+                        // 로그인 성공 시 사용자 정보 다시 로드 -> 다음 화면으로 자동 이동됨
+                        viewModel.handleIntent(OnboardingIntent.LoadCurrentUser)
                     },
-                    onKakaoLogin = { },
-                    onAppleLogin = { },
                     onEmailLogin = { 
                         navController.navigate(Screen.Auth.EmailLogin.route)
                     }
@@ -181,6 +184,7 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
                     userName = if (state.userName != "사용자") state.userName else (state.user?.displayName ?: "사용자")
                 )
             }
+
         }
     }
 }
