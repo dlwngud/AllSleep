@@ -10,7 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,9 +122,10 @@ fun SubscriptionScreen(
                 Spacer(modifier = Modifier.height(40.dp))
 
                 // 4. Action Button
+                val selectedPkg = state.packages.find { it.id == state.selectedPackageId }
                 PrimaryActionButton(
                     isPurchasing = state.isPurchasing,
-                    enabled = state.selectedPackageId != null,
+                    selectedPkg = selectedPkg,
                     onClick = { viewModel.handleIntent(SubscriptionContract.Intent.PurchaseSelected, context) }
                 )
 
@@ -130,6 +133,8 @@ fun SubscriptionScreen(
 
                 // 5. Footer Section
                 SubscriptionFooter(
+                    showRenewalText = selectedPkg?.type == com.wngud.allsleep.platform.PackageType.MONTHLY || 
+                                     selectedPkg?.type == com.wngud.allsleep.platform.PackageType.ANNUAL,
                     onTermsClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") }, // 예시 URL
                     onPrivacyClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") },
                     onRestoreClick = { viewModel.handleIntent(SubscriptionContract.Intent.RestorePurchases) }
@@ -270,66 +275,114 @@ fun PlanCard(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) Primary else Color.White.copy(alpha = 0.1f)
-    val backgroundColor = if (isSelected) Primary.copy(alpha = 0.05f) else SurfaceVariant
+    val backgroundColor = if (isSelected) Primary.copy(alpha = 0.08f) else SurfaceVariant.copy(alpha = 0.4f)
+    val radioColor = if (isSelected) Primary else Color.White.copy(alpha = 0.3f)
+
+    // 할인율 계산 (연간권 34%, 이미지 참고)
+    val discountPercent = when (pkg.type) {
+        com.wngud.allsleep.platform.PackageType.ANNUAL -> "34% OFF"
+        else -> null
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor)
-            .border(2.dp, borderColor, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(20.dp)
+            .padding(top = 8.dp) // 배지가 튀어나올 공간 확보
     ) {
-        Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(backgroundColor)
+                .border(2.dp, borderColor, RoundedCornerShape(20.dp))
+                .clickable(onClick = onClick)
+                .padding(20.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 1. Radio Icon
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = radioColor
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // 2. Info Section
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = pkg.title,
-                            fontSize = 18.sp,
+                            text = when (pkg.type) {
+                                com.wngud.allsleep.platform.PackageType.MONTHLY -> "월간 이용권"
+                                com.wngud.allsleep.platform.PackageType.ANNUAL -> "연간 이용권"
+                                com.wngud.allsleep.platform.PackageType.LIFETIME -> "평생 이용권"
+                                else -> pkg.title
+                            },
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         pkg.badge?.let {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Badge(
-                                containerColor = Primary,
-                                contentColor = Color.White
+                            Surface(
+                                color = Primary,
+                                shape = RoundedCornerShape(20.dp)
                             ) {
-                                Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                Text(
+                                    text = it,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
                             }
                         }
                     }
-                    pkg.subDescription?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    
+                    Text(
+                        text = when (pkg.type) {
+                            com.wngud.allsleep.platform.PackageType.LIFETIME -> "영구 소장 (단 한 번 결제)"
+                            else -> if (pkg.hasFreeTrial) "${pkg.freeTrialDays}일 무료 체험 후 결제" else pkg.subDescription ?: ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
                 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = pkg.priceString,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                    if (pkg.type == com.wngud.allsleep.platform.PackageType.ANNUAL) {
-                        Text(
-                            text = "월 3,250원 꼴",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.4f)
-                        )
-                    }
-                }
+                // 3. Price Section
+                Text(
+                    text = pkg.priceString,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
+        }
+
+        // 4. Discount Badge (Top-Right Offset)
+        discountPercent?.let {
+            Surface(
+                color = Primary,
+                shape = RoundedCornerShape(20.dp), // 카드와 동일한 20.dp 적용
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-10).dp)
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(20.dp))
+            ) {
+                Text(
+                    text = it,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
             }
         }
     }
@@ -338,9 +391,17 @@ fun PlanCard(
 @Composable
 fun PrimaryActionButton(
     isPurchasing: Boolean,
-    enabled: Boolean,
+    selectedPkg: SubscriptionPackage?,
     onClick: () -> Unit
 ) {
+    val enabled = selectedPkg != null
+    val buttonText = when (selectedPkg?.type) {
+        com.wngud.allsleep.platform.PackageType.MONTHLY -> "7일 무료 후 월 결제"
+        com.wngud.allsleep.platform.PackageType.ANNUAL -> "7일 무료 후 연 결제"
+        com.wngud.allsleep.platform.PackageType.LIFETIME -> "지금 바로 시작하기"
+        else -> "프리미엄 시작하기"
+    }
+
     Button(
         onClick = onClick,
         modifier = Modifier
@@ -357,26 +418,28 @@ fun PrimaryActionButton(
         if (isPurchasing) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
         } else {
-            Text("프리미엄 시작하기", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 fun SubscriptionFooter(
+    showRenewalText: Boolean,
     onTermsClick: () -> Unit,
     onPrivacyClick: () -> Unit,
     onRestoreClick: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = "구독은 자동 갱신됩니다. 언제든 취소 가능",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.4f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
+        if (showRenewalText) {
+            Text(
+                text = "구독은 자동 갱신됩니다. 언제든 취소 가능",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.4f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         
         Row(
             modifier = Modifier.fillMaxWidth(),
