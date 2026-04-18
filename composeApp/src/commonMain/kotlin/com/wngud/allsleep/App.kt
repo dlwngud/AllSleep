@@ -76,6 +76,7 @@ fun App() {
             
         
         // 모든 정보가 준비되었을 때, 동적으로 딱 알맞은 Start 화면을 결정함. (온보딩을 잠깐 거치는 일 방지)
+        // 시작 지점은 앱 구동 시 단 한 번만 결정하고 고정하여, 이후 상태 변화로 인해 NavHost가 초기화되는 것을 방지합니다.
         val initialStartDestination = remember {
             if (user != null) {
                 Screen.Home.route
@@ -85,8 +86,6 @@ fun App() {
                 Screen.Onboarding.route
             }
         }
-
-
 
         val bottomNavRoutes = setOf(
             Screen.Home.route,
@@ -101,33 +100,40 @@ fun App() {
             val route = currentRoute ?: return@LaunchedEffect
 
             if (user == null) {
-                // 비로그인 상태일 때, 잘못된 경로(홈 화면 등)에 있다면 쫓아냄
-                val isOnboarding = route.startsWith("onboarding")
+                // 1. 비로그인 상태일 때
+                val isInsideOnboarding = route.startsWith("onboarding")
                 val isLogin = route == Screen.Auth.Login.route
+                val isEmailAuth = route.startsWith("auth/")
                 
-                if (!isOnboarding && !isLogin) {
+                // 홈화면 등 잘못된 위치에 있다면 로그인 혹은 온보딩으로 쫓아냄
+                if (!isInsideOnboarding && !isLogin && !isEmailAuth) {
                     if (isOnboardingCompleted) {
+                        // 이미 온보딩을 마친 사람이라면 로그인 화면으로
                         navController.navigate(Screen.Auth.Login.route) {
                             popUpTo(0) { inclusive = true }
                         }
                     } else {
+                        // 처음 온 사람이라면 온보딩으로
                         navController.navigate(Screen.Onboarding.route) {
                             popUpTo(0) { inclusive = true }
                         }
                     }
                 }
             } else {
-                // 로그인 상태일 때, 로그인/온보딩 화면에 있다면 홈으로 보냄
-                val isOnboarding = route.startsWith("onboarding")
+                // 2. 로그인 상태일 때
+                // 로그인/회원가입 화면에 머물러 있다면 홈으로 보냄
+                // (온보딩 화면은 '시작하기' 버튼을 직접 누를 수 있도록 자동 이동시키지 않음)
                 val isLogin = route == Screen.Auth.Login.route
-
-                if (isOnboarding || isLogin) {
+                val isEmailAuth = route.startsWith("auth/")
+                
+                if (isLogin || isEmailAuth) {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             }
         }
+
 
         AllSleepTheme {
             if (shouldShowLimitDialog) {
