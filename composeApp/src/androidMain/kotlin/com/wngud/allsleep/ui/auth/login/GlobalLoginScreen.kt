@@ -10,10 +10,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.LocalActivity
 import com.wngud.allsleep.platform.PlatformContext
 import com.wngud.allsleep.ui.theme.*
 import org.koin.compose.viewmodel.koinViewModel
@@ -23,7 +23,7 @@ actual fun GlobalLoginScreen(
     onLoginSuccess: () -> Unit,
     onEmailLogin: () -> Unit
 ) {
-    val activity = LocalContext.current as PlatformContext
+    val activity = LocalActivity.current as PlatformContext
     val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }

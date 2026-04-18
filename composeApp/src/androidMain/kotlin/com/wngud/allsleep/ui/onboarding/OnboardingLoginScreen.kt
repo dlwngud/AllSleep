@@ -31,6 +31,7 @@ import com.wngud.allsleep.ui.components.PageIndicator
 import com.wngud.allsleep.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.activity.compose.LocalActivity
 import com.wngud.allsleep.platform.PlatformContext
 
 /**
@@ -47,7 +48,7 @@ actual fun OnboardingLoginScreen(
     onAppleLogin: () -> Unit,
     onEmailLogin: () -> Unit
 ) {
-    val activity = LocalContext.current as PlatformContext
+    val activity = LocalActivity.current as PlatformContext
     val viewModel = koinViewModel<AuthViewModel>()
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }

@@ -58,6 +58,9 @@ kotlin {
             // DataStore
             implementation(libs.datastore.preferences.core)
             
+            // Icons
+            implementation(libs.compose.icons.extended)
+            
             // DateTime
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
         }

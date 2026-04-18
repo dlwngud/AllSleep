@@ -60,13 +60,35 @@ class BillingProviderImpl(
         }
 
         return offerings?.current?.availablePackages?.map { rcPackage ->
+            val type = when (rcPackage.packageType) {
+                com.revenuecat.purchases.PackageType.MONTHLY -> PackageType.MONTHLY
+                com.revenuecat.purchases.PackageType.ANNUAL -> PackageType.ANNUAL
+                com.revenuecat.purchases.PackageType.LIFETIME -> PackageType.LIFETIME
+                else -> PackageType.UNKNOWN
+            }
+
+            val badge = when (type) {
+                PackageType.ANNUAL -> "가장 인기"
+                PackageType.LIFETIME -> "최고의 가치"
+                else -> null
+            }
+
+            val subDescription = when (type) {
+                PackageType.ANNUAL -> "34% 할인 혜택"
+                PackageType.LIFETIME -> "영구 소장 (단 한 번 결제)"
+                PackageType.MONTHLY -> "부담 없이 시작하기"
+                else -> null
+            }
+
             SubscriptionPackage(
                 id = rcPackage.identifier,
                 title = rcPackage.product.title,
                 priceString = rcPackage.product.price.formatted,
-                isMonthly = rcPackage.packageType == com.revenuecat.purchases.PackageType.MONTHLY,
+                type = type,
+                badge = badge,
+                subDescription = subDescription,
                 hasFreeTrial = rcPackage.product.period?.let { true } ?: false,
-                freeTrialDays = 7 // 실제 대시보드 설정을 따르지만 UI 표시용으로 사용
+                freeTrialDays = 7
             )
         } ?: emptyList()
         */
