@@ -86,8 +86,8 @@ android {
         applicationId = "com.wngud.allsleep"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 5
+        versionName = "1.4"
         // 카카오 로그인 콜백 scheme 주입 (kakao + 네이티브앱키)
         manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
 
@@ -109,23 +109,34 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // 서명 설정 생성
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    if (keystorePropertiesFile.exists()) {
+        val props = Properties().apply {
+            load(keystorePropertiesFile.inputStream())
+        }
+        signingConfigs {
+            create("releaseConfig") {
+                storeFile = rootProject.file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        getByName("debug") {
+            // 디버그 모드에서도 정식 서명을 적용하여 결제 테스트 가능하게 설정
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("releaseConfig")
+            }
+        }
         getByName("release") {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            
-            // keystore.properties 파일 읽기
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
             if (keystorePropertiesFile.exists()) {
-                val props = Properties().apply {
-                    load(keystorePropertiesFile.inputStream())
-                }
-                signingConfig = signingConfigs.create("release") {
-                    storeFile = rootProject.file(props.getProperty("storeFile"))
-                    storePassword = props.getProperty("storePassword")
-                    keyAlias = props.getProperty("keyAlias")
-                    keyPassword = props.getProperty("keyPassword")
-                }
+                signingConfig = signingConfigs.getByName("releaseConfig")
             }
         }
     }
