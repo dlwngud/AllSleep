@@ -24,30 +24,25 @@ class BillingProviderImpl(
 ) : BillingProvider {
 
     override suspend fun loginUser(uid: String) {
-        /*
         suspendCancellableCoroutine { continuation ->
             Purchases.sharedInstance.logInWith(
                 appUserID = uid,
-                onError = { /* 로깅 정도만 수행 */ },
+                onError = { /* 로거 연동 필요 */ },
                 onSuccess = { _, _ -> continuation.resume(Unit) }
             )
         }
-        */
     }
 
     override suspend fun logoutUser() {
-        /*
         suspendCancellableCoroutine { continuation ->
             Purchases.sharedInstance.logOutWith(
-                onError = { /* 로깅 */ },
+                onError = { /* 에러 처리 */ },
                 onSuccess = { continuation.resume(Unit) }
             )
         }
-        */
     }
 
     override suspend fun getOfferings(): List<SubscriptionPackage> {
-        /*
         val offerings = suspendCancellableCoroutine<Offerings?> { continuation ->
             Purchases.sharedInstance.getOfferingsWith(
                 onError = { error ->
@@ -66,21 +61,18 @@ class BillingProviderImpl(
                 priceString = rcPackage.product.price.formatted,
                 isMonthly = rcPackage.packageType == com.revenuecat.purchases.PackageType.MONTHLY,
                 hasFreeTrial = rcPackage.product.period?.let { true } ?: false,
-                freeTrialDays = 7 // 실제 대시보드 설정을 따르지만 UI 표시용으로 사용
+                freeTrialDays = 7 // 대시보드 설정을 따르지만 UI 표시용 기본값
             )
         } ?: emptyList()
-        */
-        return emptyList()
     }
 
     override suspend fun purchasePackage(
         packageId: String,
         context: PlatformContext
     ): Result<PurchaseResult> = runCatching {
-        /*
         val activity = context as? Activity ?: throw Exception("Activity context is required for purchase")
         
-        // 1. 패키지 찾기
+        // 1. 패키지 탐색
         val offerings = suspendCancellableCoroutine<Offerings?> { continuation ->
             Purchases.sharedInstance.getOfferingsWith(
                 onError = { continuation.resumeWithException(Exception(it.message)) },
@@ -112,18 +104,14 @@ class BillingProviderImpl(
             isSuccess = customerInfo != null,
             isPremiumNow = customerInfo?.entitlements?.get("premium")?.isActive == true
         )
-        */
-        PurchaseResult(isSuccess = false, isPremiumNow = false)
     }
 
     override suspend fun restorePurchases(): Result<Unit> = runCatching {
-        /*
         suspendCancellableCoroutine { continuation ->
             Purchases.sharedInstance.restorePurchasesWith(
                 onError = { continuation.resumeWithException(Exception(it.message)) },
                 onSuccess = { continuation.resume(Unit) }
             )
         }
-        */
     }
 }

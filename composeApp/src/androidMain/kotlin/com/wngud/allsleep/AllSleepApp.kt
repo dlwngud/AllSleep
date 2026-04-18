@@ -25,12 +25,11 @@ class AllSleepApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        /* RevenueCat 초기화 (설정 완료 후 주석 해제)
+        // RevenueCat 초기화
         Purchases.logLevel = LogLevel.DEBUG
         Purchases.configure(
             PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_API_KEY).build()
         )
-        */
         
         // AdMob 초기화
         CoroutineScope(Dispatchers.IO).launch {

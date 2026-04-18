@@ -46,6 +46,7 @@ import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import com.wngud.allsleep.ui.settings.SettingsViewModel
 import com.wngud.allsleep.ui.stats.StatsViewModel
+import com.wngud.allsleep.ui.subscription.SubscriptionViewModel
 import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModelOf
@@ -124,4 +125,5 @@ val appModule = module {
     viewModelOf(::AlarmViewModel)
     viewModelOf(::SettingsViewModel)
     viewModelOf(::StatsViewModel)
+    viewModelOf(::SubscriptionViewModel)
 }
