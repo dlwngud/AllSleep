@@ -125,10 +125,9 @@ class GlobalSleepViewModel(
                 registerDeviceUseCase(uid, deviceToRegister, isPremium = true).onFailure { e ->
                     isReplacingDevice = false
                     _state.update { it.copy(error = "기기 교체 실패: ${e.message}") }
+                    return@launch
                 }
                 
-                // 전역 관찰자(devicesJob)가 충분히 서버 상태를 수동 동기화할 수 있도록 마지막에 플래그 해제
-                kotlinx.coroutines.delay(1000)
                 isReplacingDevice = false
             } catch (e: Exception) {
                 isReplacingDevice = false
@@ -234,6 +233,7 @@ class GlobalSleepViewModel(
 
     private suspend fun syncScheduleToFirestore() {
         val uid = currentUid ?: return
+        // 온보딩 등에서 로컬로 설정한 최신 정보를 서버(FireStore)에 강제로 덮어씌움
         updateUserSleepStateUseCase(
             uid = uid,
             weekdayBedtime = sleepSettingsRepository.weekdayBedtime.first(),
@@ -246,6 +246,7 @@ class GlobalSleepViewModel(
             isWeekendWakeEnabled = sleepSettingsRepository.isWeekendWakeEnabled.first()
         )
     }
+
 
     private fun handleUserSessionChange(user: User?) {
         val wasPremium = _state.value.isPremium
@@ -332,7 +333,10 @@ class GlobalSleepViewModel(
                                             state.isWeekendSleepEnabled != sleepSettingsRepository.isWeekendSleepEnabled.first() ||
                                             state.isWeekendWakeEnabled != sleepSettingsRepository.isWeekendWakeEnabled.first()
                             
-                            if (isDifferent && !isDefaultServerData) {
+                            val isOnboardingDone = sleepSettingsRepository.isOnboardingCompleted.first()
+                            
+                            // 온보딩이 완료된 경우에만 서버 데이터를 로컬로 가져옴 (로그인 직후 온보딩 설정값 보호)
+                            if (isDifferent && !isDefaultServerData && isOnboardingDone) {
                                 sleepSettingsRepository.saveWeekdaySchedule(state.weekdayBedtime, state.weekdayWakeTime)
                                 sleepSettingsRepository.saveWeekdaySleepEnabled(state.isWeekdaySleepEnabled)
                                 sleepSettingsRepository.saveWeekdayWakeEnabled(state.isWeekdayWakeEnabled)
@@ -340,6 +344,7 @@ class GlobalSleepViewModel(
                                 sleepSettingsRepository.saveWeekendSleepEnabled(state.isWeekendSleepEnabled)
                                 sleepSettingsRepository.saveWeekendWakeEnabled(state.isWeekendWakeEnabled)
                             }
+
 
                             sleepScheduler.scheduleNextEvents(
                                 state.weekdayBedtime, state.weekdayWakeTime, state.isWeekdaySleepEnabled,

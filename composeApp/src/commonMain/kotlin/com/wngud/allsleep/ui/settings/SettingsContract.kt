@@ -44,6 +44,8 @@ sealed interface SettingsIntent {
     data object ManageSubscription : SettingsIntent
     data class ToggleNotification(val enabled: Boolean) : SettingsIntent
     data object OpenAccessibilitySettings : SettingsIntent // 접근성 설정 화면 이동
+    data class UpdateAccessibilityStatus(val isEnabled: Boolean) : SettingsIntent
+    data class UpdateNotificationStatus(val isGranted: Boolean) : SettingsIntent
     
     data object ShowEditNameDialog : SettingsIntent // 프로필 이름 수정 다이얼로그 노출
     data class UpdateDisplayName(val name: String) : SettingsIntent // 프로필 이름 수정 수행

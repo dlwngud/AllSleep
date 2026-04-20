@@ -41,11 +41,11 @@ import com.wngud.allsleep.platform.SleepScheduler
 import com.wngud.allsleep.platform.SleepSchedulerImpl
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
 import com.wngud.allsleep.ui.auth.login.AuthViewModel
-import com.wngud.allsleep.ui.home.HomeViewModel
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import com.wngud.allsleep.ui.settings.SettingsViewModel
 import com.wngud.allsleep.ui.stats.StatsViewModel
+import com.wngud.allsleep.ui.subscription.SubscriptionViewModel
 import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModelOf
@@ -120,8 +120,8 @@ val appModule = module {
     singleOf(::GlobalSleepViewModel)
     viewModelOf(::AuthViewModel)
     viewModelOf(::OnboardingViewModel)
-    viewModelOf(::HomeViewModel)
     viewModelOf(::AlarmViewModel)
     viewModelOf(::SettingsViewModel)
     viewModelOf(::StatsViewModel)
+    viewModelOf(::SubscriptionViewModel)
 }

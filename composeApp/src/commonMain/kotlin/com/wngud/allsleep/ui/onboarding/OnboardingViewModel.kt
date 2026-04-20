@@ -38,11 +38,18 @@ class OnboardingViewModel(
             if (user != null) {
                 val displayName = user.displayName ?: user.email?.split("@")?.get(0) ?: "사용자"
                 _state.update { it.copy(user = user, userName = displayName, isLoading = false) }
+                
+                // 로그인에 성공했다면 온보딩 과정은 완료된 것으로 간주하여 저장 (회귀 방지)
+                completeOnboardingUseCase(
+                    bedtime = _state.value.bedtime,
+                    wakeTime = _state.value.wakeTime
+                )
             } else {
                 _state.update { it.copy(isLoading = false) }
             }
         }
     }
+
 
     private fun updateBedtime(time: String) = _state.update { it.copy(bedtime = time) }
     private fun updateWakeTime(time: String) = _state.update { it.copy(wakeTime = time) }

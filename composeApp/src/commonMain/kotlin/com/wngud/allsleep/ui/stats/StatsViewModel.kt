@@ -58,6 +58,7 @@ class StatsViewModel(
             if (endTotal <= startTotal) endTotal += 24 * 60
             endTotal - startTotal
         } catch (e: Exception) {
+            println("StatsViewModel Error: 파싱 에러 발생 (start=$start, end=$end). 기본값 달성. Exception: ${e.message}")
             480
         }
     }
