@@ -5,6 +5,7 @@ import com.wngud.allsleep.platform.PackageType
 import com.wngud.allsleep.platform.PlatformContext
 import com.wngud.allsleep.platform.PurchaseResult
 import com.wngud.allsleep.platform.SubscriptionPackage
+import com.wngud.allsleep.platform.SubscriptionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -75,6 +76,15 @@ class FakeBillingProvider : BillingProvider {
     var purchaseResult: Result<PurchaseResult> = Result.success(PurchaseResult(true, true))
 
     override suspend fun getOfferings(): List<SubscriptionPackage> = packages
+
+    override suspend fun getSubscriptionStatus(): Result<SubscriptionStatus> =
+        Result.success(
+            SubscriptionStatus(
+                isPremiumActive = true,
+                entitlementId = "premium",
+                productIdentifier = "allsleep_premium_annual"
+            )
+        )
     
     override suspend fun purchasePackage(packageId: String, context: PlatformContext): Result<PurchaseResult> = purchaseResult
     

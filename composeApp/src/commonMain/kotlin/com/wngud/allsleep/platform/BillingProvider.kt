@@ -15,6 +15,7 @@ data class SubscriptionPackage(
     val title: String,          // 제목
     val priceString: String,    // 포맷팅된 가격 (e.g. "₩4,900")
     val type: PackageType,      // 플랜 타입
+    val productId: String = "", // 스토어 상품 ID
     val badge: String? = null,  // 상단 배지 (e.g. "가장 인기")
     val subDescription: String? = null, // 하단 보조 설명
     val hasFreeTrial: Boolean,  // 무료 체험 포함 여부
@@ -30,11 +31,34 @@ data class PurchaseResult(
 )
 
 /**
+ * 현재 구독 상태 정보
+ */
+data class SubscriptionStatus(
+    val isPremiumActive: Boolean,
+    val entitlementId: String? = null,
+    val productIdentifier: String? = null,
+    val productPlanIdentifier: String? = null,
+    val willRenew: Boolean? = null,
+    val periodType: String? = null,
+    val expirationDateMillis: Long? = null,
+    val latestPurchaseDateMillis: Long? = null,
+    val originalPurchaseDateMillis: Long? = null,
+    val store: String? = null,
+    val managementUrl: String? = null,
+    val isSandbox: Boolean = false,
+    val unsubscribeDetectedAtMillis: Long? = null,
+    val billingIssueDetectedAtMillis: Long? = null
+)
+
+/**
  * 구독 결제 플랫폼 추상화 인터페이스
  */
 interface BillingProvider {
     // 상품(Offering) 목록 가져오기
     suspend fun getOfferings(): List<SubscriptionPackage>
+
+    // 현재 구독 상태 조회
+    suspend fun getSubscriptionStatus(): Result<SubscriptionStatus>
     
     // 패키지 구매하기
     suspend fun purchasePackage(

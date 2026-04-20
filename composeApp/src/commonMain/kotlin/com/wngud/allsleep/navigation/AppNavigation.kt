@@ -14,6 +14,7 @@ import com.wngud.allsleep.ui.home.HomeScreen
 import com.wngud.allsleep.ui.settings.SettingsScreen
 import com.wngud.allsleep.ui.stats.StatsScreen
 import com.wngud.allsleep.ui.subscription.SubscriptionScreen
+import com.wngud.allsleep.ui.subscription.SubscriptionManageScreen
 
 @Composable
 fun AppNavigation(
@@ -29,7 +30,9 @@ fun AppNavigation(
             StatsScreen(
                 contentPadding = contentPadding,
                 onNavigateToSubscription = {
-                    navController.navigate(Screen.Subscription.route)
+                    navController.navigate(Screen.Subscription.Purchase.route) {
+                        launchSingleTop = true
+                    }
                 }
             ) 
         }
@@ -37,16 +40,24 @@ fun AppNavigation(
         composable(Screen.Settings.route) { 
             SettingsScreen(
                 navController = navController, 
-                onNavigateToSubscription = {
-                    navController.navigate(Screen.Subscription.route)
+                onNavigateToSubscription = { isPremium ->
+                    navController.navigate(
+                        if (isPremium) Screen.Subscription.Manage.route else Screen.Subscription.Purchase.route
+                    ) { launchSingleTop = true }
                 },
                 contentPadding = contentPadding,
                 snackbarHostState = snackbarHostState
             ) 
         }
         
-        composable(Screen.Subscription.route) {
+        composable(Screen.Subscription.Purchase.route) {
             SubscriptionScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Subscription.Manage.route) {
+            SubscriptionManageScreen(
                 onBack = { navController.popBackStack() }
             )
         }

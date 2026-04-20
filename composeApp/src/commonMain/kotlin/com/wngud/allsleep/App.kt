@@ -43,7 +43,9 @@ fun App() {
             globalSleepViewModel.effect.collect { effect ->
                 when (effect) {
                     is GlobalSleepContract.Effect.NavigateToSubscription -> {
-                        navController.navigate(Screen.Subscription.route)
+                        navController.navigate(Screen.Subscription.Purchase.route) {
+                            launchSingleTop = true
+                        }
                     }
                     is GlobalSleepContract.Effect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
@@ -67,7 +69,7 @@ fun App() {
         
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
-        val isSubscriptionScreen = currentRoute == Screen.Subscription.route
+        val isSubscriptionScreen = currentRoute?.startsWith(Screen.Subscription.route) == true
         val isLoginScreen = currentRoute == Screen.Auth.Login.route
         
         // 기기 한도 초과 다이얼로그 (구독 화면 들어갔다가 그냥 뒤로 가기 눌렀을 때 얍삽하게 사용하는 것 방지)
