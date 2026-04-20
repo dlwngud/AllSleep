@@ -83,6 +83,12 @@ class SettingsViewModel(
         when (intent) {
             is SettingsIntent.ToggleNotification ->
                 _state.update { it.copy(isNotificationEnabled = intent.enabled) }
+            
+            is SettingsIntent.UpdateAccessibilityStatus ->
+                _state.update { it.copy(isAccessibilityEnabled = intent.isEnabled) }
+                
+            is SettingsIntent.UpdateNotificationStatus ->
+                _state.update { it.copy(isNotificationEnabled = intent.isGranted) }
 
             is SettingsIntent.ShowEditNameDialog -> {
                 _state.update { it.copy(showEditNameDialog = true) }
@@ -133,16 +139,6 @@ class SettingsViewModel(
             // OpenAccessibilitySettings 등 UI Navigation/System Call 영역은 UI단에서 처리
             else -> Unit
         }
-    }
-
-    /** SettingsScreen에서 AccessibilityPermissionRequester.isGranted() 결과를 동기화 */
-    fun updateAccessibilityStatus(isEnabled: Boolean) {
-        _state.update { it.copy(isAccessibilityEnabled = isEnabled) }
-    }
-
-    /** 알림 권한 결과(granted) 처리: 상태를 저장 */
-    fun onNotificationPermissionResult(granted: Boolean) {
-        _state.update { it.copy(isNotificationEnabled = granted) }
     }
 
     private fun updateDisplayName(name: String) {
