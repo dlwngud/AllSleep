@@ -94,12 +94,12 @@ class AppOpenAdManagerImpl(
                 override fun onAdDismissedFullScreenContent() {
                     appOpenAd = null
                     isShowingAd = false
-                    
+
                     // 광고 노출 시점 저장
                     CoroutineScope(Dispatchers.IO).launch {
                         repository.saveLastAppOpenAdShownAt(Clock.System.now().toEpochMilliseconds())
                     }
-                    
+
                     // 다음 노출을 위해 미리 로드
                     loadAd()
                 }
