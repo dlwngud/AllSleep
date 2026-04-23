@@ -455,6 +455,15 @@ class GlobalSleepViewModel(
 
                 if (isSleeping) {
                     sleepSettingsRepository.saveActiveSleepStartAt(now)
+                } else {
+                    saveCompletedSleepRecord(
+                        uid = uid,
+                        wakeTimeMs = now,
+                        weekdayBedtime = wdB,
+                        weekdayWakeTime = wdW,
+                        weekendBedtime = weB,
+                        weekendWakeTime = weW
+                    )
                 }
 
                 _state.update { it.copy(
@@ -491,6 +500,36 @@ class GlobalSleepViewModel(
 
     private fun isWeekday(): Boolean {
         return com.wngud.allsleep.domain.model.isWeekday(platformTimeMillis())
+    }
+
+    private suspend fun saveCompletedSleepRecord(
+        uid: String,
+        wakeTimeMs: Long,
+        weekdayBedtime: String,
+        weekdayWakeTime: String,
+        weekendBedtime: String,
+        weekendWakeTime: String
+    ) {
+        val sleepStartAt = sleepSettingsRepository.activeSleepStartAt.first()
+        if (sleepStartAt <= 0L || wakeTimeMs <= sleepStartAt) return
+
+        val isWeekdaySession = com.wngud.allsleep.domain.model.isWeekday(sleepStartAt)
+        val targetBedtime = if (isWeekdaySession) weekdayBedtime else weekendBedtime
+        val targetWakeTime = if (isWeekdaySession) weekdayWakeTime else weekendWakeTime
+
+        recordSleepSessionUseCase(
+            uid = uid,
+            date = formatCurrentDate(wakeTimeMs),
+            sleepStartAt = sleepStartAt,
+            wakeTimeMs = wakeTimeMs,
+            targetBedtime = targetBedtime,
+            targetWakeTime = targetWakeTime,
+            isLockUsed = true
+        ).onSuccess {
+            sleepSettingsRepository.saveActiveSleepStartAt(0L)
+        }.onFailure { e ->
+            println("[SleepDebug] 수면 기록 저장 실패: ${e.message}")
+        }
     }
 
     private fun platformTimeMillis(): Long = com.wngud.allsleep.domain.model.platformTimeMillis()
