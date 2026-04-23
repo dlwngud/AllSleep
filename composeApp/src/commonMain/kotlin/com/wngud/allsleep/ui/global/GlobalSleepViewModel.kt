@@ -67,6 +67,7 @@ class GlobalSleepViewModel(
     private var deviceRegisterJob: Job? = null
     private var hasBeenRegisteredInThisSession = false
     private var isReplacingDevice = false
+    private var isLoggingOut = false
 
     init {
         handleIntent(GlobalSleepContract.Intent.RequestInitialize)
@@ -313,11 +314,11 @@ class GlobalSleepViewModel(
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
             observeUserSleepStateUseCase(uid)
-                .catch { logout() }
+                .catch { handleRemoteSessionClosed() }
                 .collect { state ->
                     val oldState = _state.value.sleepState
                     if (state == null && currentUid != null) {
-                        logout()
+                        handleRemoteSessionClosed()
                         return@collect
                     }
                     
@@ -383,7 +384,7 @@ class GlobalSleepViewModel(
         devicesJob?.cancel()
         devicesJob = viewModelScope.launch {
             observeRegisteredDevicesUseCase(uid)
-                .catch { logout() }
+                .catch { handleRemoteSessionClosed() }
                 .collect { devices ->
                     _state.update { it.copy(registeredDevices = devices) }
                     val currentId = deviceInfoProvider.getDeviceId()
@@ -392,11 +393,16 @@ class GlobalSleepViewModel(
                     } else if (hasBeenRegisteredInThisSession && devices.isNotEmpty()) {
                         // 교체 중(isReplacingDevice == true)일 때는 서버 상태가 불안정하므로 로그아웃 트리거를 일시 중지함.
                         if (!isReplacingDevice) {
-                            logout()
+                            handleRemoteSessionClosed()
                         }
                     }
                 }
         }
+    }
+
+    private fun handleRemoteSessionClosed() {
+        if (isLoggingOut) return
+        logout()
     }
 
     private fun registerCurrentUIDDevice(uid: String) {
@@ -423,14 +429,22 @@ class GlobalSleepViewModel(
     }
 
     private fun logout() {
+        if (isLoggingOut) return
         val uid = currentUid ?: return
+        isLoggingOut = true
+        observeJob?.cancel()
+        devicesJob?.cancel()
+        deviceRegisterJob?.cancel()
         viewModelScope.launch {
             unregisterDeviceUseCase(uid, deviceInfoProvider.getDeviceId())
+                .onFailure { e -> println("[GlobalSleep] 로그아웃 중 기기 등록 해제 실패: ${e.message}") }
             signOutUseCase()
-            billingProvider.logoutUser()
+                .onFailure { e -> println("[GlobalSleep] 로그아웃 실패: ${e.message}") }
+            runCatching { billingProvider.logoutUser() }
             currentUid = null
             hasBeenRegisteredInThisSession = false
             _state.update { it.copy(currentUser = null, sleepState = null, registeredDevices = emptyList()) }
+            isLoggingOut = false
         }
     }
 

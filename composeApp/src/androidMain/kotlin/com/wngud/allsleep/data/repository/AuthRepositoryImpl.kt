@@ -6,7 +6,9 @@ import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.platform.PlatformContext
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -132,6 +134,14 @@ class AuthRepositoryImpl(
                         val isPremium = snapshot.getBoolean("isPremium") ?: false
                         user.copy(isPremium = isPremium)
                     }
+                    .catch { e ->
+                        if (e.isPermissionDenied()) emit(user) else throw e
+                    }
             }
         }
+
+    private fun Throwable.isPermissionDenied(): Boolean {
+        return this is FirebaseFirestoreException &&
+            code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+    }
 }
