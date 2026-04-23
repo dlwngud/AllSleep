@@ -99,7 +99,9 @@ android {
             }
         }
         val rcApiKey = props.getProperty("revenueCat.apiKey") ?: ""
+        val rcTestApiKey = props.getProperty("revenueCat.testApiKey") ?: ""
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$rcApiKey\"")
+        buildConfigField("String", "REVENUECAT_TEST_API_KEY", "\"$rcTestApiKey\"")
     }
     buildFeatures {
         buildConfig = true
@@ -167,4 +169,3 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
 }
-

@@ -11,6 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.wngud.allsleep.navigation.AppNavigation
 import com.wngud.allsleep.navigation.Screen
 import com.wngud.allsleep.ui.components.BottomNavScaffold
@@ -33,6 +36,7 @@ fun App() {
     KoinContext {
         val navController = rememberNavController()
         val globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
+        val lifecycleOwner = LocalLifecycleOwner.current
         
         val snackbarHostState = remember { SnackbarHostState() }
         val state by globalSleepViewModel.state.collectAsState()
@@ -51,6 +55,18 @@ fun App() {
                         snackbarHostState.showSnackbar(effect.message)
                     }
                 }
+            }
+        }
+
+        DisposableEffect(lifecycleOwner, globalSleepViewModel) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.RefreshPremiumStatus)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
             }
         }
         

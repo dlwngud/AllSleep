@@ -99,6 +99,7 @@ class BillingProviderImpl(
         } ?: throw Exception("Customer info not available")
 
         val premiumEntitlement = customerInfo.entitlements["premium"]
+            ?: customerInfo.entitlements.active.values.firstOrNull()
         SubscriptionStatus(
             isPremiumActive = premiumEntitlement?.isActive == true,
             entitlementId = premiumEntitlement?.identifier,
@@ -153,7 +154,8 @@ class BillingProviderImpl(
 
         PurchaseResult(
             isSuccess = customerInfo != null,
-            isPremiumNow = customerInfo?.entitlements?.get("premium")?.isActive == true
+            isPremiumNow = customerInfo?.entitlements?.get("premium")?.isActive == true ||
+                customerInfo?.entitlements?.active?.values?.firstOrNull()?.isActive == true
         )
     }
 

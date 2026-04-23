@@ -35,6 +35,7 @@ class GlobalSleepContract {
             val bedtime: String, 
             val wakeTime: String
         ) : Intent
+        data object RefreshPremiumStatus : Intent
         
         // 기기 한도 초과 처리용 Intent
         data object ReplaceDevice : Intent

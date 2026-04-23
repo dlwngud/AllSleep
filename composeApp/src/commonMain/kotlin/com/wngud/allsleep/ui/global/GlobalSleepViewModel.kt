@@ -78,6 +78,7 @@ class GlobalSleepViewModel(
             is GlobalSleepContract.Intent.RequestLogout -> logout()
             is GlobalSleepContract.Intent.ToggleSleepState -> toggleSleepState(intent.isSleeping, intent.targetWakeUpTime)
             is GlobalSleepContract.Intent.CompleteOnboarding -> completeOnboarding(intent.bedtime, intent.wakeTime)
+            is GlobalSleepContract.Intent.RefreshPremiumStatus -> refreshPremiumStatus()
             is GlobalSleepContract.Intent.ReplaceDevice -> forceReplaceDevice()
             is GlobalSleepContract.Intent.CancelDeviceRegistration -> cancelDeviceRegistration()
             is GlobalSleepContract.Intent.UpgradeToPremium -> upgradeToPremium()
@@ -153,6 +154,9 @@ class GlobalSleepViewModel(
                 }
             }
             handleUserSessionChange(user)
+            if (user != null) {
+                refreshPremiumStatus()
+            }
             _state.update { it.copy(isStateInitialized = true) }
 
             setupAuthObserver()
@@ -281,6 +285,27 @@ class GlobalSleepViewModel(
             _state.update { it.copy(sleepState = null, registeredDevices = emptyList()) }
             observeJob?.cancel()
             devicesJob?.cancel()
+        }
+    }
+
+    private fun refreshPremiumStatus() {
+        viewModelScope.launch {
+            val statusResult = billingProvider.getSubscriptionStatus()
+            if (statusResult.isFailure) return@launch
+
+            val isPremiumNow = statusResult.getOrThrow().isPremiumActive
+            val currentUser = getCurrentUserUseCase()
+
+            if (currentUser != null && currentUser.isPremium != isPremiumNow) {
+                val updatedUser = currentUser.copy(isPremium = isPremiumNow)
+                updateUserProfileUseCase(updatedUser)
+                _state.update { it.copy(currentUser = updatedUser, isPremium = isPremiumNow) }
+            } else {
+                _state.update { it.copy(isPremium = isPremiumNow) }
+                currentUser?.let { _state.update { state -> state.copy(currentUser = it) } }
+            }
+
+            sleepSettingsRepository.savePremiumStatus(isPremiumNow)
         }
     }
 

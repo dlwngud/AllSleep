@@ -52,7 +52,13 @@ fun AppNavigation(
         
         composable(Screen.Subscription.Purchase.route) {
             SubscriptionScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToManage = {
+                    navController.navigate(Screen.Subscription.Manage.route) {
+                        popUpTo(Screen.Subscription.Purchase.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
