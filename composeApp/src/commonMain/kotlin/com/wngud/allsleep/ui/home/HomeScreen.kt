@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -47,21 +48,31 @@ import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
 import com.wngud.allsleep.ui.components.NotificationRationaleDialog
 import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import com.wngud.allsleep.ui.global.GlobalSleepContract
+import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import kotlinx.coroutines.flow.combine
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import org.koin.compose.koinInject
 
 @Composable
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
+    globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject(),
+    sleepSettingsRepository: SleepSettingsRepository = koinInject()
 ) {
     val globalState by globalSleepViewModel.state.collectAsState(GlobalSleepContract.State())
-    
+    val sleepGoal by sleepSettingsRepository.homeSleepGoal().collectAsState(initial = "8h")
+
     val devices = globalState.registeredDevices
     val isToggleLoading = globalState.isToggleLoading
+    val isSleeping = globalState.sleepState?.isSleeping == true
 
     HomeScreenContent(
         contentPadding = contentPadding,
-        sleepGoal = "8h 30m", // 임시 하드코딩. 향후 GlobalSleepViewModel에서 목표 계산하여 전달
+        sleepGoal = sleepGoal,
+        isSleeping = isSleeping,
         devices = devices,
         snackbarHostState = snackbarHostState,
         onStartSleep = { 
@@ -94,10 +105,46 @@ fun HomeScreen(
     }
 }
 
+private fun SleepSettingsRepository.homeSleepGoal() = combine(
+    weekdayBedtime,
+    weekdayWakeTime,
+    weekendBedtime,
+    weekendWakeTime
+) { wdB, wdW, weB, weW ->
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val isWeekdayTonight = today.dayOfWeek.ordinal < 5
+    val targetMinutes = if (isWeekdayTonight) {
+        calculateTimeDiffMinutes(wdB, wdW)
+    } else {
+        calculateTimeDiffMinutes(weB, weW)
+    }
+    formatGoalDuration(targetMinutes)
+}
+
+private fun calculateTimeDiffMinutes(start: String, end: String): Int {
+    return try {
+        val startParts = start.split(":").map { it.toInt() }
+        val endParts = end.split(":").map { it.toInt() }
+        val startTotal = startParts[0] * 60 + startParts[1]
+        var endTotal = endParts[0] * 60 + endParts[1]
+        if (endTotal <= startTotal) endTotal += 24 * 60
+        endTotal - startTotal
+    } catch (_: Exception) {
+        480
+    }
+}
+
+private fun formatGoalDuration(minutes: Int): String {
+    val hours = minutes / 60
+    val mins = minutes % 60
+    return if (mins == 0) "${hours}h" else "${hours}h ${mins}m"
+}
+
 @Composable
 fun HomeScreenContent(
     contentPadding: PaddingValues,
     sleepGoal: String,
+    isSleeping: Boolean,
     devices: List<DeviceState>,
     snackbarHostState: SnackbarHostState,
     onStartSleep: () -> Unit
@@ -133,6 +180,24 @@ fun HomeScreenContent(
 
     val batteryPermissionRequester = rememberPermissionRequester { }
     val isBatteryOptimized by batteryPermissionRequester.isBatteryOptimized.collectAsState()
+    var hasTriedServiceRecovery by remember(isSleeping) { mutableStateOf(false) }
+
+    val needsOverlayRecovery = isSleeping && !permissionRequester.isGranted()
+    val needsAccessibilityRecovery = isSleeping && !accessibilityPermissionRequester.isGranted()
+    val needsBatteryRecovery = isSleeping && !batteryPermissionRequester.isIgnoringBatteryOptimizations()
+    val needsServiceRecovery = isSleeping &&
+        permissionRequester.isGranted() &&
+        accessibilityPermissionRequester.isGranted() &&
+        !sleepServiceController.isRunning()
+
+    LaunchedEffect(isSleeping, needsServiceRecovery) {
+        if (!isSleeping) {
+            hasTriedServiceRecovery = false
+        } else if (needsServiceRecovery && !hasTriedServiceRecovery) {
+            hasTriedServiceRecovery = true
+            sleepServiceController.start()
+        }
+    }
 
     if (showPermissionDialog) {
         AlertDialog(
@@ -252,6 +317,26 @@ fun HomeScreenContent(
                         )
                     }
                 }
+            }
+
+            if (needsOverlayRecovery || needsAccessibilityRecovery || needsServiceRecovery || needsBatteryRecovery) {
+                Spacer(modifier = Modifier.height(12.dp))
+                SleepProtectionRecoveryCard(
+                    issue = when {
+                        needsOverlayRecovery -> RecoveryIssue.OverlayPermission
+                        needsAccessibilityRecovery -> RecoveryIssue.AccessibilityPermission
+                        needsServiceRecovery -> RecoveryIssue.ServiceStopped
+                        else -> RecoveryIssue.BatteryOptimization
+                    },
+                    onAction = {
+                        when {
+                            needsOverlayRecovery -> permissionRequester.requestPermission()
+                            needsAccessibilityRecovery -> showAccessibilityDisclosure = true
+                            needsServiceRecovery -> sleepServiceController.start()
+                            needsBatteryRecovery -> showBatteryGuideDialog = true
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -569,9 +654,80 @@ fun HomeScreenPreview() {
         HomeScreenContent(
             contentPadding = PaddingValues(),
             sleepGoal = "8h 30m",
+            isSleeping = false,
             devices = emptyList(),
             snackbarHostState = SnackbarHostState(),
             onStartSleep = {}
         )
+    }
+}
+
+private enum class RecoveryIssue(
+    val title: String,
+    val message: String,
+    val actionLabel: String
+) {
+    OverlayPermission(
+        title = "수면 모드 보호가 중단되었어요",
+        message = "다른 앱 위에 표시 권한이 꺼져 있어 차단 화면이 나타나지 않을 수 있어요.",
+        actionLabel = "권한 다시 허용"
+    ),
+    AccessibilityPermission(
+        title = "앱 복귀 차단 권한이 필요해요",
+        message = "접근성 권한이 꺼져 있어 수면 중 다른 앱으로의 이동을 막지 못할 수 있어요.",
+        actionLabel = "접근성 설정 열기"
+    ),
+    ServiceStopped(
+        title = "수면 모드를 다시 복구해야 해요",
+        message = "수면 모드는 켜져 있지만 보호 서비스가 중단되었어요. 다시 시작해서 차단을 복구하세요.",
+        actionLabel = "수면 모드 다시 시작"
+    ),
+    BatteryOptimization(
+        title = "실시간 보호 유지 설정이 필요해요",
+        message = "배터리 최적화 예외가 없어 수면 중 보호가 중단될 수 있어요.",
+        actionLabel = "배터리 설정 열기"
+    )
+}
+
+@Composable
+private fun SleepProtectionRecoveryCard(
+    issue: RecoveryIssue,
+    onAction: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.28f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = issue.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = issue.message,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onAction,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text(issue.actionLabel, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
