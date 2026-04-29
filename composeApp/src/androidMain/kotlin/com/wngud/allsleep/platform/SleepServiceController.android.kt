@@ -17,6 +17,10 @@ actual fun rememberSleepServiceController(): SleepServiceController {
             override fun stop() {
                 SleepLockService.stop(context)
             }
+
+            override fun isRunning(): Boolean {
+                return SleepLockService.isServiceRunning
+            }
         }
     }
 }

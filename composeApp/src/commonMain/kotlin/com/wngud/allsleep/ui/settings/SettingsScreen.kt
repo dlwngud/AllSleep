@@ -35,7 +35,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SettingsScreen(
     navController: androidx.navigation.NavController,
-    onNavigateToSubscription: () -> Unit,
+    onNavigateToSubscription: (Boolean) -> Unit,
     snackbarHostState: SnackbarHostState,
     contentPadding: PaddingValues = PaddingValues(),
     viewModel: SettingsViewModel = koinViewModel()
@@ -74,10 +74,10 @@ fun SettingsScreen(
         onIntent = { intent ->
             when (intent) {
                 is SettingsIntent.UpgradePremium -> {
-                    onNavigateToSubscription()
+                    onNavigateToSubscription(false)
                 }
                 is SettingsIntent.ManageSubscription -> {
-                    onNavigateToSubscription()
+                    onNavigateToSubscription(true)
                 }
                 is SettingsIntent.ToggleNotification -> {
                     if (notificationRequester.isGranted()) {

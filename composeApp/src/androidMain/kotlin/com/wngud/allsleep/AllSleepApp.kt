@@ -26,7 +26,7 @@ class AllSleepApp : Application() {
         super.onCreate()
 
         // RevenueCat 초기화
-        val rcKey = BuildConfig.REVENUECAT_API_KEY
+        val rcKey = selectRevenueCatApiKey()
         if (rcKey.isNotBlank()) {
             try {
                 Purchases.logLevel = LogLevel.DEBUG
@@ -68,5 +68,17 @@ class AllSleepApp : Application() {
             modules(appModule)
         }
     }
-}
 
+    private fun selectRevenueCatApiKey(): String {
+        val testKey = BuildConfig.REVENUECAT_TEST_API_KEY.trim()
+        val releaseKey = BuildConfig.REVENUECAT_API_KEY.trim()
+
+        return when {
+            BuildConfig.DEBUG && testKey.isNotBlank() -> testKey
+            releaseKey.isNotBlank() -> releaseKey
+            BuildConfig.DEBUG && releaseKey.isBlank() && testKey.isBlank() ->
+                error("RevenueCat API key is missing for debug build.")
+            else -> error("RevenueCat release API key is missing.")
+        }
+    }
+}

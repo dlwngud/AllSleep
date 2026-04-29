@@ -26,5 +26,6 @@ interface SubscriptionContract {
     sealed interface Effect {
         data class ShowSnackbar(val message: String) : Effect
         object NavigateBack : Effect
+        object NavigateToManage : Effect
     }
 }

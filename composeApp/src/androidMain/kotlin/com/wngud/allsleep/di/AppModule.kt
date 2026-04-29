@@ -29,7 +29,6 @@ import com.wngud.allsleep.domain.usecase.sleep.RegisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase
-import com.wngud.allsleep.domain.usecase.sleep.GetSleepStatsUseCase
 import com.wngud.allsleep.domain.usecase.sleep.GetMonthlyCalendarUseCase
 import com.wngud.allsleep.platform.AppOpenAdManager
 import com.wngud.allsleep.platform.AppOpenAdManagerImpl
@@ -113,7 +112,6 @@ val appModule = module {
     factoryOf(::LoginWithEmailUseCase)
     factoryOf(::SignUpWithEmailUseCase)
     factoryOf(::RecordSleepSessionUseCase)
-    factoryOf(::GetSleepStatsUseCase)
     factoryOf(::GetMonthlyCalendarUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────

@@ -1,0 +1,7 @@
+# Copy this file to admob.properties and fill in the real values locally.
+
+admob.appId.debug=ca-app-pub-3940256099942544~3347511713
+admob.appId.release=ca-app-pub-0000000000000000~0000000000
+
+admob.appOpenAdUnitId.debug=ca-app-pub-3940256099942544/9257395921
+admob.appOpenAdUnitId.release=ca-app-pub-0000000000000000/0000000000

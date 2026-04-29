@@ -38,10 +38,15 @@ import allsleep.composeapp.generated.resources.Res
 import allsleep.composeapp.generated.resources.character_phone
 import androidx.compose.ui.platform.LocalContext
 
+private const val TERMS_URL = "https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35"
+private const val PRIVACY_URL = "https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2"
+private const val FAQ_URL = "https://www.notion.so/AllSleep-FAQ-33892d663636805481d6ec75e097676c"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(
     onBack: () -> Unit,
+    onNavigateToManage: () -> Unit,
     viewModel: SubscriptionViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -58,6 +63,9 @@ fun SubscriptionScreen(
                 }
                 is SubscriptionContract.Effect.NavigateBack -> {
                     onBack()
+                }
+                is SubscriptionContract.Effect.NavigateToManage -> {
+                    onNavigateToManage()
                 }
             }
         }
@@ -111,6 +119,10 @@ fun SubscriptionScreen(
                     ErrorState(message = state.error!!, onRetry = {
                         viewModel.handleIntent(SubscriptionContract.Intent.LoadPackages)
                     })
+                } else if (state.packages.isEmpty()) {
+                    EmptyPackagesState(
+                        onRetry = { viewModel.handleIntent(SubscriptionContract.Intent.LoadPackages) }
+                    )
                 } else {
                     PlanGrid(
                         packages = state.packages,
@@ -135,8 +147,8 @@ fun SubscriptionScreen(
                 SubscriptionFooter(
                     showRenewalText = selectedPkg?.type == com.wngud.allsleep.platform.PackageType.MONTHLY || 
                                      selectedPkg?.type == com.wngud.allsleep.platform.PackageType.ANNUAL,
-                    onTermsClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") }, // 예시 URL
-                    onPrivacyClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") },
+                    onTermsClick = { uriHandler.openUri(TERMS_URL) },
+                    onPrivacyClick = { uriHandler.openUri(PRIVACY_URL) },
                     onRestoreClick = { viewModel.handleIntent(SubscriptionContract.Intent.RestorePurchases) }
                 )
                 
@@ -207,10 +219,10 @@ fun PremiumHeader() {
 @Composable
 fun BenefitSection() {
     val benefits = listOf(
-        "정밀 수면 지표 분석" to "AI가 분석하는 고도화된 수면 지표 확인",
-        "광고 없는 쾌적함" to "방해 없는 수면 모드와 통계 대시보드",
-        "멀티 디바이스 동기화" to "모든 기기에서 끊김 없는 수면 기록 관리",
-        "프리미엄 전용 리포트" to "맞춤형 건강 인사이트와 주간/월간 분석"
+        "수면 점수와 부채 분석" to "프리미엄 통계에서 수면 흐름과 부채를 더 자세히 확인",
+        "잠금 스트릭" to "꾸준한 수면 기록과 루틴을 이어갈 수 있어요.",
+        "AI 개인 맞춤 인사이트" to "패턴을 바탕으로 개인화된 분석을 받아볼 수 있어요.",
+        "무제한 기기 동기화" to "기기 등록 제한 없이 여러 기기를 연결할 수 있어요."
     )
 
     Column(
@@ -478,6 +490,31 @@ fun ErrorState(message: String, onRetry: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onRetry) {
             Text("다시 시도", color = Primary)
+        }
+    }
+}
+
+@Composable
+fun EmptyPackagesState(onRetry: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "구독 요금제를 불러오지 못했어요",
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "스토어 연결이나 RevenueCat 설정을 확인한 뒤 다시 시도해줘.",
+            color = Color.White.copy(alpha = 0.55f),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+        ) {
+            Text("다시 불러오기", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }

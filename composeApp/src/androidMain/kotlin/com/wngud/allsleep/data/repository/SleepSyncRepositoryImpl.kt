@@ -1,6 +1,7 @@
 package com.wngud.allsleep.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.wngud.allsleep.domain.model.DeviceState
 import com.wngud.allsleep.domain.model.UserSleepState
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
@@ -19,7 +20,12 @@ class SleepSyncRepositoryImpl(
         val listenerRegistration = usersCollection.document(uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    if (error.isPermissionDenied()) {
+                        trySend(null)
+                        close()
+                    } else {
+                        close(error)
+                    }
                     return@addSnapshotListener
                 }
                 
@@ -167,7 +173,12 @@ class SleepSyncRepositoryImpl(
         val listenerRegistration = usersCollection.document(uid).collection("devices")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    if (error.isPermissionDenied()) {
+                        trySend(emptyList())
+                        close()
+                    } else {
+                        close(error)
+                    }
                     return@addSnapshotListener
                 }
                 
@@ -188,5 +199,10 @@ class SleepSyncRepositoryImpl(
         awaitClose {
             listenerRegistration.remove()
         }
+    }
+
+    private fun Throwable.isPermissionDenied(): Boolean {
+        return this is FirebaseFirestoreException &&
+            code == FirebaseFirestoreException.Code.PERMISSION_DENIED
     }
 }

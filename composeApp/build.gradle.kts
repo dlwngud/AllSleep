@@ -1,6 +1,15 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
+val admobPropertiesFile = rootProject.file("admob.properties")
+val admobProperties = Properties().apply {
+    if (admobPropertiesFile.exists()) {
+        load(admobPropertiesFile.inputStream())
+    }
+}
+
+fun admobProp(name: String): String = admobProperties.getProperty(name)?.trim().orEmpty()
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -99,7 +108,9 @@ android {
             }
         }
         val rcApiKey = props.getProperty("revenueCat.apiKey") ?: ""
+        val rcTestApiKey = props.getProperty("revenueCat.testApiKey") ?: ""
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$rcApiKey\"")
+        buildConfigField("String", "REVENUECAT_TEST_API_KEY", "\"$rcTestApiKey\"")
     }
     buildFeatures {
         buildConfig = true
@@ -131,6 +142,12 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("releaseConfig")
             }
+            val admobAppId = admobProp("admob.appId.debug")
+            val appOpenAdUnitId = admobProp("admob.appOpenAdUnitId.debug")
+            require(admobAppId.isNotBlank()) { "admob.appId.debug is missing in admob.properties" }
+            require(appOpenAdUnitId.isNotBlank()) { "admob.appOpenAdUnitId.debug is missing in admob.properties" }
+            manifestPlaceholders["admobAppId"] = admobAppId
+            buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$appOpenAdUnitId\"")
         }
         getByName("release") {
             isMinifyEnabled = true
@@ -138,6 +155,12 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("releaseConfig")
             }
+            val admobAppId = admobProp("admob.appId.release")
+            val appOpenAdUnitId = admobProp("admob.appOpenAdUnitId.release")
+            require(admobAppId.isNotBlank()) { "admob.appId.release is missing in admob.properties" }
+            require(appOpenAdUnitId.isNotBlank()) { "admob.appOpenAdUnitId.release is missing in admob.properties" }
+            manifestPlaceholders["admobAppId"] = admobAppId
+            buildConfigField("String", "ADMOB_APP_OPEN_AD_UNIT_ID", "\"$appOpenAdUnitId\"")
         }
     }
     compileOptions {
@@ -167,4 +190,3 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
 }
-

@@ -4,15 +4,12 @@ import android.app.Activity
 import android.app.Application
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Offerings
-import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
-import com.revenuecat.purchases.PurchasesError
+import com.revenuecat.purchases.getCustomerInfoWith
 import com.revenuecat.purchases.getOfferingsWith
-import com.revenuecat.purchases.interfaces.PurchaseCallback
 import com.revenuecat.purchases.logInWith
 import com.revenuecat.purchases.logOutWith
-import com.revenuecat.purchases.models.StoreTransaction
 import com.revenuecat.purchases.purchaseWith
 import com.revenuecat.purchases.restorePurchasesWith
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -80,12 +77,45 @@ class BillingProviderImpl(
                 title = rcPackage.product.title,
                 priceString = rcPackage.product.price.formatted,
                 type = type,
+                productId = rcPackage.product.id,
                 badge = badge,
                 subDescription = subDescription,
                 hasFreeTrial = rcPackage.product.period?.let { true } ?: false,
                 freeTrialDays = 7
             )
         } ?: emptyList()
+    }
+
+    override suspend fun getSubscriptionStatus(): Result<SubscriptionStatus> = runCatching {
+        val customerInfo = suspendCancellableCoroutine<CustomerInfo?> { continuation ->
+            Purchases.sharedInstance.getCustomerInfoWith(
+                onError = { error ->
+                    continuation.resumeWithException(Exception(error.message))
+                },
+                onSuccess = { customerInfo ->
+                    continuation.resume(customerInfo)
+                }
+            )
+        } ?: throw Exception("Customer info not available")
+
+        val premiumEntitlement = customerInfo.entitlements["premium"]
+            ?: customerInfo.entitlements.active.values.firstOrNull()
+        SubscriptionStatus(
+            isPremiumActive = premiumEntitlement?.isActive == true,
+            entitlementId = premiumEntitlement?.identifier,
+            productIdentifier = premiumEntitlement?.productIdentifier,
+            productPlanIdentifier = premiumEntitlement?.productPlanIdentifier,
+            willRenew = premiumEntitlement?.willRenew,
+            periodType = premiumEntitlement?.periodType?.name,
+            expirationDateMillis = premiumEntitlement?.expirationDate?.time,
+            latestPurchaseDateMillis = premiumEntitlement?.latestPurchaseDate?.time,
+            originalPurchaseDateMillis = premiumEntitlement?.originalPurchaseDate?.time,
+            store = premiumEntitlement?.store?.name,
+            managementUrl = customerInfo.managementURL?.toString(),
+            isSandbox = premiumEntitlement?.isSandbox == true,
+            unsubscribeDetectedAtMillis = premiumEntitlement?.unsubscribeDetectedAt?.time,
+            billingIssueDetectedAtMillis = premiumEntitlement?.billingIssueDetectedAt?.time
+        )
     }
 
     override suspend fun purchasePackage(
@@ -124,7 +154,8 @@ class BillingProviderImpl(
 
         PurchaseResult(
             isSuccess = customerInfo != null,
-            isPremiumNow = customerInfo?.entitlements?.get("premium")?.isActive == true
+            isPremiumNow = customerInfo?.entitlements?.get("premium")?.isActive == true ||
+                customerInfo?.entitlements?.active?.values?.firstOrNull()?.isActive == true
         )
     }
 

@@ -12,11 +12,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.todayIn
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class StatsViewModelTest {
 
@@ -27,8 +38,8 @@ class StatsViewModelTest {
         override val weekdayWakeTime: Flow<String> = flowOf("07:00")
         override val isWeekdaySleepEnabled: Flow<Boolean> = flowOf(true)
         override val isWeekdayWakeEnabled: Flow<Boolean> = flowOf(true)
-        override val weekendBedtime: Flow<String> = flowOf("00:00")
-        override val weekendWakeTime: Flow<String> = flowOf("09:00")
+        override val weekendBedtime: Flow<String> = flowOf("23:00")
+        override val weekendWakeTime: Flow<String> = flowOf("07:00")
         override val isWeekendSleepEnabled: Flow<Boolean> = flowOf(true)
         override val isWeekendWakeEnabled: Flow<Boolean> = flowOf(true)
         override val isOnboardingCompleted: Flow<Boolean> = flowOf(true)
@@ -50,11 +61,16 @@ class StatsViewModelTest {
         override suspend fun clear() {}
     }
 
-    private class FakeSleepRecordRepository : SleepRecordRepository {
+    private class FakeSleepRecordRepository(
+        private val records: List<SleepRecord> = emptyList()
+    ) : SleepRecordRepository {
         override suspend fun saveSleepRecord(record: SleepRecord) = Result.success(Unit)
-        override suspend fun getRecordsByMonth(uid: String, yearMonth: String) = Result.success(emptyList<SleepRecord>())
-        override suspend fun getRecordsByRange(uid: String, startDate: String, endDate: String) = Result.success(emptyList<SleepRecord>())
-        override suspend fun getLatestRecord(uid: String) = Result.success(null)
+        override suspend fun getRecordsByMonth(uid: String, yearMonth: String) =
+            Result.success(records.filter { it.date.startsWith(yearMonth) })
+        override suspend fun getRecordsByRange(uid: String, startDate: String, endDate: String) =
+            Result.success(records.filter { it.date >= startDate && it.date <= endDate })
+        override suspend fun getLatestRecord(uid: String) =
+            Result.success(records.maxByOrNull { it.date })
     }
 
     private class FakeAuthRepository : AuthRepository {
@@ -77,21 +93,10 @@ class StatsViewModelTest {
         override fun observeUser() = TODO()
     }
 
-    private lateinit var viewModel: StatsViewModel
-
     @OptIn(ExperimentalCoroutinesApi::class)
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        
-        val authRepository = FakeAuthRepository()
-        val getCurrentUserUseCase = GetCurrentUserUseCase(authRepository)
-        
-        viewModel = StatsViewModel(
-            sleepRecordRepository = FakeSleepRecordRepository(),
-            getCurrentUserUseCase = getCurrentUserUseCase,
-            sleepSettingsRepository = FakeSleepSettingsRepository()
-        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -102,20 +107,69 @@ class StatsViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun isRefreshing_should_be_updated_during_refresh_intent() = runTest {
-        // Given: Advance until initial load is done
-        advanceUntilIdle()
-        assertFalse(viewModel.state.value.isRefreshing)
+    fun isLoading_should_be_false_after_initial_load() = runTest {
+        val viewModel = createViewModel()
 
-        // When: Refresh intent is triggered
-        viewModel.handleIntent(StatsIntent.Refresh)
-        
-        // Assert: isRefreshing should be true during load (before idle)
-        // Note: Since we use StandardTestDispatcher and launch, we can check intermediate states
-        // if we are careful, but advanceUntilIdle will complete it.
         advanceUntilIdle()
-        
-        // Assert: finally it should be false
-        assertFalse(viewModel.state.value.isRefreshing, "isRefreshing should be false after refresh is done")
+
+        assertFalse(viewModel.state.value.isLoading, "isLoading should be false after data is loaded")
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun weekly_summary_should_reflect_recent_records() = runTest {
+        val records = recentRecords(durationMinutes = 480, days = 7)
+        val viewModel = createViewModel(records)
+
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(480, state.weeklyAverageMinutes)
+        assertEquals(0, state.sleepDebtMinutes)
+        assertEquals(7, state.achievementCount)
+        assertTrue(state.sleepScore >= 90)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun sleep_debt_should_be_calculated_from_recent_records() = runTest {
+        val records = recentRecords(durationMinutes = 300, days = 3)
+        val viewModel = createViewModel(records)
+
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(300, state.weeklyAverageMinutes)
+        assertEquals(540, state.sleepDebtMinutes)
+        assertEquals(SleepDebtLevel.WARNING, state.sleepDebtLevel)
+    }
+
+    private fun createViewModel(records: List<SleepRecord> = emptyList()): StatsViewModel {
+        return StatsViewModel(
+            sleepRecordRepository = FakeSleepRecordRepository(records),
+            getCurrentUserUseCase = GetCurrentUserUseCase(FakeAuthRepository()),
+            sleepSettingsRepository = FakeSleepSettingsRepository()
+        )
+    }
+
+    private fun recentRecords(durationMinutes: Int, days: Int): List<SleepRecord> {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        return (0 until days).map { offset ->
+            val date = today.minus(offset, DateTimeUnit.DAY).toString()
+            SleepRecord(
+                id = date,
+                uid = "test_uid",
+                date = date,
+                bedtime = 0L,
+                wakeTime = 0L,
+                targetBedtime = "23:00",
+                targetWakeTime = "07:00",
+                targetMinutes = 480,
+                durationMinutes = durationMinutes,
+                sleepEfficiency = 92f,
+                achievementRate = (durationMinutes / 480f * 100f).coerceAtMost(100f),
+                isLockUsed = true
+            )
+        }
     }
 }

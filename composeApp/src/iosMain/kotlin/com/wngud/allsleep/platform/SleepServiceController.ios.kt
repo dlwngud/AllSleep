@@ -14,6 +14,8 @@ actual fun rememberSleepServiceController(): SleepServiceController {
             override fun stop() {
                 // iOS stub
             }
+
+            override fun isRunning(): Boolean = false
         }
     }
 }

@@ -67,6 +67,7 @@ class GlobalSleepViewModel(
     private var deviceRegisterJob: Job? = null
     private var hasBeenRegisteredInThisSession = false
     private var isReplacingDevice = false
+    private var isLoggingOut = false
 
     init {
         handleIntent(GlobalSleepContract.Intent.RequestInitialize)
@@ -78,6 +79,7 @@ class GlobalSleepViewModel(
             is GlobalSleepContract.Intent.RequestLogout -> logout()
             is GlobalSleepContract.Intent.ToggleSleepState -> toggleSleepState(intent.isSleeping, intent.targetWakeUpTime)
             is GlobalSleepContract.Intent.CompleteOnboarding -> completeOnboarding(intent.bedtime, intent.wakeTime)
+            is GlobalSleepContract.Intent.RefreshPremiumStatus -> refreshPremiumStatus()
             is GlobalSleepContract.Intent.ReplaceDevice -> forceReplaceDevice()
             is GlobalSleepContract.Intent.CancelDeviceRegistration -> cancelDeviceRegistration()
             is GlobalSleepContract.Intent.UpgradeToPremium -> upgradeToPremium()
@@ -153,6 +155,9 @@ class GlobalSleepViewModel(
                 }
             }
             handleUserSessionChange(user)
+            if (user != null) {
+                refreshPremiumStatus()
+            }
             _state.update { it.copy(isStateInitialized = true) }
 
             setupAuthObserver()
@@ -284,15 +289,36 @@ class GlobalSleepViewModel(
         }
     }
 
+    private fun refreshPremiumStatus() {
+        viewModelScope.launch {
+            val statusResult = billingProvider.getSubscriptionStatus()
+            if (statusResult.isFailure) return@launch
+
+            val isPremiumNow = statusResult.getOrThrow().isPremiumActive
+            val currentUser = getCurrentUserUseCase()
+
+            if (currentUser != null && currentUser.isPremium != isPremiumNow) {
+                val updatedUser = currentUser.copy(isPremium = isPremiumNow)
+                updateUserProfileUseCase(updatedUser)
+                _state.update { it.copy(currentUser = updatedUser, isPremium = isPremiumNow) }
+            } else {
+                _state.update { it.copy(isPremium = isPremiumNow) }
+                currentUser?.let { _state.update { state -> state.copy(currentUser = it) } }
+            }
+
+            sleepSettingsRepository.savePremiumStatus(isPremiumNow)
+        }
+    }
+
     private fun startObserving(uid: String) {
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
             observeUserSleepStateUseCase(uid)
-                .catch { logout() }
+                .catch { handleRemoteSessionClosed() }
                 .collect { state ->
                     val oldState = _state.value.sleepState
                     if (state == null && currentUid != null) {
-                        logout()
+                        handleRemoteSessionClosed()
                         return@collect
                     }
                     
@@ -358,7 +384,7 @@ class GlobalSleepViewModel(
         devicesJob?.cancel()
         devicesJob = viewModelScope.launch {
             observeRegisteredDevicesUseCase(uid)
-                .catch { logout() }
+                .catch { handleRemoteSessionClosed() }
                 .collect { devices ->
                     _state.update { it.copy(registeredDevices = devices) }
                     val currentId = deviceInfoProvider.getDeviceId()
@@ -367,11 +393,16 @@ class GlobalSleepViewModel(
                     } else if (hasBeenRegisteredInThisSession && devices.isNotEmpty()) {
                         // 교체 중(isReplacingDevice == true)일 때는 서버 상태가 불안정하므로 로그아웃 트리거를 일시 중지함.
                         if (!isReplacingDevice) {
-                            logout()
+                            handleRemoteSessionClosed()
                         }
                     }
                 }
         }
+    }
+
+    private fun handleRemoteSessionClosed() {
+        if (isLoggingOut) return
+        logout()
     }
 
     private fun registerCurrentUIDDevice(uid: String) {
@@ -398,14 +429,22 @@ class GlobalSleepViewModel(
     }
 
     private fun logout() {
+        if (isLoggingOut) return
         val uid = currentUid ?: return
+        isLoggingOut = true
+        observeJob?.cancel()
+        devicesJob?.cancel()
+        deviceRegisterJob?.cancel()
         viewModelScope.launch {
             unregisterDeviceUseCase(uid, deviceInfoProvider.getDeviceId())
+                .onFailure { e -> println("[GlobalSleep] 로그아웃 중 기기 등록 해제 실패: ${e.message}") }
             signOutUseCase()
-            billingProvider.logoutUser()
+                .onFailure { e -> println("[GlobalSleep] 로그아웃 실패: ${e.message}") }
+            runCatching { billingProvider.logoutUser() }
             currentUid = null
             hasBeenRegisteredInThisSession = false
             _state.update { it.copy(currentUser = null, sleepState = null, registeredDevices = emptyList()) }
+            isLoggingOut = false
         }
     }
 
@@ -430,6 +469,15 @@ class GlobalSleepViewModel(
 
                 if (isSleeping) {
                     sleepSettingsRepository.saveActiveSleepStartAt(now)
+                } else {
+                    saveCompletedSleepRecord(
+                        uid = uid,
+                        wakeTimeMs = now,
+                        weekdayBedtime = wdB,
+                        weekdayWakeTime = wdW,
+                        weekendBedtime = weB,
+                        weekendWakeTime = weW
+                    )
                 }
 
                 _state.update { it.copy(
@@ -466,6 +514,36 @@ class GlobalSleepViewModel(
 
     private fun isWeekday(): Boolean {
         return com.wngud.allsleep.domain.model.isWeekday(platformTimeMillis())
+    }
+
+    private suspend fun saveCompletedSleepRecord(
+        uid: String,
+        wakeTimeMs: Long,
+        weekdayBedtime: String,
+        weekdayWakeTime: String,
+        weekendBedtime: String,
+        weekendWakeTime: String
+    ) {
+        val sleepStartAt = sleepSettingsRepository.activeSleepStartAt.first()
+        if (sleepStartAt <= 0L || wakeTimeMs <= sleepStartAt) return
+
+        val isWeekdaySession = com.wngud.allsleep.domain.model.isWeekday(sleepStartAt)
+        val targetBedtime = if (isWeekdaySession) weekdayBedtime else weekendBedtime
+        val targetWakeTime = if (isWeekdaySession) weekdayWakeTime else weekendWakeTime
+
+        recordSleepSessionUseCase(
+            uid = uid,
+            date = formatCurrentDate(wakeTimeMs),
+            sleepStartAt = sleepStartAt,
+            wakeTimeMs = wakeTimeMs,
+            targetBedtime = targetBedtime,
+            targetWakeTime = targetWakeTime,
+            isLockUsed = true
+        ).onSuccess {
+            sleepSettingsRepository.saveActiveSleepStartAt(0L)
+        }.onFailure { e ->
+            println("[SleepDebug] 수면 기록 저장 실패: ${e.message}")
+        }
     }
 
     private fun platformTimeMillis(): Long = com.wngud.allsleep.domain.model.platformTimeMillis()

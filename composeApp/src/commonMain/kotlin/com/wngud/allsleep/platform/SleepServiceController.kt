@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 interface SleepServiceController {
     fun start()
     fun stop()
+    fun isRunning(): Boolean
 }
 
 @Composable
