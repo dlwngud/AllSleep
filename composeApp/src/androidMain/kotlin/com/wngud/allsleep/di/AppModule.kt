@@ -5,9 +5,11 @@ import com.wngud.allsleep.data.datasource.auth.GoogleAuthDataSource
 import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
 import com.wngud.allsleep.data.repository.AppBlockerRepositoryImpl
+import com.wngud.allsleep.data.repository.BillingRepositoryImpl
 import com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl
 import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
+import com.wngud.allsleep.domain.repository.BillingRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import com.wngud.allsleep.domain.repository.SleepRecordRepository
@@ -30,6 +32,14 @@ import com.wngud.allsleep.domain.usecase.sleep.UnregisterDeviceUseCase
 import com.wngud.allsleep.domain.usecase.sleep.UpdateUserSleepStateUseCase
 import com.wngud.allsleep.domain.usecase.sleep.RecordSleepSessionUseCase
 import com.wngud.allsleep.domain.usecase.sleep.GetMonthlyCalendarUseCase
+import com.wngud.allsleep.domain.usecase.sleep.ToggleSleepModeUseCase
+import com.wngud.allsleep.domain.usecase.home.ObserveHomeSleepGoalUseCase
+import com.wngud.allsleep.domain.usecase.stats.CalculateSleepReportUseCase
+import com.wngud.allsleep.domain.usecase.subscription.LoadSubscriptionPackagesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.ObservePremiumStatusUseCase
+import com.wngud.allsleep.domain.usecase.subscription.PurchaseSubscriptionUseCase
+import com.wngud.allsleep.domain.usecase.subscription.RestorePurchasesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.SyncPremiumStatusUseCase
 import com.wngud.allsleep.platform.AppOpenAdManager
 import com.wngud.allsleep.platform.AppOpenAdManagerImpl
 import com.wngud.allsleep.platform.DeviceInfoProvider
@@ -39,10 +49,12 @@ import com.wngud.allsleep.platform.BillingProviderImpl
 import com.wngud.allsleep.platform.SleepScheduler
 import com.wngud.allsleep.platform.SleepSchedulerImpl
 import com.wngud.allsleep.ui.alarm.AlarmViewModel
+import com.wngud.allsleep.ui.app.AppRootViewModel
 import com.wngud.allsleep.ui.auth.login.AuthViewModel
-import com.wngud.allsleep.ui.global.GlobalSleepViewModel
+import com.wngud.allsleep.ui.home.HomeViewModel
 import com.wngud.allsleep.ui.onboarding.OnboardingViewModel
 import com.wngud.allsleep.ui.settings.SettingsViewModel
+import com.wngud.allsleep.ui.sleep.SleepRuntimeViewModel
 import com.wngud.allsleep.ui.stats.StatsViewModel
 import com.wngud.allsleep.ui.subscription.SubscriptionViewModel
 import org.koin.android.ext.koin.androidApplication
@@ -80,6 +92,7 @@ val appModule = module {
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::SleepSyncRepositoryImpl) bind SleepSyncRepository::class
     singleOf(::SleepRecordRepositoryImpl) bind SleepRecordRepository::class
+    singleOf(::BillingRepositoryImpl) bind BillingRepository::class
     singleOf(::AppBlockerRepositoryImpl) bind com.wngud.allsleep.domain.repository.AppBlockerRepository::class
 
     // ── Platform Services ──────────────────────────────────────────
@@ -112,14 +125,24 @@ val appModule = module {
     factoryOf(::LoginWithEmailUseCase)
     factoryOf(::SignUpWithEmailUseCase)
     factoryOf(::RecordSleepSessionUseCase)
+    factoryOf(::ToggleSleepModeUseCase)
     factoryOf(::GetMonthlyCalendarUseCase)
+    factory { ObserveHomeSleepGoalUseCase(get()) }
+    factory { CalculateSleepReportUseCase() }
+    factoryOf(::LoadSubscriptionPackagesUseCase)
+    factoryOf(::ObservePremiumStatusUseCase)
+    factoryOf(::PurchaseSubscriptionUseCase)
+    factoryOf(::RestorePurchasesUseCase)
+    factoryOf(::SyncPremiumStatusUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
-    singleOf(::GlobalSleepViewModel)
+    viewModelOf(::AppRootViewModel)
+    viewModelOf(::HomeViewModel)
     viewModelOf(::AuthViewModel)
     viewModelOf(::OnboardingViewModel)
     viewModelOf(::AlarmViewModel)
     viewModelOf(::SettingsViewModel)
+    viewModelOf(::SleepRuntimeViewModel)
     viewModelOf(::StatsViewModel)
     viewModelOf(::SubscriptionViewModel)
 }
