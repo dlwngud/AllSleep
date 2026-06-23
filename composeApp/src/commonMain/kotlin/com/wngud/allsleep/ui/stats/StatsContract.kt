@@ -1,13 +1,13 @@
 package com.wngud.allsleep.ui.stats
 
 import com.wngud.allsleep.domain.model.SleepRecord
+import com.wngud.allsleep.domain.model.stats.SleepDebtLevel
 
 enum class StatsTab { SUMMARY, RECORD }
 
-enum class SleepDebtLevel { GOOD, CAUTION, WARNING }
-
 data class StatsState(
     val isLoading: Boolean = false,
+    val isPremium: Boolean = false,
     val selectedTab: StatsTab = StatsTab.SUMMARY,
     val selectedDate: String? = null,
     val selectedYearMonth: String = "",

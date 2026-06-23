@@ -46,40 +46,27 @@ import com.wngud.allsleep.domain.model.UserSleepState
 import com.wngud.allsleep.domain.model.DeviceState
 import com.wngud.allsleep.platform.rememberNotificationPermissionRequester
 import com.wngud.allsleep.ui.components.NotificationRationaleDialog
-import com.wngud.allsleep.ui.global.GlobalSleepViewModel
-import com.wngud.allsleep.ui.global.GlobalSleepContract
-import com.wngud.allsleep.domain.repository.SleepSettingsRepository
-import kotlinx.coroutines.flow.combine
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
-import org.koin.compose.koinInject
 
 @Composable
 fun HomeScreen(
     contentPadding: PaddingValues = PaddingValues(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject(),
-    sleepSettingsRepository: SleepSettingsRepository = koinInject()
+    homeViewModel: HomeViewModel = koinViewModel()
 ) {
-    val globalState by globalSleepViewModel.state.collectAsState(GlobalSleepContract.State())
-    val sleepGoal by sleepSettingsRepository.homeSleepGoal().collectAsState(initial = "8h")
+    val homeState by homeViewModel.state.collectAsState()
+    val sleepGoal by homeViewModel.sleepGoal.collectAsState()
 
-    val devices = globalState.registeredDevices
-    val isToggleLoading = globalState.isToggleLoading
-    val isSleeping = globalState.sleepState?.isSleeping == true
+    val devices = homeState.registeredDevices
+    val isToggleLoading = homeState.isToggleLoading
+    val isSleeping = homeState.isSleeping
 
     HomeScreenContent(
         contentPadding = contentPadding,
-        sleepGoal = sleepGoal,
+        sleepGoal = sleepGoal.displayText,
         isSleeping = isSleeping,
         devices = devices,
         snackbarHostState = snackbarHostState,
-        onStartSleep = { 
-            globalSleepViewModel.handleIntent(
-                GlobalSleepContract.Intent.ToggleSleepState(isSleeping = true)
-            )
-        }
+        onStartSleep = homeViewModel::startSleepMode
     )
 
     if (isToggleLoading) {
@@ -103,41 +90,6 @@ fun HomeScreen(
             )
         }
     }
-}
-
-private fun SleepSettingsRepository.homeSleepGoal() = combine(
-    weekdayBedtime,
-    weekdayWakeTime,
-    weekendBedtime,
-    weekendWakeTime
-) { wdB, wdW, weB, weW ->
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-    val isWeekdayTonight = today.dayOfWeek.ordinal < 5
-    val targetMinutes = if (isWeekdayTonight) {
-        calculateTimeDiffMinutes(wdB, wdW)
-    } else {
-        calculateTimeDiffMinutes(weB, weW)
-    }
-    formatGoalDuration(targetMinutes)
-}
-
-private fun calculateTimeDiffMinutes(start: String, end: String): Int {
-    return try {
-        val startParts = start.split(":").map { it.toInt() }
-        val endParts = end.split(":").map { it.toInt() }
-        val startTotal = startParts[0] * 60 + startParts[1]
-        var endTotal = endParts[0] * 60 + endParts[1]
-        if (endTotal <= startTotal) endTotal += 24 * 60
-        endTotal - startTotal
-    } catch (_: Exception) {
-        480
-    }
-}
-
-private fun formatGoalDuration(minutes: Int): String {
-    val hours = minutes / 60
-    val mins = minutes % 60
-    return if (mins == 0) "${hours}h" else "${hours}h ${mins}m"
 }
 
 @Composable

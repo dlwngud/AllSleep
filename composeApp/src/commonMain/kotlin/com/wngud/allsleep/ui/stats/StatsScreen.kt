@@ -53,15 +53,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wngud.allsleep.domain.model.SleepRecord
 import com.wngud.allsleep.domain.model.formatTimestampToTime
+import com.wngud.allsleep.domain.model.stats.SleepDebtLevel
 import com.wngud.allsleep.ui.components.PremiumOverlay
-import com.wngud.allsleep.ui.global.GlobalSleepViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.max
 
@@ -82,15 +81,13 @@ fun StatsScreen(
     contentPadding: PaddingValues = PaddingValues(),
     onNavigateToSubscription: () -> Unit,
     viewModel: StatsViewModel = koinViewModel(),
-    globalViewModel: GlobalSleepViewModel = koinInject()
 ) {
     val state by viewModel.state.collectAsState()
-    val globalState by globalViewModel.state.collectAsState()
 
     StatsScreenContent(
         contentPadding = contentPadding,
         state = state,
-        isPremium = globalState.isPremium,
+        isPremium = state.isPremium,
         onIntent = viewModel::handleIntent,
         onNavigateToSubscription = onNavigateToSubscription
     )
