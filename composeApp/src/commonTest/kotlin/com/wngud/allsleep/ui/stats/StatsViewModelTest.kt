@@ -6,7 +6,10 @@ import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
 import com.wngud.allsleep.domain.repository.SleepRecordRepository
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import com.wngud.allsleep.domain.model.stats.SleepDebtLevel
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.domain.usecase.stats.CalculateSleepReportUseCase
+import com.wngud.allsleep.domain.usecase.subscription.ObservePremiumStatusUseCase
 import com.wngud.allsleep.platform.PlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -148,7 +151,9 @@ class StatsViewModelTest {
         return StatsViewModel(
             sleepRecordRepository = FakeSleepRecordRepository(records),
             getCurrentUserUseCase = GetCurrentUserUseCase(FakeAuthRepository()),
-            sleepSettingsRepository = FakeSleepSettingsRepository()
+            sleepSettingsRepository = FakeSleepSettingsRepository(),
+            calculateSleepReportUseCase = CalculateSleepReportUseCase(),
+            observePremiumStatusUseCase = ObservePremiumStatusUseCase(FakeSleepSettingsRepository())
         )
     }
 
