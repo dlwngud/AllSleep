@@ -8,7 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.wngud.allsleep.platform.AppOpenAdManager
 import com.wngud.allsleep.service.SleepLockService
-import com.wngud.allsleep.ui.global.GlobalSleepViewModel
+import com.wngud.allsleep.ui.sleep.SleepRuntimeViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -27,7 +27,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
 
-    private val globalSleepViewModel: GlobalSleepViewModel by viewModel()
+    private val sleepRuntimeViewModel: SleepRuntimeViewModel by viewModel()
     private val appOpenAdManager: AppOpenAdManager by inject()
     private var lastSleepingState: Boolean? = null
     
@@ -78,8 +78,8 @@ class MainActivity : ComponentActivity() {
         // 전역 수면 상태 관찰 시작 (실시간 동기화 핵심)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                globalSleepViewModel.state.collectLatest { globalState ->
-                    val state = globalState.sleepState
+                sleepRuntimeViewModel.state.collectLatest { runtimeState ->
+                    val state = runtimeState.sleepState
                     val isSleeping = state?.isSleeping ?: false
                     
                     // 상태가 실제로 변했을 때만 서비스 제어 (무한 루프 방지)
