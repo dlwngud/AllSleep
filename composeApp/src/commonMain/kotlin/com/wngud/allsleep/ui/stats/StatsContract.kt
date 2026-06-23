@@ -42,4 +42,5 @@ sealed interface StatsIntent {
     data class SelectDate(val date: String) : StatsIntent
     data class NavigateMonth(val yearMonth: String) : StatsIntent
     data object Retry : StatsIntent
+
 }

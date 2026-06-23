@@ -84,6 +84,11 @@ fun StatsScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    // 화면 진입 시 자동 새로고침 활성화
+    LaunchedEffect(Unit) {
+        viewModel.handleIntent(StatsIntent.Refresh)
+    }
+
     StatsScreenContent(
         contentPadding = contentPadding,
         state = state,
