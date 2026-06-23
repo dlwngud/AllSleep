@@ -1,6 +1,5 @@
 package com.wngud.allsleep.ui.subscription
 
-import com.wngud.allsleep.platform.BillingProvider
 import com.wngud.allsleep.platform.PackageType
 import com.wngud.allsleep.platform.PlatformContext
 import com.wngud.allsleep.platform.PurchaseResult
@@ -9,9 +8,14 @@ import com.wngud.allsleep.platform.SubscriptionStatus
 import com.wngud.allsleep.domain.model.AuthProvider
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.repository.AuthRepository
+import com.wngud.allsleep.domain.repository.BillingRepository
 import com.wngud.allsleep.domain.repository.SleepSyncRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
+import com.wngud.allsleep.domain.usecase.subscription.LoadSubscriptionPackagesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.PurchaseSubscriptionUseCase
+import com.wngud.allsleep.domain.usecase.subscription.RestorePurchasesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.SyncPremiumStatusUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -41,11 +45,18 @@ class SubscriptionViewModelTest {
         billingProvider = FakeBillingProvider()
         sleepSyncRepository = FakeSleepSyncRepository()
         sleepSettingsRepository = FakeSleepSettingsRepository()
+        val getCurrentUserUseCase = GetCurrentUserUseCase(FakeAuthRepository())
+        val updateUserProfileUseCase = UpdateUserProfileUseCase(sleepSyncRepository)
         viewModel = SubscriptionViewModel(
-            billingProvider = billingProvider,
-            getCurrentUserUseCase = GetCurrentUserUseCase(FakeAuthRepository()),
-            updateUserProfileUseCase = UpdateUserProfileUseCase(sleepSyncRepository),
-            sleepSettingsRepository = sleepSettingsRepository
+            loadSubscriptionPackagesUseCase = LoadSubscriptionPackagesUseCase(billingProvider),
+            purchaseSubscriptionUseCase = PurchaseSubscriptionUseCase(billingProvider),
+            restorePurchasesUseCase = RestorePurchasesUseCase(billingProvider),
+            syncPremiumStatusUseCase = SyncPremiumStatusUseCase(
+                billingRepository = billingProvider,
+                getCurrentUserUseCase = getCurrentUserUseCase,
+                updateUserProfileUseCase = updateUserProfileUseCase,
+                sleepSettingsRepository = sleepSettingsRepository,
+            )
         )
     }
 
@@ -137,7 +148,7 @@ class SubscriptionViewModelTest {
     }
 }
 
-class FakeBillingProvider : BillingProvider {
+class FakeBillingProvider : BillingRepository {
     var packages: List<SubscriptionPackage> = emptyList()
     var purchaseResult: Result<PurchaseResult> = Result.success(PurchaseResult(true, true))
     var subscriptionStatusResult: Result<SubscriptionStatus> = Result.success(

@@ -2,11 +2,11 @@ package com.wngud.allsleep.ui.subscription
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.wngud.allsleep.platform.BillingProvider
 import com.wngud.allsleep.platform.PlatformContext
-import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
-import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
-import com.wngud.allsleep.domain.repository.SleepSettingsRepository
+import com.wngud.allsleep.domain.usecase.subscription.LoadSubscriptionPackagesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.PurchaseSubscriptionUseCase
+import com.wngud.allsleep.domain.usecase.subscription.RestorePurchasesUseCase
+import com.wngud.allsleep.domain.usecase.subscription.SyncPremiumStatusUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -15,10 +15,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SubscriptionViewModel(
-    private val billingProvider: BillingProvider,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val updateUserProfileUseCase: UpdateUserProfileUseCase,
-    private val sleepSettingsRepository: SleepSettingsRepository
+    private val loadSubscriptionPackagesUseCase: LoadSubscriptionPackagesUseCase,
+    private val purchaseSubscriptionUseCase: PurchaseSubscriptionUseCase,
+    private val restorePurchasesUseCase: RestorePurchasesUseCase,
+    private val syncPremiumStatusUseCase: SyncPremiumStatusUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SubscriptionContract.State())
@@ -43,7 +43,7 @@ class SubscriptionViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             try {
-                val packages = billingProvider.getOfferings()
+                val packages = loadSubscriptionPackagesUseCase()
                 _state.update { 
                     it.copy(
                         isLoading = false, 
@@ -63,10 +63,10 @@ class SubscriptionViewModel(
         
         viewModelScope.launch {
             _state.update { it.copy(isPurchasing = true, error = null) }
-                billingProvider.purchasePackage(selectedId, context)
+                purchaseSubscriptionUseCase(selectedId, context)
                 .onSuccess { result ->
                     if (result.isSuccess) {
-                        syncPremiumStatusToApp()
+                        syncPremiumStatusUseCase()
                         _state.update { it.copy(isPurchasing = false, isSuccess = true) }
                         _effect.emit(SubscriptionContract.Effect.ShowSnackbar("프리미엄 구독이 시작되었습니다!"))
                         _effect.emit(SubscriptionContract.Effect.NavigateToManage)
@@ -83,9 +83,9 @@ class SubscriptionViewModel(
     private fun restorePurchases() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-                billingProvider.restorePurchases()
+                restorePurchasesUseCase()
                 .onSuccess {
-                    val isPremiumNow = syncPremiumStatusToApp()
+                    val isPremiumNow = syncPremiumStatusUseCase()
                     _state.update { it.copy(isLoading = false) }
                     _effect.emit(SubscriptionContract.Effect.ShowSnackbar("구매 내역이 복원되었습니다."))
                     _effect.emit(
@@ -100,18 +100,5 @@ class SubscriptionViewModel(
                     _state.update { it.copy(isLoading = false, error = error.message ?: "복원 중 오류가 발생했습니다.") }
                 }
         }
-    }
-
-    private suspend fun syncPremiumStatusToApp(): Boolean? {
-        val statusResult = billingProvider.getSubscriptionStatus()
-        if (statusResult.isFailure) return null
-
-        val isPremiumNow = statusResult.getOrThrow().isPremiumActive
-        val currentUser = getCurrentUserUseCase()
-        if (currentUser != null && currentUser.isPremium != isPremiumNow) {
-            updateUserProfileUseCase(currentUser.copy(isPremium = isPremiumNow))
-        }
-        sleepSettingsRepository.savePremiumStatus(isPremiumNow)
-        return isPremiumNow
     }
 }
