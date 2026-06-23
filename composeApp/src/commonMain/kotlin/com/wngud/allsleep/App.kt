@@ -17,7 +17,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.wngud.allsleep.navigation.AppNavigation
 import com.wngud.allsleep.navigation.Screen
 import com.wngud.allsleep.ui.components.BottomNavScaffold
-import com.wngud.allsleep.ui.global.GlobalSleepViewModel
+import com.wngud.allsleep.ui.app.AppRootEffect
+import com.wngud.allsleep.ui.app.AppRootIntent
+import com.wngud.allsleep.ui.app.AppRootViewModel
 import com.wngud.allsleep.ui.theme.AllSleepTheme
 import org.koin.compose.KoinContext
 import androidx.compose.foundation.layout.Row
@@ -27,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
-import com.wngud.allsleep.ui.global.GlobalSleepContract
 import org.koin.compose.viewmodel.koinViewModel
 
 
@@ -35,33 +36,33 @@ import org.koin.compose.viewmodel.koinViewModel
 fun App() {
     KoinContext {
         val navController = rememberNavController()
-        val globalSleepViewModel: GlobalSleepViewModel = org.koin.compose.koinInject()
+        val appRootViewModel: AppRootViewModel = koinViewModel()
         val lifecycleOwner = LocalLifecycleOwner.current
         
         val snackbarHostState = remember { SnackbarHostState() }
-        val state by globalSleepViewModel.state.collectAsState()
+        val state by appRootViewModel.state.collectAsState()
         val isInitialized = state.isStateInitialized
         
         // 전역 Effect 수집
-        LaunchedEffect(globalSleepViewModel) {
-            globalSleepViewModel.effect.collect { effect ->
+        LaunchedEffect(appRootViewModel) {
+            appRootViewModel.effect.collect { effect ->
                 when (effect) {
-                    is GlobalSleepContract.Effect.NavigateToSubscription -> {
+                    is AppRootEffect.NavigateToSubscription -> {
                         navController.navigate(Screen.Subscription.Purchase.route) {
                             launchSingleTop = true
                         }
                     }
-                    is GlobalSleepContract.Effect.ShowSnackbar -> {
+                    is AppRootEffect.ShowSnackbar -> {
                         snackbarHostState.showSnackbar(effect.message)
                     }
                 }
             }
         }
 
-        DisposableEffect(lifecycleOwner, globalSleepViewModel) {
+        DisposableEffect(lifecycleOwner, appRootViewModel) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
-                    globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.RefreshPremiumStatus)
+                    appRootViewModel.handleIntent(AppRootIntent.RefreshPremiumStatus)
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
@@ -158,7 +159,7 @@ fun App() {
                 AlertDialog(
                     onDismissRequest = { 
                         // 빈 여백(Scrim) 터치나 뒤로가기 시 인증 취소 및 로그아웃 처리
-                        globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) 
+                        appRootViewModel.handleIntent(AppRootIntent.CancelDeviceRegistration)
                     },
                     title = { 
                         androidx.compose.foundation.layout.Row(
@@ -168,7 +169,7 @@ fun App() {
                         ) {
                             Text("기기 1대 연결 한도 초과", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) 
                             androidx.compose.material3.IconButton(
-                                onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.CancelDeviceRegistration) }
+                                onClick = { appRootViewModel.handleIntent(AppRootIntent.CancelDeviceRegistration) }
                             ) {
                                 Text(
                                     text = "✕",
@@ -180,14 +181,14 @@ fun App() {
                     text = { Text("무료 버전은 기기 1대만 연결할 수 있습니다.\n계속하시려면 현재 기기로 완전히 교체하거나 프리미엄으로 업그레이드하세요.") },
                     confirmButton = {
                         TextButton(
-                            onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.UpgradeToPremium) }
+                            onClick = { appRootViewModel.handleIntent(AppRootIntent.UpgradeToPremium) }
                         ) {
                             Text("👑 프리미엄 구독", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                     },
                     dismissButton = {
                         TextButton(
-                            onClick = { globalSleepViewModel.handleIntent(GlobalSleepContract.Intent.ReplaceDevice) }
+                            onClick = { appRootViewModel.handleIntent(AppRootIntent.ReplaceDevice) }
                         ) {
                             Text("기존 기기 연결 끊기", color = MaterialTheme.colorScheme.error)
                         }
