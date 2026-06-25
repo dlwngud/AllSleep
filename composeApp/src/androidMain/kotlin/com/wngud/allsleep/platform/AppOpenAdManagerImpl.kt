@@ -8,8 +8,9 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.appopen.AppOpenAd
+import com.wngud.allsleep.BuildConfig
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
-import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
+import com.wngud.allsleep.domain.usecase.ad.CanShowAppOpenAdUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -23,11 +24,9 @@ import kotlinx.datetime.Instant
 class AppOpenAdManagerImpl(
     private val application: Application,
     private val repository: SleepSettingsRepository,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val canShowAppOpenAdUseCase: CanShowAppOpenAdUseCase
 ) : AppOpenAdManager, Application.ActivityLifecycleCallbacks {
 
-    // 앱 오프닝 광고 단위 ID (현재 테스트용 ID)
-    private val AD_UNIT_ID = "ca-app-pub-3940256099942544/9257395921"
     private val AD_DISPLAY_GAP_MS = 4 * 60 * 60 * 1000L // 정상 배포 정책: 4시간 (ms)
 
     private var appOpenAd: AppOpenAd? = null
@@ -42,13 +41,15 @@ class AppOpenAdManagerImpl(
         if (isAdAvailable()) return
 
         CoroutineScope(Dispatchers.Main).launch {
-            val user = getCurrentUserUseCase()
-            if (user?.isPremium == true) return@launch
+            if (!canShowAppOpenAdUseCase()) {
+                android.util.Log.d("AppOpenAd", "광고 로드 스킵: 로그인된 무료 사용자 또는 온보딩 완료 상태가 아님")
+                return@launch
+            }
 
             val request = AdRequest.Builder().build()
             AppOpenAd.load(
                 application,
-                AD_UNIT_ID,
+                BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID,
                 request,
                 object : AppOpenAd.AppOpenAdLoadCallback() {
                     override fun onAdLoaded(ad: AppOpenAd) {
@@ -68,8 +69,10 @@ class AppOpenAdManagerImpl(
         if (isShowingAd) return
 
         CoroutineScope(Dispatchers.Main).launch {
-            val user = getCurrentUserUseCase()
-            if (user?.isPremium == true) return@launch
+            if (!canShowAppOpenAdUseCase()) {
+                android.util.Log.d("AppOpenAd", "광고 노출 스킵: 로그인된 무료 사용자 또는 온보딩 완료 상태가 아님")
+                return@launch
+            }
 
             val lastShownAt = repository.lastAppOpenAdShownAt.first()
             val currentTime = Clock.System.now().toEpochMilliseconds()
@@ -86,38 +89,45 @@ class AppOpenAdManagerImpl(
     }
 
     private fun showAdIfAvailable() {
-        val ad = appOpenAd
-        val activity = currentActivity
+        CoroutineScope(Dispatchers.Main).launch {
+            if (!canShowAppOpenAdUseCase()) {
+                android.util.Log.d("AppOpenAd", "광고 표시 직전 스킵: 로그인된 무료 사용자 또는 온보딩 완료 상태가 아님")
+                return@launch
+            }
 
-        if (ad != null && activity != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    appOpenAd = null
-                    isShowingAd = false
+            val ad = appOpenAd
+            val activity = currentActivity
 
-                    // 광고 노출 시점 저장
-                    CoroutineScope(Dispatchers.IO).launch {
-                        repository.saveLastAppOpenAdShownAt(Clock.System.now().toEpochMilliseconds())
+            if (ad != null && activity != null) {
+                ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        appOpenAd = null
+                        isShowingAd = false
+
+                        // 광고 노출 시점 저장
+                        CoroutineScope(Dispatchers.IO).launch {
+                            repository.saveLastAppOpenAdShownAt(Clock.System.now().toEpochMilliseconds())
+                        }
+
+                        // 다음 노출을 위해 미리 로드
+                        loadAd()
                     }
 
-                    // 다음 노출을 위해 미리 로드
-                    loadAd()
-                }
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        appOpenAd = null
+                        isShowingAd = false
+                        loadAd()
+                    }
 
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    appOpenAd = null
-                    isShowingAd = false
-                    loadAd()
+                    override fun onAdShowedFullScreenContent() {
+                        isShowingAd = true
+                    }
                 }
-
-                override fun onAdShowedFullScreenContent() {
-                    isShowingAd = true
-                }
+                ad.show(activity)
+            } else {
+                // 로드된 광고가 없으면 새로 로드
+                loadAd()
             }
-            ad.show(activity)
-        } else {
-            // 로드된 광고가 없으면 새로 로드
-            loadAd()
         }
     }
 
@@ -130,9 +140,8 @@ class AppOpenAdManagerImpl(
         }
 
         CoroutineScope(Dispatchers.Main).launch {
-            val user = getCurrentUserUseCase()
-            if (user?.isPremium == true) {
-                android.util.Log.d("AppOpenAd", "프리미엄 구독자 - 콜드 스타트 광고 노출 스킵")
+            if (!canShowAppOpenAdUseCase()) {
+                android.util.Log.d("AppOpenAd", "콜드 스타트 광고 스킵: 로그인된 무료 사용자 또는 온보딩 완료 상태가 아님")
                 onComplete()
                 return@launch
             }
@@ -164,7 +173,7 @@ class AppOpenAdManagerImpl(
             val request = AdRequest.Builder().build()
             AppOpenAd.load(
                 application,
-                AD_UNIT_ID,
+                BuildConfig.ADMOB_APP_OPEN_AD_UNIT_ID,
                 request,
                 object : AppOpenAd.AppOpenAdLoadCallback() {
                     override fun onAdLoaded(ad: AppOpenAd) {
@@ -188,36 +197,44 @@ class AppOpenAdManagerImpl(
     }
 
     private fun showColdStartAd(onComplete: () -> Unit) {
-        val ad = appOpenAd
-        val activity = currentActivity
-
-        if (ad != null && activity != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    appOpenAd = null
-                    isShowingAd = false
-                    CoroutineScope(Dispatchers.IO).launch {
-                        repository.saveLastAppOpenAdShownAt(Clock.System.now().toEpochMilliseconds())
-                    }
-                    loadAd()
-                    onComplete()
-                }
-
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    appOpenAd = null
-                    isShowingAd = false
-                    loadAd()
-                    onComplete()
-                }
-
-                override fun onAdShowedFullScreenContent() {
-                    isShowingAd = true
-                }
+        CoroutineScope(Dispatchers.Main).launch {
+            if (!canShowAppOpenAdUseCase()) {
+                android.util.Log.d("AppOpenAd", "콜드 스타트 광고 표시 직전 스킵: 로그인된 무료 사용자 또는 온보딩 완료 상태가 아님")
+                onComplete()
+                return@launch
             }
-            ad.show(activity)
-        } else {
-            loadAd()
-            onComplete()
+
+            val ad = appOpenAd
+            val activity = currentActivity
+
+            if (ad != null && activity != null) {
+                ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        appOpenAd = null
+                        isShowingAd = false
+                        CoroutineScope(Dispatchers.IO).launch {
+                            repository.saveLastAppOpenAdShownAt(Clock.System.now().toEpochMilliseconds())
+                        }
+                        loadAd()
+                        onComplete()
+                    }
+
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        appOpenAd = null
+                        isShowingAd = false
+                        loadAd()
+                        onComplete()
+                    }
+
+                    override fun onAdShowedFullScreenContent() {
+                        isShowingAd = true
+                    }
+                }
+                ad.show(activity)
+            } else {
+                loadAd()
+                onComplete()
+            }
         }
     }
 
