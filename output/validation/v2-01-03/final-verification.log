@@ -1,0 +1,194 @@
+🚀 [Harness] 정밀 검증을 시작합니다...
+📦 1/3: 타입 및 문법 검사 중 (compileDebugKotlinAndroid)...
+Reusing configuration cache.
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+
+> Task :composeApp:compileDebugKotlinAndroid
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/data/repository/AuthRepositoryImpl.kt:127:46 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/di/AppModule.kt:86:17 'var isPersistenceEnabled: Boolean' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:95:13 'var systemUiVisibility: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:96:35 'static field SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:97:38 'static field SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:98:38 'static field SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:99:38 'static field SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:100:38 'static field SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/LockOverlayManager.android.kt:101:38 'static field SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PlatformContext.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/platform/PlatformContext.kt:9:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/alarm/AlarmScreen.kt:110:9 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/alarm/AlarmScreen.kt:117:30 'fun Modifier.tabIndicatorOffset(currentTabPosition: TabPosition): Modifier' is deprecated. Solely for use alongside deprecated TabRowDefaults.Indicator method. For recommended PrimaryIndicator and SecondaryIndicator methods, please use TabIndicatorScope.tabIndicatorOffset method.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/stats/StatsScreen.kt:177:5 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/stats/StatsScreen.kt:536:70 'val outlinedButtonBorder: BorderStroke' is deprecated. Please use the version that takes an `enabled` param to get the `BorderStroke` with the correct opacity.
+w: file:///Users/wngud/Workspace/AllSleep/composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/stats/StatsScreen.kt:547:66 'val outlinedButtonBorder: BorderStroke' is deprecated. Please use the version that takes an `enabled` param to get the `BorderStroke` with the correct opacity.
+
+BUILD SUCCESSFUL in 4s
+24 actionable tasks: 2 executed, 22 up-to-date
+Configuration cache entry reused.
+🔍 2/3: 코드 스타일 및 잠재적 버그 검증 중 (lintDebug)...
+Reusing configuration cache.
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:preDebugAndroidTestBuild SKIPPED
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :composeApp:extractProguardFiles UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:javaPreCompileDebug UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+> Task :composeApp:compileDebugKotlinAndroid UP-TO-DATE
+> Task :composeApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :composeApp:generateDebugLintReportModel
+> Task :composeApp:bundleDebugClassesToCompileJar
+> Task :composeApp:generateDebugUnitTestLintModel
+> Task :composeApp:generateDebugAndroidTestLintModel
+> Task :composeApp:lintAnalyzeDebugUnitTest
+> Task :composeApp:lintAnalyzeDebugAndroidTest
+> Task :composeApp:lintAnalyzeDebug
+
+> Task :composeApp:lintReportDebug
+Wrote HTML report to file:///Users/wngud/Workspace/AllSleep/composeApp/build/reports/lint-results-debug.html
+
+> Task :composeApp:lintDebug
+
+[Incubating] Problems report is available at: file:///Users/wngud/Workspace/AllSleep/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 4s
+37 actionable tasks: 10 executed, 27 up-to-date
+Configuration cache entry reused.
+🧪 3/3: 단위 테스트 실행 중 (testDebugUnitTest)...
+Reusing configuration cache.
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:javaPreCompileDebug UP-TO-DATE
+> Task :composeApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTest NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTest NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+> Task :composeApp:compileDebugKotlinAndroid UP-TO-DATE
+> Task :composeApp:processDebugJavaRes UP-TO-DATE
+> Task :composeApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :composeApp:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :composeApp:bundleDebugClassesToRuntimeJar
+> Task :composeApp:compileDebugUnitTestKotlinAndroid
+> Task :composeApp:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :composeApp:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :composeApp:testDebugUnitTest
+
+BUILD SUCCESSFUL in 2s
+33 actionable tasks: 4 executed, 29 up-to-date
+Configuration cache entry reused.
+✅ [Success] 컴파일/린트/테스트가 모두 Green입니다!

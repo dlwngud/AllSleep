@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>AllSleep — 취침 약속 제품 설계</title>
+ <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+ <header class="studio-header"><a class="studio-brand" href="#"><span class="brand-mark">a.</span>AllSleep <small>PRODUCT DESIGN / 2026</small></a><nav class="studio-tabs" aria-label="설계 보기"><button data-view="prototype" class="active">화면 탐색</button><button data-view="gallery">전체 시안 <span id="screenCount"></span></button><button data-view="principles">설계 기준</button><a href="final-screen-gallery.html" target="_blank">최종 시안집 ↗</a><a href="product-plan.html" target="_blank">상세 기획서 ↗</a></nav></header>
+ <div class="proposal-banner">제안 시안 · 날짜·기록·가격은 예시 · 실제 앱 제한·로그인·결제·삭제는 실행되지 않습니다.</div>
+ <main>
+  <section id="prototype-view" class="workspace">
+   <aside class="catalog"><div class="catalog-heading"><span>SCREEN DIRECTORY</span><b id="catalogCount"></b></div><label class="catalog-search"><span class="sr-only">화면 검색</span><input id="screenSearch" placeholder="화면 이름 또는 ID 검색"></label><div id="catalogList"></div></aside>
+   <div class="preview-area"><div class="flow-bar"><label for="flowSelect">사용 흐름</label><select id="flowSelect"></select><button id="flowStart">처음부터 보기</button></div><div class="preview-label"><span id="previewId"></span><b id="previewName"></b></div><div id="phoneMount"></div><div class="preview-controls"><button id="backScreen">← 이전 화면</button><span id="flowPosition"></span><button id="nextFlow">다음 화면 →</button></div></div>
+   <aside class="spec-panel" id="specPanel"></aside>
+  </section>
+  <section id="gallery-view" class="hidden"><div class="gallery-heading"><div><span class="eyebrow">ALL SCREENS</span><h1>한 가지 문제를 해결하는<br>전체 제품 경험.</h1><p>무료 첫 사용부터 취침 마무리, 아침 확인, Plus와 예외 상태까지.</p></div><label>영역별 보기 <select id="galleryGroup"><option value="all">전체 영역</option></select></label></div><div id="galleryGrid"></div></section>
+  <section id="principles-view" class="hidden principles">
+   <span class="eyebrow">PRODUCT THESIS</span><h1>밤마다 다시 결심하는 대신,<br>낮에 정한 약속을 이어가도록.</h1><p class="lead">취침 전 디지털 사용을 끝내고, 스스로 정한 시간에 잠자리에 들도록 돕는 제품으로 다시 설계했습니다.</p>
+   <div class="principle-grid"><article><b>01 / 행동</b><h2>오늘 밤을 먼저 완성</h2><p>로그인과 결제 없이 시간 설정, 선택 앱 제한, 긴급 접근, 원본 기록을 제공합니다.</p></article><article><b>02 / 신뢰</b><h2>확인된 상태만 표시</h2><p>요청과 실행을 구분합니다. 실제 수면 시간 대신 사용 제한 시작과 유지 결과를 기록합니다.</p></article><article><b>03 / 수익</b><h2>반복 사용의 편의를 판매</h2><p>여러 기기, 복수 루틴, 주간 비교와 조정 계획을 Plus로 제공합니다. 취침 광고는 제거합니다.</p></article></div>
+   <div class="design-system"><div><span class="eyebrow">VISUAL LANGUAGE</span><h2>익숙한 보라색.<br>더 조용한 밤.</h2><p>기존 왕관 캐릭터와 네이비·보라색을 유지합니다. 주요 행동은 선명하게, 제한 중에는 장식과 자극을 줄입니다.</p></div><div class="swatches"><div style="--swatch:#0B0E14">Background<small>#0B0E14</small></div><div style="--swatch:#1A1C2E">Surface<small>#1A1C2E</small></div><div style="--swatch:#4938FF">Action<small>#4938FF</small></div><div style="--swatch:#C3BAFF;color:#111">Lavender<small>#C3BAFF</small></div></div></div>
+   <div class="principle-grid"><article><b>무료</b><h2>한 기기의 취침 약속</h2><p>평일·주말 기본 루틴 / 선택 앱 제한 / 오늘만 변경 / 임시·긴급 접근 / 원본 기록과 백업</p></article><article><b>Plus · 가격 가설</b><h2>월 4,900원<br>연 39,000원</h2><p>지원 기기 최대 5대 / 복수 루틴 / 장기 비교 / 7일 조정 계획. 연간 체험은 자격 확인 후 제공.</p></article><article><b>출시 조건</b><h2>Android부터 검증</h2><p>권한, 자동 실행, 해제와 결제 복원을 실제 기기에서 확인합니다. iOS 연동은 별도 승인·지원 검증 후 제공합니다.</p></article></div>
+   <div class="principle-footer"><a href="PRODUCT-PLAN.md">기획서 원본</a><a href="SCREEN-SPEC.md">화면 명세 원본</a><a href="../../output/pdf/allsleep-final-screen-book.pdf">디자인북 PDF</a><a href="../../output/pdf/allsleep-product-plan.pdf">기획서 PDF</a></div>
+  </section>
+ </main>
+ <div class="toast" id="toast" role="status" aria-live="polite"></div>
+ <script src="screen-data.js"></script><script src="final-state-data.js"></script><script src="app.js"></script>
+</body>
+</html>

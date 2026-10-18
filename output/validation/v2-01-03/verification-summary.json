@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-13",
+  "stages": [
+    "V2-01",
+    "V2-02",
+    "V2-03"
+  ],
+  "unitTests": {
+    "tests": 43,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "classes": [
+      {
+        "name": "com.wngud.allsleep.ComposeAppCommonTest",
+        "tests": 1
+      },
+      {
+        "name": "com.wngud.allsleep.data.repository.LocalBedtimeDiskTest",
+        "tests": 1
+      },
+      {
+        "name": "com.wngud.allsleep.data.repository.LocalBedtimeRepositoryTest",
+        "tests": 10
+      },
+      {
+        "name": "com.wngud.allsleep.domain.model.bedtime.BedtimeSessionTest",
+        "tests": 8
+      },
+      {
+        "name": "com.wngud.allsleep.domain.usecase.home.ObserveHomeSleepGoalUseCaseTest",
+        "tests": 3
+      },
+      {
+        "name": "com.wngud.allsleep.domain.usecase.sleep.ToggleSleepModeUseCaseTest",
+        "tests": 1
+      },
+      {
+        "name": "com.wngud.allsleep.domain.usecase.stats.CalculateSleepReportUseCaseTest",
+        "tests": 3
+      },
+      {
+        "name": "com.wngud.allsleep.ui.app.AppRootLocalInitializationTest",
+        "tests": 3
+      },
+      {
+        "name": "com.wngud.allsleep.ui.bedtime.LocalBedtimeViewModelTest",
+        "tests": 3
+      },
+      {
+        "name": "com.wngud.allsleep.ui.stats.StatsViewModelTest",
+        "tests": 3
+      },
+      {
+        "name": "com.wngud.allsleep.ui.subscription.SubscriptionViewModelTest",
+        "tests": 7
+      }
+    ]
+  },
+  "lint": {
+    "fatal": 0,
+    "error": 0,
+    "warning": 62
+  },
+  "instrumentation": {
+    "tests": 4,
+    "passed": 4,
+    "device": "Samsung Galaxy S20",
+    "androidApi": 33,
+    "result": "OK (4 tests)"
+  },
+  "mainApp": {
+    "mainActivityLaunched": true,
+    "tabs": [
+      {
+        "tab": "루틴",
+        "visible": true
+      },
+      {
+        "tab": "기록",
+        "visible": true
+      },
+      {
+        "tab": "마이",
+        "visible": true
+      },
+      {
+        "tab": "오늘",
+        "visible": true
+      }
+    ],
+    "noUserSettingWrites": true,
+    "activeRestrictionDuringRestartCheck": false,
+    "routineValuesSurviveProcessRestart": true,
+    "originalPreferenceCount": 12,
+    "originalPreferencesUnchanged": true,
+    "addedPreferenceKeys": [
+      "local_bedtime_journal_v1"
+    ]
+  },
+  "verificationScriptPassed": true,
+  "gitDiffCheckPassed": true
+}

@@ -1,0 +1,18 @@
+{
+  "screens": 93,
+  "mode": "offline HTML prototype only",
+  "checks": [
+    "all data and assets load offline",
+    "guest My navigation",
+    "weekend edit route and propagation",
+    "weekday preservation",
+    "sign-in return after paid intent",
+    "no-trial annual CTA and store total",
+    "purchase verification pending before success",
+    "pairing approval pending before readiness",
+    "delete requested and completed states",
+    "equal-time guard for weekend",
+    "export file-ready state"
+  ],
+  "browserErrors": []
+}

@@ -1,0 +1,208 @@
+🚀 [Harness] 정밀 검증을 시작합니다...
+📦 1/3: 타입 및 문법 검사 중 (compileDebugKotlinAndroid)...
+Starting a Gradle Daemon, 2 incompatible and 1 stopped Daemons could not be reused, use --status for details
+Reusing configuration cache.
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain
+> Task :composeApp:generateComposeResClass
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain
+> Task :composeApp:generateResourceAccessorsForCommonMain
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+> Task :composeApp:compileDebugKotlinAndroid UP-TO-DATE
+
+BUILD SUCCESSFUL in 3s
+24 actionable tasks: 7 executed, 17 up-to-date
+Configuration cache entry reused.
+🔍 2/3: 코드 스타일 및 잠재적 버그 검증 중 (lintDebug)...
+Calculating task graph as no cached configuration is available for tasks: :composeApp:lintDebug
+Type-safe project accessors is an incubating feature.
+
+> Configure project :composeApp
+w: [33m[1m⚠️ The 'org.jetbrains.kotlin.multiplatform' plugin deprecated compatibility with Android Gradle plugin: 'com.android.application'[0m[0m
+The 'org.jetbrains.kotlin.multiplatform' plugin will not be compatible with 'com.android.application' starting with Android Gradle Plugin 9.0.0.
+
+Please change the structure of the your project and move the usage of 'com.android.application' into a separate subproject. The new subproject should add a dependency on this KMP subproject.
+
+Read more: https://kotl.in/kmp-project-structure-migration
+[32m[1mSolution:[0m[0m
+[32m[3mPlease change the structure of your project and move the usage of 'com.android.application' into a separate subproject.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-new-kmp[0m[36m for more details.[0m
+
+
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:preDebugAndroidTestBuild SKIPPED
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:javaPreCompileDebug UP-TO-DATE
+> Task :composeApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:generateDebugAndroidTestResValues UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:extractProguardFiles UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+> Task :composeApp:compileDebugKotlinAndroid UP-TO-DATE
+> Task :composeApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :composeApp:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :composeApp:generateDebugUnitTestLintModel
+> Task :composeApp:generateDebugAndroidTestLintModel
+> Task :composeApp:generateDebugLintReportModel
+> Task :composeApp:lintAnalyzeDebugUnitTest
+> Task :composeApp:lintAnalyzeDebugAndroidTest
+> Task :composeApp:lintAnalyzeDebug
+
+> Task :composeApp:lintReportDebug
+Wrote HTML report to file:///Users/wngud/Workspace/AllSleep/composeApp/build/reports/lint-results-debug.html
+
+> Task :composeApp:lintDebug
+
+[Incubating] Problems report is available at: file:///Users/wngud/Workspace/AllSleep/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 34s
+37 actionable tasks: 9 executed, 28 up-to-date
+Configuration cache entry stored.
+🧪 3/3: 단위 테스트 실행 중 (testDebugUnitTest)...
+Calculating task graph as no cached configuration is available for tasks: :composeApp:testDebugUnitTest
+Type-safe project accessors is an incubating feature.
+
+> Configure project :composeApp
+w: [33m[1m⚠️ The 'org.jetbrains.kotlin.multiplatform' plugin deprecated compatibility with Android Gradle plugin: 'com.android.application'[0m[0m
+The 'org.jetbrains.kotlin.multiplatform' plugin will not be compatible with 'com.android.application' starting with Android Gradle Plugin 9.0.0.
+
+Please change the structure of the your project and move the usage of 'com.android.application' into a separate subproject. The new subproject should add a dependency on this KMP subproject.
+
+Read more: https://kotl.in/kmp-project-structure-migration
+[32m[1mSolution:[0m[0m
+[32m[3mPlease change the structure of your project and move the usage of 'com.android.application' into a separate subproject.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-new-kmp[0m[36m for more details.[0m
+
+
+> Task :composeApp:preBuild UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:processDebugGoogleServices UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:preDebugBuild UP-TO-DATE
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :composeApp:generateDebugResValues UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTest NO-SOURCE
+> Task :composeApp:javaPreCompileDebug UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:generateDebugBuildConfig UP-TO-DATE
+> Task :composeApp:generateDebugResources UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :composeApp:extractDeepLinksDebug UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForAndroidDebug NO-SOURCE
+> Task :composeApp:preDebugUnitTestBuild UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :composeApp:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTest NO-SOURCE
+> Task :composeApp:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTest NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAndroidUnitTestDebug NO-SOURCE
+> Task :composeApp:packageDebugResources UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :composeApp:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :composeApp:parseDebugLocalResources UP-TO-DATE
+> Task :composeApp:checkDebugAarMetadata UP-TO-DATE
+> Task :composeApp:mapDebugSourceSetPaths UP-TO-DATE
+> Task :composeApp:mergeDebugResources UP-TO-DATE
+> Task :composeApp:processDebugMainManifest UP-TO-DATE
+> Task :composeApp:processDebugManifest UP-TO-DATE
+> Task :composeApp:processDebugManifestForPackage UP-TO-DATE
+> Task :composeApp:processDebugResources UP-TO-DATE
+> Task :composeApp:compileDebugKotlinAndroid UP-TO-DATE
+> Task :composeApp:compileDebugJavaWithJavac UP-TO-DATE
+> Task :composeApp:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :composeApp:processDebugJavaRes UP-TO-DATE
+> Task :composeApp:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :composeApp:compileDebugUnitTestKotlinAndroid UP-TO-DATE
+> Task :composeApp:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :composeApp:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :composeApp:testDebugUnitTest UP-TO-DATE
+
+[Incubating] Problems report is available at: file:///Users/wngud/Workspace/AllSleep/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1s
+33 actionable tasks: 1 executed, 32 up-to-date
+Configuration cache entry stored.
+✅ [Success] 컴파일/린트/테스트가 모두 Green입니다!

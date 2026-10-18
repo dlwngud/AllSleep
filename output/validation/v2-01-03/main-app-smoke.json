@@ -1,0 +1,29 @@
+{
+  "mainActivityLaunched": true,
+  "tabs": [
+    {
+      "tab": "루틴",
+      "visible": true
+    },
+    {
+      "tab": "기록",
+      "visible": true
+    },
+    {
+      "tab": "마이",
+      "visible": true
+    },
+    {
+      "tab": "오늘",
+      "visible": true
+    }
+  ],
+  "noUserSettingWrites": true,
+  "activeRestrictionDuringRestartCheck": false,
+  "routineValuesSurviveProcessRestart": true,
+  "originalPreferenceCount": 12,
+  "originalPreferencesUnchanged": true,
+  "addedPreferenceKeys": [
+    "local_bedtime_journal_v1"
+  ]
+}
