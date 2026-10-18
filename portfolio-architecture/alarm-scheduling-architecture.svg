@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="980" viewBox="0 0 1800 980">
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L16,9 L2,16 Z" fill="#111827"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L16,9 L2,16 Z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .box { fill: #ffffff; stroke: #111827; stroke-width: 5; rx: 28; }
+      .accent { fill: #eef6ff; stroke: #2563eb; }
+      .text { font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif; font-size: 50px; font-weight: 800; fill: #111827; text-anchor: middle; dominant-baseline: middle; }
+      .sub { font-size: 42px; font-weight: 700; fill: #374151; }
+      .note { font-size: 38px; font-weight: 800; fill: #2563eb; }
+      .line { stroke: #111827; stroke-width: 7; fill: none; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .dash { stroke: #2563eb; stroke-width: 7; stroke-dasharray: 18 14; fill: none; marker-end: url(#arrowBlue); stroke-linecap: round; stroke-linejoin: round; }
+      .title { font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif; font-size: 58px; font-weight: 900; fill: #111827; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect class="bg" width="1800" height="980"/>
+  <text class="title" x="900" y="90">반복 알람 예약 및 실행 구조</text>
+
+  <rect class="box accent" x="90" y="200" width="310" height="190" rx="28"/>
+  <text class="text" x="245" y="270">사용자</text>
+  <text class="text sub" x="245" y="335">시간 / 요일 설정</text>
+
+  <rect class="box" x="520" y="200" width="310" height="190" rx="28"/>
+  <text class="text" x="675" y="270">Alarm</text>
+  <text class="text sub" x="675" y="335">ViewModel</text>
+
+  <rect class="box" x="950" y="200" width="360" height="190" rx="28"/>
+  <text class="text" x="1130" y="270">SleepSettings</text>
+  <text class="text sub" x="1130" y="335">Repository</text>
+
+  <rect class="box accent" x="1430" y="200" width="310" height="190" rx="28"/>
+  <text class="text" x="1585" y="270">Sleep</text>
+  <text class="text sub" x="1585" y="335">Scheduler</text>
+
+  <rect class="box" x="1430" y="610" width="310" height="190" rx="28"/>
+  <text class="text" x="1585" y="680">Alarm</text>
+  <text class="text sub" x="1585" y="745">Manager</text>
+
+  <rect class="box" x="950" y="610" width="360" height="190" rx="28"/>
+  <text class="text" x="1130" y="680">Broadcast</text>
+  <text class="text sub" x="1130" y="745">Receiver</text>
+
+  <rect class="box accent" x="520" y="610" width="310" height="190" rx="28"/>
+  <text class="text" x="675" y="680">수면 모드</text>
+  <text class="text sub" x="675" y="745">시작 / 종료</text>
+
+  <path class="line" d="M400 295 H500"/>
+  <path class="line" d="M830 295 H930"/>
+  <path class="line" d="M1310 295 H1410"/>
+  <path class="line" d="M1585 390 V590"/>
+  <path class="line" d="M1430 705 H1330"/>
+  <path class="line" d="M950 705 H850"/>
+
+  <path class="dash" d="M1130 610 C1130 515, 1360 500, 1585 410"/>
+  <text class="text note" x="1340" y="520">다음 반복 알람 재예약</text>
+</svg>

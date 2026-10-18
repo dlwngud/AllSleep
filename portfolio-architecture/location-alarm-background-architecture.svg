@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="980" viewBox="0 0 1800 980">
+  <defs>
+    <marker id="arrow" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L16,9 L2,16 Z" fill="#111827"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="18" markerHeight="18" refX="14" refY="9" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L16,9 L2,16 Z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .box { fill: #ffffff; stroke: #111827; stroke-width: 5; rx: 28; }
+      .accent { fill: #eef6ff; stroke: #2563eb; }
+      .text { font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif; font-size: 50px; font-weight: 800; fill: #111827; text-anchor: middle; dominant-baseline: middle; }
+      .sub { font-size: 42px; font-weight: 700; fill: #374151; }
+      .note { font-size: 38px; font-weight: 800; fill: #2563eb; }
+      .line { stroke: #111827; stroke-width: 7; fill: none; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .dash { stroke: #2563eb; stroke-width: 7; stroke-dasharray: 18 14; fill: none; marker-end: url(#arrowBlue); stroke-linecap: round; stroke-linejoin: round; }
+      .title { font-family: "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif; font-size: 58px; font-weight: 900; fill: #111827; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect class="bg" width="1800" height="980"/>
+  <text class="title" x="900" y="90">백그라운드 위치 기반 알람 안정화 구조</text>
+
+  <rect class="box accent" x="80" y="195" width="330" height="200" rx="28"/>
+  <text class="text" x="245" y="265">장소 검색</text>
+  <text class="text sub" x="245" y="330">Naver API</text>
+
+  <rect class="box" x="530" y="195" width="330" height="200" rx="28"/>
+  <text class="text" x="695" y="265">알람 설정</text>
+  <text class="text sub" x="695" y="330">좌표 / 옵션 저장</text>
+
+  <rect class="box" x="980" y="195" width="330" height="200" rx="28"/>
+  <text class="text" x="1145" y="265">Foreground</text>
+  <text class="text sub" x="1145" y="330">GeofenceService</text>
+
+  <rect class="box accent" x="1430" y="195" width="330" height="200" rx="28"/>
+  <text class="text" x="1595" y="265">Geofencing</text>
+  <text class="text sub" x="1595" y="330">Client 등록</text>
+
+  <rect class="box" x="1430" y="605" width="330" height="210" rx="28"/>
+  <text class="text" x="1595" y="675">진입 / 이탈</text>
+  <text class="text sub" x="1595" y="745">PendingIntent</text>
+
+  <rect class="box" x="925" y="605" width="440" height="210" rx="28"/>
+  <text class="text" x="1145" y="675">BroadcastReceiver</text>
+  <text class="text sub" x="1145" y="745">위치 이벤트 수신</text>
+
+  <rect class="box accent" x="430" y="605" width="370" height="210" rx="28"/>
+  <text class="text" x="615" y="675">알람 실행</text>
+  <text class="text sub" x="615" y="745">소리 / 진동 / 알림</text>
+
+  <rect class="box" x="80" y="605" width="260" height="210" rx="28"/>
+  <text class="text" x="210" y="675">해제 화면</text>
+  <text class="text sub" x="210" y="745">CloseActivity</text>
+
+  <path class="line" d="M410 295 H510"/>
+  <path class="line" d="M860 295 H960"/>
+  <path class="line" d="M1310 295 H1410"/>
+  <path class="line" d="M1595 395 V585"/>
+  <path class="line" d="M1430 710 H1385"/>
+  <path class="line" d="M925 710 H820"/>
+  <path class="line" d="M430 710 H360"/>
+
+  <path class="dash" d="M1145 395 C1145 490, 1330 505, 1595 420"/>
+  <text class="text note" x="1340" y="505">Notification으로 백그라운드 유지</text>
+</svg>
