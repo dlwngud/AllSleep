@@ -66,12 +66,16 @@ kotlin {
             
             // DataStore
             implementation(libs.datastore.preferences.core)
+            implementation(libs.kotlinx.serialization.json)
             
             // Icons
             implementation(libs.compose.icons.extended)
             
             // DateTime
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+        }
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.testJunit)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

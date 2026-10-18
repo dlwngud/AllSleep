@@ -158,6 +158,10 @@ class SleepSettingsRepositoryImpl(
     }
 
     override suspend fun clear() {
-        dataStore.edit { it.clear() }
+        dataStore.edit { preferences ->
+            val journal = preferences[LOCAL_BEDTIME_JOURNAL_KEY]
+            preferences.clear()
+            if (journal != null) preferences[LOCAL_BEDTIME_JOURNAL_KEY] = journal
+        }
     }
 }
