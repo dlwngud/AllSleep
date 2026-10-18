@@ -1,6 +1,15 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
+val localPropertiesFile = rootProject.file("local.properties")
+val localProperties = Properties().apply {
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
+}
+
+fun localProp(name: String): String = localProperties.getProperty(name)?.trim().orEmpty()
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -92,16 +101,8 @@ android {
         manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
 
         // RevenueCat API Key 주입
-        val props = Properties().apply {
-            val localPropertiesFile = rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                load(localPropertiesFile.inputStream())
-            }
-        }
-        val rcApiKey = props.getProperty("revenueCat.apiKey") ?: ""
-        val rcTestApiKey = props.getProperty("revenueCat.testApiKey") ?: ""
+        val rcApiKey = localProp("revenueCat.apiKey")
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$rcApiKey\"")
-        buildConfigField("String", "REVENUECAT_TEST_API_KEY", "\"$rcTestApiKey\"")
     }
     buildFeatures {
         buildConfig = true
@@ -133,6 +134,10 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("releaseConfig")
             }
+            val rcTestApiKey = localProp("revenueCat.testApiKey")
+            val useTestStore = localProp("revenueCat.useTestStore").toBoolean()
+            buildConfigField("String", "REVENUECAT_TEST_API_KEY", "\"$rcTestApiKey\"")
+            buildConfigField("Boolean", "REVENUECAT_USE_TEST_STORE", useTestStore.toString())
         }
         getByName("release") {
             isMinifyEnabled = true
@@ -140,6 +145,9 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("releaseConfig")
             }
+            require(localProp("revenueCat.apiKey").isNotBlank()) { "revenueCat.apiKey is missing in local.properties" }
+            buildConfigField("String", "REVENUECAT_TEST_API_KEY", "\"\"")
+            buildConfigField("Boolean", "REVENUECAT_USE_TEST_STORE", "false")
         }
     }
     compileOptions {

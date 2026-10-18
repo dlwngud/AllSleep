@@ -1,11 +1,13 @@
 package com.wngud.allsleep.platform
 
-import android.app.Activity
 import android.app.Application
+import com.revenuecat.purchases.Offering
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Offerings
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.models.Period
+import com.wngud.allsleep.BuildConfig
 import com.revenuecat.purchases.getCustomerInfoWith
 import com.revenuecat.purchases.getOfferingsWith
 import com.revenuecat.purchases.logInWith
@@ -51,38 +53,8 @@ class BillingProviderImpl(
             )
         }
 
-        return offerings?.current?.availablePackages?.map { rcPackage ->
-            val type = when (rcPackage.packageType) {
-                com.revenuecat.purchases.PackageType.MONTHLY -> PackageType.MONTHLY
-                com.revenuecat.purchases.PackageType.ANNUAL -> PackageType.ANNUAL
-                com.revenuecat.purchases.PackageType.LIFETIME -> PackageType.LIFETIME
-                else -> PackageType.UNKNOWN
-            }
-
-            val badge = when (type) {
-                PackageType.ANNUAL -> "가장 인기"
-                PackageType.LIFETIME -> "최고의 가치"
-                else -> null
-            }
-
-            val subDescription = when (type) {
-                PackageType.ANNUAL -> "34% 할인 혜택"
-                PackageType.LIFETIME -> "영구 소장 (단 한 번 결제)"
-                PackageType.MONTHLY -> "부담 없이 시작하기"
-                else -> null
-            }
-
-            SubscriptionPackage(
-                id = rcPackage.identifier,
-                title = rcPackage.product.title,
-                priceString = rcPackage.product.price.formatted,
-                type = type,
-                productId = rcPackage.product.id,
-                badge = badge,
-                subDescription = subDescription,
-                hasFreeTrial = rcPackage.product.period?.let { true } ?: false,
-                freeTrialDays = 7
-            )
+        return offerings?.selectOfferingForBuild()?.availablePackages?.map { rcPackage ->
+            rcPackage.toSubscriptionPackage()
         } ?: emptyList()
     }
 
@@ -122,23 +94,23 @@ class BillingProviderImpl(
         packageId: String,
         context: PlatformContext
     ): Result<PurchaseResult> = runCatching {
-        val activity = context as? Activity ?: throw Exception("Activity context is required for purchase")
-        
-        // 1. 패키지 탐색
+        // 1. 현재 빌드에서 사용할 Offering 안에서만 패키지 탐색
         val offerings = suspendCancellableCoroutine<Offerings?> { continuation ->
             Purchases.sharedInstance.getOfferingsWith(
                 onError = { continuation.resumeWithException(Exception(it.message)) },
                 onSuccess = { continuation.resume(it) }
             )
         }
-        val rcPackageArr = offerings?.all?.values?.flatMap { it.availablePackages }
-        val rcPackage = rcPackageArr?.find { it.identifier == packageId }
+        val rcPackage = offerings
+            ?.selectOfferingForBuild()
+            ?.availablePackages
+            ?.find { it.identifier == packageId }
             ?: throw Exception("Package not found")
 
         // 2. 결제 실행
         val customerInfo = suspendCancellableCoroutine<CustomerInfo?> { continuation ->
             Purchases.sharedInstance.purchaseWith(
-                purchaseParams = PurchaseParams.Builder(activity, rcPackage).build(),
+                purchaseParams = PurchaseParams.Builder(context, rcPackage).build(),
                 onError = { error, userCancelled ->
                     if (userCancelled) {
                         continuation.resume(null)
@@ -166,5 +138,62 @@ class BillingProviderImpl(
                 onSuccess = { continuation.resume(Unit) }
             )
         }
+    }
+}
+
+private fun Offerings.selectOfferingForBuild(): Offering? {
+    return if (BuildConfig.REVENUECAT_USE_TEST_STORE) {
+        all["test_store"] ?: current ?: all["default"]
+    } else {
+        current ?: all["default"]
+    }
+}
+
+private fun com.revenuecat.purchases.Package.toSubscriptionPackage(): SubscriptionPackage {
+    val type = when (packageType) {
+        com.revenuecat.purchases.PackageType.MONTHLY -> PackageType.MONTHLY
+        com.revenuecat.purchases.PackageType.ANNUAL -> PackageType.ANNUAL
+        com.revenuecat.purchases.PackageType.LIFETIME -> PackageType.LIFETIME
+        else -> PackageType.UNKNOWN
+    }
+
+    val badge = when (type) {
+        PackageType.ANNUAL -> "가장 인기"
+        PackageType.LIFETIME -> "최고의 가치"
+        else -> null
+    }
+
+    val subDescription = when (type) {
+        PackageType.ANNUAL -> "34% 할인 혜택"
+        PackageType.LIFETIME -> "영구 소장 (단 한 번 결제)"
+        PackageType.MONTHLY -> "부담 없이 시작하기"
+        else -> null
+    }
+    val freeTrialDays = product.defaultOption
+        ?.freePhase
+        ?.billingPeriod
+        ?.toTrialDays()
+        ?: 0
+
+    return SubscriptionPackage(
+        id = identifier,
+        title = product.title,
+        priceString = product.price.formatted,
+        type = type,
+        productId = product.id,
+        badge = badge,
+        subDescription = subDescription,
+        hasFreeTrial = freeTrialDays > 0,
+        freeTrialDays = freeTrialDays
+    )
+}
+
+private fun Period.toTrialDays(): Int {
+    return when (unit) {
+        Period.Unit.DAY -> value
+        Period.Unit.WEEK -> value * 7
+        Period.Unit.MONTH -> value * 30
+        Period.Unit.YEAR -> value * 365
+        Period.Unit.UNKNOWN -> 0
     }
 }

@@ -37,6 +37,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import allsleep.composeapp.generated.resources.Res
 import allsleep.composeapp.generated.resources.character_phone
 import androidx.compose.ui.platform.LocalContext
+import com.wngud.allsleep.platform.PackageType
 
 private const val TERMS_URL = "https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35"
 private const val PRIVACY_URL = "https://allsleep.web.app/privacy-policy"
@@ -407,12 +408,7 @@ fun PrimaryActionButton(
     onClick: () -> Unit
 ) {
     val enabled = selectedPkg != null
-    val buttonText = when (selectedPkg?.type) {
-        com.wngud.allsleep.platform.PackageType.MONTHLY -> "7일 무료 후 월 결제"
-        com.wngud.allsleep.platform.PackageType.ANNUAL -> "7일 무료 후 연 결제"
-        com.wngud.allsleep.platform.PackageType.LIFETIME -> "지금 바로 시작하기"
-        else -> "프리미엄 시작하기"
-    }
+    val buttonText = selectedPkg.primaryButtonText()
 
     Button(
         onClick = onClick,
@@ -432,6 +428,16 @@ fun PrimaryActionButton(
         } else {
             Text(buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+internal fun SubscriptionPackage?.primaryButtonText(): String {
+    return when {
+        this == null -> "프리미엄 시작하기"
+        type == PackageType.LIFETIME -> "지금 바로 시작하기"
+        hasFreeTrial -> "${freeTrialDays}일 무료 후 결제"
+        type == PackageType.MONTHLY || type == PackageType.ANNUAL -> "구독 시작하기"
+        else -> "프리미엄 시작하기"
     }
 }
 

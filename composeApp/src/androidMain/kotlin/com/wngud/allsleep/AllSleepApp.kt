@@ -25,7 +25,7 @@ class AllSleepApp : Application() {
         val rcKey = selectRevenueCatApiKey()
         if (rcKey.isNotBlank()) {
             try {
-                Purchases.logLevel = LogLevel.DEBUG
+                Purchases.logLevel = if (BuildConfig.DEBUG) LogLevel.DEBUG else LogLevel.ERROR
                 Purchases.configure(
                     PurchasesConfiguration.Builder(this, rcKey).build()
                 )
@@ -33,7 +33,7 @@ class AllSleepApp : Application() {
                 android.util.Log.e("AllSleepApp", "RevenueCat initialization failed", e)
             }
         } else {
-            android.util.Log.e("AllSleepApp", "RevenueCat API Key is missing!")
+            android.util.Log.w("AllSleepApp", "Billing is unavailable; local bedtime features remain available.")
         }
         
         // DataStore 초기화 (Koin보다 먼저!)
@@ -42,13 +42,14 @@ class AllSleepApp : Application() {
         // 카카오 SDK 초기화 (네이티브 앱 키)
         KakaoSdk.init(this, getString(R.string.kakao_app_key))
         
-        // Firebase 설정 확인 로그
-        try {
-            val options = com.google.firebase.FirebaseApp.getInstance().options
-            android.util.Log.d("FirebaseCheck", "Project ID: ${options.projectId}")
-            android.util.Log.d("FirebaseCheck", "Application ID: ${options.applicationId}")
-        } catch (e: Exception) {
-            android.util.Log.e("FirebaseCheck", "Firebase initialized check failed", e)
+        if (BuildConfig.DEBUG) {
+            try {
+                val options = com.google.firebase.FirebaseApp.getInstance().options
+                android.util.Log.d("FirebaseCheck", "Project ID: ${options.projectId}")
+                android.util.Log.d("FirebaseCheck", "Application ID: ${options.applicationId}")
+            } catch (e: Exception) {
+                android.util.Log.e("FirebaseCheck", "Firebase initialized check failed", e)
+            }
         }
 
         // Koin 시작
@@ -68,7 +69,7 @@ class AllSleepApp : Application() {
             BuildConfig.DEBUG && testKey.isNotBlank() -> testKey
             releaseKey.isNotBlank() -> releaseKey
             BuildConfig.DEBUG && releaseKey.isBlank() && testKey.isBlank() ->
-                error("RevenueCat API key is missing for debug build.")
+                ""
             else -> error("RevenueCat release API key is missing.")
         }
     }

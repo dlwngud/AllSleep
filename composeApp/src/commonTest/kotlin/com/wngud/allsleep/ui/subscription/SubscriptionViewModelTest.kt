@@ -65,7 +65,7 @@ class SubscriptionViewModelTest {
         // Given
         val packages = listOf(
             subscriptionPackage("m", PackageType.MONTHLY),
-            subscriptionPackage("a", PackageType.ANNUAL, badge = "인기", subDescription = "34% 할인", hasFreeTrial = true, freeTrialDays = 7),
+            subscriptionPackage("a", PackageType.ANNUAL, badge = "인기", subDescription = "34% 할인", hasFreeTrial = true, freeTrialDays = 3),
             subscriptionPackage("l", PackageType.LIFETIME, badge = "추천", subDescription = "영구")
         )
         billingProvider.packages = packages
@@ -145,6 +145,39 @@ class SubscriptionViewModelTest {
         assertEquals(listOf(false), sleepSettingsRepository.savedPremiumStatuses)
         assertTrue(sleepSyncRepository.updatedPremiumStatuses.isEmpty())
         assertFalse(viewModel.state.value.isLoading)
+    }
+
+    @Test
+    fun `무료 체험이 있는 구독 상품은 무료 체험 버튼 문구를 보여줘야 한다`() {
+        val pkg = subscriptionPackage(
+            id = "m",
+            type = PackageType.MONTHLY,
+            hasFreeTrial = true,
+            freeTrialDays = 3
+        )
+
+        assertEquals("3일 무료 후 결제", pkg.primaryButtonText())
+    }
+
+    @Test
+    fun `무료 체험이 없는 월간과 연간 상품은 공통 구독 시작 문구를 보여줘야 한다`() {
+        val monthly = subscriptionPackage("m", PackageType.MONTHLY)
+        val annual = subscriptionPackage("a", PackageType.ANNUAL)
+
+        assertEquals("구독 시작하기", monthly.primaryButtonText())
+        assertEquals("구독 시작하기", annual.primaryButtonText())
+    }
+
+    @Test
+    fun `평생 이용권은 무료 체험 여부와 무관하게 즉시 시작 문구를 보여줘야 한다`() {
+        val lifetime = subscriptionPackage(
+            id = "l",
+            type = PackageType.LIFETIME,
+            hasFreeTrial = true,
+            freeTrialDays = 7
+        )
+
+        assertEquals("지금 바로 시작하기", lifetime.primaryButtonText())
     }
 }
 
