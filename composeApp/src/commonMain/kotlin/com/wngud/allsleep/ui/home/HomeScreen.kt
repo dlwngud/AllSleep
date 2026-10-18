@@ -133,19 +133,26 @@ fun HomeScreenContent(
     val batteryPermissionRequester = rememberPermissionRequester { }
     val isBatteryOptimized by batteryPermissionRequester.isBatteryOptimized.collectAsState()
     var hasTriedServiceRecovery by remember(isSleeping) { mutableStateOf(false) }
+    val protectionState = remember(
+        isSleeping,
+        isBatteryOptimized,
+        permissionRequester.isGranted(),
+        accessibilityPermissionRequester.isGranted(),
+        sleepServiceController.isRunning()
+    ) {
+        deriveProtectionRecoveryState(
+            isSleeping = isSleeping,
+            hasOverlayPermission = permissionRequester.isGranted(),
+            hasAccessibilityPermission = accessibilityPermissionRequester.isGranted(),
+            isServiceRunning = sleepServiceController.isRunning(),
+            ignoresBatteryOptimization = batteryPermissionRequester.isIgnoringBatteryOptimizations()
+        )
+    }
 
-    val needsOverlayRecovery = isSleeping && !permissionRequester.isGranted()
-    val needsAccessibilityRecovery = isSleeping && !accessibilityPermissionRequester.isGranted()
-    val needsBatteryRecovery = isSleeping && !batteryPermissionRequester.isIgnoringBatteryOptimizations()
-    val needsServiceRecovery = isSleeping &&
-        permissionRequester.isGranted() &&
-        accessibilityPermissionRequester.isGranted() &&
-        !sleepServiceController.isRunning()
-
-    LaunchedEffect(isSleeping, needsServiceRecovery) {
+    LaunchedEffect(isSleeping, protectionState.shouldAttemptServiceRecovery) {
         if (!isSleeping) {
             hasTriedServiceRecovery = false
-        } else if (needsServiceRecovery && !hasTriedServiceRecovery) {
+        } else if (protectionState.shouldAttemptServiceRecovery && !hasTriedServiceRecovery) {
             hasTriedServiceRecovery = true
             sleepServiceController.start()
         }
@@ -271,21 +278,19 @@ fun HomeScreenContent(
                 }
             }
 
-            if (needsOverlayRecovery || needsAccessibilityRecovery || needsServiceRecovery || needsBatteryRecovery) {
+            val recoveryIssue = protectionState.issue.takeUnless {
+                it == RecoveryIssue.ServiceStopped && hasTriedServiceRecovery
+            }
+            if (recoveryIssue != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 SleepProtectionRecoveryCard(
-                    issue = when {
-                        needsOverlayRecovery -> RecoveryIssue.OverlayPermission
-                        needsAccessibilityRecovery -> RecoveryIssue.AccessibilityPermission
-                        needsServiceRecovery -> RecoveryIssue.ServiceStopped
-                        else -> RecoveryIssue.BatteryOptimization
-                    },
+                    issue = recoveryIssue,
                     onAction = {
-                        when {
-                            needsOverlayRecovery -> permissionRequester.requestPermission()
-                            needsAccessibilityRecovery -> showAccessibilityDisclosure = true
-                            needsServiceRecovery -> sleepServiceController.start()
-                            needsBatteryRecovery -> showBatteryGuideDialog = true
+                        when (recoveryIssue) {
+                            RecoveryIssue.OverlayPermission -> permissionRequester.requestPermission()
+                            RecoveryIssue.AccessibilityPermission -> showAccessibilityDisclosure = true
+                            RecoveryIssue.ServiceStopped -> sleepServiceController.start()
+                            RecoveryIssue.BatteryOptimization -> showBatteryGuideDialog = true
                         }
                     }
                 )
@@ -638,6 +643,34 @@ private enum class RecoveryIssue(
         title = "실시간 보호 유지 설정이 필요해요",
         message = "배터리 최적화 예외가 없어 수면 중 보호가 중단될 수 있어요.",
         actionLabel = "배터리 설정 열기"
+    )
+}
+
+private data class HomeProtectionRecoveryState(
+    val issue: RecoveryIssue? = null,
+    val shouldAttemptServiceRecovery: Boolean = false
+)
+
+private fun deriveProtectionRecoveryState(
+    isSleeping: Boolean,
+    hasOverlayPermission: Boolean,
+    hasAccessibilityPermission: Boolean,
+    isServiceRunning: Boolean,
+    ignoresBatteryOptimization: Boolean
+): HomeProtectionRecoveryState {
+    if (!isSleeping) return HomeProtectionRecoveryState()
+
+    val issue = when {
+        !hasOverlayPermission -> RecoveryIssue.OverlayPermission
+        !hasAccessibilityPermission -> RecoveryIssue.AccessibilityPermission
+        !isServiceRunning -> RecoveryIssue.ServiceStopped
+        !ignoresBatteryOptimization -> RecoveryIssue.BatteryOptimization
+        else -> null
+    }
+
+    return HomeProtectionRecoveryState(
+        issue = issue,
+        shouldAttemptServiceRecovery = issue == RecoveryIssue.ServiceStopped
     )
 }
 
