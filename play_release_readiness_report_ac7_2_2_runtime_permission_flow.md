@@ -1,0 +1,63 @@
+# Google Play 출시 전 종합 점검 리포트 - Sub-AC 7.2.2 런타임 권한 요청 흐름
+
+## 점검 범위
+
+- 기준: 현재 저장소의 Android 권한 선언, Android/Compose 권한 requester 구현, 온보딩/홈/설정 화면의 권한 요청 진입점
+- 제외: Google Play Console 권한 선언 입력값, 실제 심사 승인 상태, 스토어 등록 자료, 콘솔 운영 상태
+- 목적: 앱 코드의 런타임 권한 요청 흐름이 `AndroidManifest.xml`의 선언 권한과 일치하는지 점검
+
+## 출시 차단
+
+| 우선순위 | 범주 | 위치/근거 | 권한/흐름 | 리스크 | 권장 조치 | 저장소 근거 |
+| --- | --- | --- | --- | --- | --- | --- |
+| P0 | 권한/정책 | `composeApp/src/androidMain/AndroidManifest.xml:8`, `composeApp/src/androidMain/AndroidManifest.xml:9`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:69`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:117`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/SleepSchedulerImpl.kt:144`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/SleepSchedulerImpl.kt:145` | `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM` 선언과 `Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM` 설정 이동 흐름이 연결되어 있다. 실제 예약은 `setExactAndAllowWhileIdle`을 사용한다. | 요청 흐름은 존재하지만 `SCHEDULE_EXACT_ALARM`과 `USE_EXACT_ALARM`을 동시에 선언한다. 제한 권한 성격의 exact alarm 권한이 중복 또는 과다 선언으로 판단되면 Play 심사 지연/반려 위험이 있다. | release 후보에서 targetSdk 기준으로 필요한 exact alarm 권한을 하나로 정리할 수 있는지 검토한다. Play Console 권한 선언에는 수면 모드 자동 시작/종료가 핵심 기능이고 사용자가 설정한 시각에 정확히 실행되어야 한다는 근거를 코드와 동일하게 작성한다. | true |
+| P0 | 권한/정책 | `composeApp/src/androidMain/AndroidManifest.xml:22`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/OverlayPermissionRequester.android.kt:27`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/OverlayPermissionRequester.android.kt:31`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:78`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:92`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:217`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:371` | `SYSTEM_ALERT_WINDOW` 선언과 `Settings.ACTION_MANAGE_OVERLAY_PERMISSION` 설정 이동 흐름이 온보딩/홈 수면 시작 경로에 연결되어 있다. | 선언 권한과 요청 흐름은 일치하지만, 다른 앱 위 표시 권한은 사용자 조작 제한 기능과 직접 연결된다. 앱 내 고지, 해제 방법, 수면 모드 중에만 사용된다는 설명이 Play 선언과 다르면 정책 리스크가 크다. | 오버레이 요청 전 고지 문구와 Play 권한 선언 문구를 동일한 범위로 맞춘다. release 빌드에서 권한 미허용, 허용 후 복귀, 수면 모드 종료 후 오버레이 제거가 모두 동작하는지 확인한다. | true |
+| P0 | 권한/정책 | `composeApp/src/androidMain/AndroidManifest.xml:88`, `composeApp/src/androidMain/AndroidManifest.xml:91`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/AccessibilityPermissionRequester.android.kt:26`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/AccessibilityPermissionRequester.android.kt:30`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:119`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:138`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:271`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/settings/SettingsScreen.kt:110` | 접근성 서비스 선언과 `Settings.ACTION_ACCESSIBILITY_SETTINGS` 설정 이동 흐름이 온보딩/홈/설정에 연결되어 있다. | 요청 흐름은 선언과 일치하지만 접근성 API는 민감 권한이다. 특히 홈 화면 문구는 접근성 없이는 수면 잠금을 사용할 수 없다고 안내하는 반면 온보딩에서는 권장 단계로 스킵 가능해 필수성 표현이 경로별로 다르다. | 접근성 권한이 필수인지 권장인지 제품 정책을 하나로 정리한다. Play Console 접근성 선언, 앱 내 고지, 실제 차단 기능의 필수/선택 동작이 일치하도록 출시 전 QA 게이트로 둔다. | true |
+| P0 | 광고 SDK | `play_release_readiness_report_ac7_2_1_permissions.md:17`, `admob.properties`, `admob.properties.example`, `composeApp/build.gradle.kts` | 본 Sub-AC의 직접 런타임 권한은 아니지만 Seed 필수 게이트로 광고 테스트 ID 운영 ID 전환 확인이 필요하다. | 광고 테스트 ID가 release 광고 로딩 경로에 남으면 광고 정책/수익화 검증 실패가 발생할 수 있다. | 출시 전 광고 및 AdMob 테스트 ID가 실제 운영 앱 ID/광고 단위 ID로 전환됐는지 release AAB 기준으로 확인한다. | true |
+| P0 | 결제 | `play_release_readiness_report_ac7_2_1_permissions.md:18`, `composeApp/build.gradle.kts:110`, `composeApp/build.gradle.kts:111`, `composeApp/build.gradle.kts:112`, `composeApp/build.gradle.kts:113`, `local.properties` | 본 Sub-AC의 직접 런타임 권한은 아니지만 Seed 필수 게이트로 RevenueCat 테스트 ID/샌드박스 설정의 운영 전환 확인이 필요하다. | 테스트 API 키, 테스트 entitlement, 샌드박스 offering이 운영 경로에 남으면 구독 조회/구매/복원 실패 위험이 있다. | 출시 전 RevenueCat 구독관리 테스트 ID와 테스트 offering/entitlement를 실제 운영 ID/운영 상품으로 전환했는지 내부/비공개 트랙 release 빌드에서 검증한다. | true |
+
+## 출시 전 권장
+
+| 우선순위 | 범주 | 위치/근거 | 권한/흐름 | 리스크 | 권장 조치 | 저장소 근거 |
+| --- | --- | --- | --- | --- | --- | --- |
+| P1 | 권한/UX | `composeApp/src/androidMain/AndroidManifest.xml:7`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/MainActivity.kt:37`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/MainActivity.kt:68`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/MainActivity.kt:71`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:86`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/NotificationPermissionRequester.android.kt:39`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:68`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:242`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/settings/SettingsScreen.kt:82` | `POST_NOTIFICATIONS` 선언과 Android 13+ 런타임 요청이 `MainActivity`, 온보딩, 홈, 설정에 중복 구현되어 있다. | 선언과 요청 권한명은 일치하지만 첫 실행 즉시 요청 후 온보딩/홈/설정에서 다시 안내하는 구조다. 사용자가 맥락을 이해하기 전 거부하면 이후 수면 잠금 시작 경로에서 "알림 권한 없이는 수면 잠금을 사용할 수 없습니다"로 막혀 UX/정책 리스크가 생길 수 있다. | 알림 권한 요청을 한 번의 명확한 사용자 맥락으로 통합하거나, 즉시 요청을 유지한다면 온보딩/홈에서는 설정 이동 안내만 노출되도록 QA한다. 거부 후 재허용 경로와 제한 기능 설명을 release 빌드에서 확인한다. | true |
+| P1 | 권한/안정성 | `composeApp/src/androidMain/AndroidManifest.xml:25`, `composeApp/src/androidMain/AndroidManifest.xml:26`, `composeApp/src/androidMain/AndroidManifest.xml:78`, `composeApp/src/androidMain/AndroidManifest.xml:83`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/SleepLockService.kt:40`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/SleepLockService.kt:51`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/SleepLockService.kt:53` | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`는 런타임 권한 팝업 없이 서비스 시작 시 선언 타입과 함께 사용된다. | Android 14+에서 specialUse FGS가 정책/선언과 불일치하면 서비스 시작 실패 또는 심사 이슈가 발생할 수 있다. 현재 코드에는 예외 로그만 있고 사용자 복구 안내는 확인되지 않는다. | Android 14+ release 기기에서 포그라운드 서비스 시작, 지속 알림, 오버레이 표시가 실패 없이 연결되는지 확인한다. Play Console FGS 선언의 subtype과 앱 내 설명을 `screen_lock_overlay` 목적에 맞춘다. | true |
+| P1 | 권한/성능 | `composeApp/src/androidMain/AndroidManifest.xml:10`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:123`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:127`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:139`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/MainActivity.kt:52` | `WAKE_LOCK`은 별도 런타임 요청 없이 FCM 수신 및 화면 켜기 흐름에서 사용된다. | 선언 권한과 사용 흐름은 일치하지만, 원격 메시지 빈도나 화면 깨우기 조건이 과하면 배터리/방해성 이슈가 생길 수 있다. | FCM 명령 수신 시에만 wake lock이 실행되고 제한 시간 후 해제되는지 실기기 로그로 확인한다. 사용자에게 기기 깨우기 동작이 필요한 이유를 과장 없이 고지한다. | true |
+| P1 | 권한/UX | `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:58`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:110`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:96`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:115`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:257`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:267` | 배터리 최적화 제외 요청은 manifest 위험 권한 선언 없이 `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` 설정 화면으로 이동한다. | 선언 권한과의 불일치는 아니지만, 온보딩에서 "필수"로 안내되고 수면 시작 전에 강제 다이얼로그가 노출된다. 제조사별 설정 화면 동작이 달라 실패/복귀 흐름이 불안정할 수 있다. | Android 주요 버전/제조사에서 설정 이동, 복귀 후 상태 갱신, 거부 시 기능 제한 안내를 확인한다. 특정 권한 선언이 필요한 `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`로 바꾸지 않는 한 현재 manifest에는 추가 권한을 선언하지 않는 것이 최소 권한 원칙에 맞다. | true |
+| P1 | 권한/정책 | `composeApp/src/androidMain/AndroidManifest.xml:11`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:75`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:77`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:104`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/service/AllSleepMessagingService.kt:114` | `USE_FULL_SCREEN_INTENT` 선언은 FCM 알림의 full-screen intent 사용과 연결된다. Android 14+에서는 `canUseFullScreenIntent()`를 로그로만 확인한다. | 선언과 사용은 일치하지만, 사용자가 full-screen intent 권한을 제한한 경우 대체 UX가 코드상 명확하지 않다. 원격 제어 알림 전체에 full-screen을 적용하는 범위가 알람 목적과 불일치하면 정책 리스크가 있다. | full-screen intent를 즉각적인 수면/기상 알람성 이벤트로 제한할지 검토한다. `canUseFullScreenIntent()`가 false일 때 일반 heads-up 알림으로 충분한지 release QA에 포함한다. | true |
+
+## 출시 후 개선
+
+| 우선순위 | 범주 | 위치/근거 | 리스크 | 권장 조치 | 저장소 근거 |
+| --- | --- | --- | --- | --- | --- |
+| P2 | 품질 | `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/PermissionRequester.android.kt:23`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/NotificationPermissionRequester.android.kt:13`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/OverlayPermissionRequester.android.kt:13`, `composeApp/src/androidMain/kotlin/com/wngud/allsleep/platform/AccessibilityPermissionRequester.android.kt:14` | 권한 requester가 여러 클래스로 나뉘어 있고 알림 권한은 두 구현에서 요청된다. 향후 권한 정책 변경 시 한쪽만 수정될 가능성이 있다. | 권한별 요청 진입점과 정책 문구를 릴리즈 체크리스트로 관리한다. 특히 알림 권한은 공통 requester 하나로 통합하는 리팩터링을 출시 후 개선 항목으로 둔다. | true |
+| P2 | 품질 | `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:45`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:77`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:95`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/navigation/OnboardingGraph.kt:118`, `composeApp/src/commonMain/kotlin/com/wngud/allsleep/ui/home/HomeScreen.kt:361` | 온보딩과 홈의 권한 요구 순서가 다르다. 온보딩은 알림/정확한 알람, 오버레이, 배터리, 접근성 순서이고 홈 수면 시작은 알림, 배터리, 오버레이, 접근성 순서다. | 사용자 여정별 권한 상태 전이를 테스트 케이스로 문서화한다. 권한 일부만 허용한 상태에서 수면 시작/중단/복귀가 일관되게 동작하는지 회귀 테스트한다. | true |
+
+## 저장소만으로 확인 불가
+
+| 우선순위 | 범주 | 위치/근거 | 리스크 | 별도 확인 권장 조치 | 저장소 근거 |
+| --- | --- | --- | --- | --- | --- |
+| P0 | 스토어 등록/정책 | Google Play Console 권한 선언 자료는 저장소에 없음, `composeApp/src/androidMain/AndroidManifest.xml:7`, `composeApp/src/androidMain/AndroidManifest.xml:8`, `composeApp/src/androidMain/AndroidManifest.xml:9`, `composeApp/src/androidMain/AndroidManifest.xml:11`, `composeApp/src/androidMain/AndroidManifest.xml:22`, `composeApp/src/androidMain/AndroidManifest.xml:25`, `composeApp/src/androidMain/AndroidManifest.xml:26`, `composeApp/src/androidMain/AndroidManifest.xml:91` | Play Console의 접근성, exact alarm, full-screen intent, foreground service, 데이터 보안 선언 입력값이 코드의 실제 요청 흐름과 일치하는지 저장소만으로 검증할 수 없다. | Google Play Console 자료는 본 점검의 직접 대상에서 제외한다. 출시 전에는 본 리포트의 권한별 위치/흐름과 콘솔 선언 문구를 수동 대조한다. | false |
+| P0 | 정책 승인 | Google Play 심사 결과는 저장소에 없음 | 접근성 API, `SYSTEM_ALERT_WINDOW`, exact alarm, full-screen intent, FGS specialUse는 실제 심사 승인 여부가 제출 결과에 좌우된다. | 내부/비공개 트랙 release 후보에서 권한 요청 전체 플로우를 녹화하고, 반려 시 기능 축소 대안과 권한 설명 문구를 준비한다. | false |
+| P1 | 개인정보 | 외부 개인정보 처리방침 문서와 Play 데이터 보안 설문 내용은 저장소에 없음 | 권한 요청 전 고지와 개인정보 처리방침/데이터 보안 설문이 일치하는지 확인할 수 없다. 접근성 이벤트, 오버레이, FCM 토큰, 광고 SDK, 구독 정보 처리 고지가 누락될 수 있다. | 공개 개인정보 처리방침과 Play 데이터 보안 설문을 저장소 근거와 대조한다. 특히 접근성은 화면 내용 수집 여부, 오버레이는 표시 목적과 해제 방법, 알림은 FCM/수면 리포트 목적을 분리해 확인한다. | false |
+
+## 권한별 일치 판단
+
+| 선언/설정 | 런타임 요청 흐름 판단 | 출시 판단 |
+| --- | --- | --- |
+| `POST_NOTIFICATIONS` | 선언과 요청 권한명은 일치하나 `MainActivity`, 온보딩, 홈, 설정에 요청/설정 이동 경로가 중복된다. | 출시 전 권장 |
+| `SCHEDULE_EXACT_ALARM`/`USE_EXACT_ALARM` | 설정 이동 흐름과 exact alarm 사용 근거는 있으나 두 권한 동시 선언은 최소 권한 관점에서 재검토가 필요하다. | 출시 차단 |
+| `SYSTEM_ALERT_WINDOW` | 선언과 설정 이동 흐름이 일치한다. 정책 고지와 수면 모드 한정 사용 검증이 필요하다. | 출시 차단 |
+| 접근성 서비스 바인딩 | 서비스 선언과 설정 이동 흐름이 일치한다. 필수/권장 문구 일관성과 Play 접근성 선언이 필요하다. | 출시 차단 |
+| `FOREGROUND_SERVICE_SPECIAL_USE` | 런타임 팝업 대상은 아니며 서비스 타입 선언과 `startForeground` 사용이 연결된다. | 출시 전 권장 |
+| `WAKE_LOCK` | 런타임 팝업 대상은 아니며 FCM 처리/화면 깨우기 코드와 사용 근거가 일치한다. | 출시 전 권장 |
+| `USE_FULL_SCREEN_INTENT` | full-screen notification 사용과 연결되지만 사용자 제한 시 대체 흐름은 저장소에서 명확하지 않다. | 출시 전 권장 |
+| `INTERNET`/`ACCESS_NETWORK_STATE` | 런타임 요청 대상이 아니며 본 Sub-AC의 권한 요청 흐름 불일치 대상은 아니다. 데이터 보안 설문 대조가 필요하다. | 출시 전 권장 |
+
+## 요약
+
+- 앱 코드의 런타임 권한 요청 흐름은 선언 권한과 대체로 연결되어 있다.
+- 출시 차단으로는 exact alarm 중복 선언/요청 근거 재검토, 오버레이 권한 정책 고지, 접근성 권한 필수성 및 Play 선언 일치 확인을 분류했다.
+- 출시 전 권장으로는 알림 권한 중복 요청 흐름 정리, FGS specialUse, wake lock, full-screen intent, 배터리 최적화 설정 복귀 QA를 분류했다.
+- Google Play Console 자료, 정책 승인 상태, 개인정보 처리방침/데이터 보안 설문은 저장소만으로 확인 불가로 분리했다.
+- Seed 필수 항목인 광고 테스트 ID의 운영 ID 전환과 RevenueCat 구독관리 테스트 ID/샌드박스 설정의 운영 전환 확인을 P0 출시 차단 게이트로 명시했다.
