@@ -86,8 +86,8 @@ android {
         applicationId = "com.wngud.allsleep"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 10
+        versionName = "1.9"
         // 카카오 로그인 콜백 scheme 주입 (kakao + 네이티브앱키)
         manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
 
