@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
+import com.wngud.allsleep.ui.bedtime.BedtimeTab
+import com.wngud.allsleep.ui.bedtime.LocalBedtimeScreen
 import com.wngud.allsleep.ui.alarm.AlarmScreen
 import com.wngud.allsleep.ui.auth.login.GlobalLoginScreen
 import com.wngud.allsleep.ui.auth.login.EmailLoginScreen
@@ -21,33 +23,35 @@ fun AppNavigation(
     navController: NavHostController,
     snackbarHostState: SnackbarHostState,
     startDestination: String = Screen.Onboarding.route,
-    contentPadding: PaddingValues = PaddingValues()
+    contentPadding: PaddingValues = PaddingValues(),
+    accountName: String? = null,
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
         onboardingGraph(navController)
-        composable(Screen.Home.route) { HomeScreen(contentPadding = contentPadding, snackbarHostState = snackbarHostState) }
-        composable(Screen.Stats.route) { 
-            StatsScreen(
-                contentPadding = contentPadding,
-                onNavigateToSubscription = {
-                    navController.navigate(Screen.Subscription.Purchase.route) {
-                        launchSingleTop = true
-                    }
-                }
-            ) 
+        listOf(
+            Screen.Home.route to BedtimeTab.TODAY,
+            Screen.Alarm.route to BedtimeTab.ROUTINES,
+            Screen.Stats.route to BedtimeTab.RECORDS,
+            Screen.Settings.route to BedtimeTab.MY,
+        ).forEach { (route, tab) ->
+            composable(route) {
+                LocalBedtimeScreen(
+                    tab = tab,
+                    contentPadding = contentPadding,
+                    onOpenRoutines = { navController.navigateToTab(Screen.Alarm.route) },
+                    onLogin = { navController.navigate(Screen.Auth.Login.route) { launchSingleTop = true } },
+                    accountName = accountName,
+                    onAccountSettings = { navController.navigate(Screen.AccountSettings.route) { launchSingleTop = true } },
+                )
+            }
         }
-        composable(Screen.Alarm.route) { AlarmScreen(contentPadding = contentPadding) }
-        composable(Screen.Settings.route) { 
+        composable(Screen.AccountSettings.route) {
             SettingsScreen(
-                navController = navController, 
-                onNavigateToSubscription = { isPremium ->
-                    navController.navigate(
-                        if (isPremium) Screen.Subscription.Manage.route else Screen.Subscription.Purchase.route
-                    ) { launchSingleTop = true }
-                },
+                navController = navController,
+                onNavigateToSubscription = { isPremium -> navController.navigate(if (isPremium) Screen.Subscription.Manage.route else Screen.Subscription.Purchase.route) { launchSingleTop = true } },
                 contentPadding = contentPadding,
-                snackbarHostState = snackbarHostState
-            ) 
+                snackbarHostState = snackbarHostState,
+            )
         }
         
         composable(Screen.Subscription.Purchase.route) {

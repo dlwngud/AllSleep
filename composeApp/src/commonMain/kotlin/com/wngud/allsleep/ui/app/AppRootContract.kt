@@ -11,6 +11,7 @@ data class AppRootState(
     val showDeviceLimitDialog: Boolean = false,
     val cachedDeviceStateToRegister: DeviceState? = null,
     val error: String? = null,
+    val localInitializationError: String? = null,
 )
 
 sealed interface AppRootIntent {

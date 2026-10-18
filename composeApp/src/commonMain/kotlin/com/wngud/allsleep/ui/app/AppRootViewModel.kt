@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.wngud.allsleep.domain.model.DeviceState
 import com.wngud.allsleep.domain.model.User
 import com.wngud.allsleep.domain.model.exception.PremiumRequiredException
+import com.wngud.allsleep.domain.repository.LocalBedtimeRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 import com.wngud.allsleep.domain.repository.SleepSettingsRepository
 import com.wngud.allsleep.domain.usecase.auth.GetCurrentUserUseCase
 import com.wngud.allsleep.domain.usecase.auth.ObserveUserUseCase
@@ -43,6 +46,7 @@ class AppRootViewModel(
     private val sleepSettingsRepository: SleepSettingsRepository,
     private val billingProvider: BillingProvider,
     private val deviceInfoProvider: DeviceInfoProvider,
+    private val localBedtimeRepository: LocalBedtimeRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AppRootState())
@@ -73,37 +77,57 @@ class AppRootViewModel(
         }
     }
 
+    private var initializationJob: Job? = null
+    private var observersStarted = false
+    private var authObservationVersion = 0L
+
     private fun initializeData() {
-        viewModelScope.launch {
-            val cachedIsPremium = sleepSettingsRepository.isPremium.first()
-            _state.update { it.copy(isPremium = cachedIsPremium) }
-
-            val initialOnboardingState = observeOnboardingCompletedUseCase().first()
-            _state.update { it.copy(isOnboardingCompleted = initialOnboardingState) }
-
-            val user = getCurrentUserUseCase()
-            if (user != null) {
-                validateSessionUseCase().onFailure {
-                    logout()
-                    _state.update { it.copy(isStateInitialized = true) }
-                    return@launch
+        if (initializationJob?.isActive == true) return
+        initializationJob = viewModelScope.launch {
+            _state.update { it.copy(isStateInitialized = false, localInitializationError = null) }
+            try {
+                val cachedIsPremium = sleepSettingsRepository.isPremium.first()
+                val onboardingCompleted = observeOnboardingCompletedUseCase().first()
+                localBedtimeRepository.initialize().getOrThrow()
+                _state.update { it.copy(isPremium = cachedIsPremium, isOnboardingCompleted = onboardingCompleted, isStateInitialized = true) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _state.update { it.copy(isStateInitialized = true, localInitializationError = "로컬 설정을 읽지 못했어요. 원본은 유지했어요.") }
+                return@launch
+            }
+            // 로컬 진입 완료 뒤 원격 조회를 별도 작업으로 시작한다.
+            if (!observersStarted) {
+                observersStarted = true
+                val initialAuthVersion = authObservationVersion
+                setupAuthObserver()
+                setupOnboardingObserver()
+                viewModelScope.launch {
+                    try {
+                        val user = withTimeoutOrNull(5_000) { getCurrentUserUseCase() }
+                        if (user != null && authObservationVersion == initialAuthVersion && currentUid == null) {
+                            handleUserSessionChange(user)
+                        }
+                        if (user != null && currentUid == user.uid) refreshPremiumStatus()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        _state.update { it.copy(error = "계정 연결을 확인하지 못했어요. 이 기기 기능은 계속 사용할 수 있어요.") }
+                    }
                 }
             }
-
-            handleUserSessionChange(user)
-            if (user != null) {
-                refreshPremiumStatus()
-            }
-            _state.update { it.copy(isStateInitialized = true) }
-
-            setupAuthObserver()
-            setupOnboardingObserver()
         }
     }
 
     private fun setupAuthObserver() {
         viewModelScope.launch {
-            observeUserUseCase().collect { user -> handleUserSessionChange(user) }
+            observeUserUseCase().catch { error ->
+                if (error is CancellationException) throw error
+                _state.update { it.copy(error = "계정 연결을 확인하지 못했어요.") }
+            }.collect { user ->
+                authObservationVersion++
+                handleUserSessionChange(user)
+            }
         }
     }
 
@@ -153,13 +177,15 @@ class AppRootViewModel(
     }
 
     private fun refreshPremiumStatus() {
+        val userId = _state.value.currentUser?.uid ?: return
+        val authVersion = authObservationVersion
         viewModelScope.launch {
             val isPremiumNow = syncPremiumStatusUseCase() ?: return@launch
-            run {
-                val currentUser = getCurrentUserUseCase()
+            val currentUser = getCurrentUserUseCase()
+            if (authObservationVersion == authVersion && _state.value.currentUser?.uid == userId && currentUser?.uid == userId) {
                 _state.update {
                     it.copy(
-                        currentUser = currentUser?.copy(isPremium = isPremiumNow) ?: currentUser,
+                        currentUser = currentUser.copy(isPremium = isPremiumNow),
                         isPremium = isPremiumNow,
                     )
                 }
@@ -171,7 +197,10 @@ class AppRootViewModel(
         devicesJob?.cancel()
         devicesJob = viewModelScope.launch {
             observeRegisteredDevicesUseCase(uid)
-                .catch { handleRemoteSessionClosed() }
+                .catch { error ->
+                    if (error is CancellationException) throw error
+                    _state.update { it.copy(error = "기기 연결을 확인하지 못했어요.") }
+                }
                 .collect { devices ->
                     val currentId = deviceInfoProvider.getDeviceId()
                     if (devices.any { it.deviceId == currentId }) {

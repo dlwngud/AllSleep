@@ -6,6 +6,9 @@ import com.wngud.allsleep.data.datasource.auth.KakaoAuthDataSource
 import com.wngud.allsleep.data.repository.AuthRepositoryImpl
 import com.wngud.allsleep.data.repository.AppBlockerRepositoryImpl
 import com.wngud.allsleep.data.repository.BillingRepositoryImpl
+import com.wngud.allsleep.data.repository.LocalBedtimeRepositoryImpl
+import com.wngud.allsleep.domain.repository.LocalBedtimeRepository
+import com.wngud.allsleep.ui.bedtime.LocalBedtimeViewModel
 import com.wngud.allsleep.data.repository.SleepSettingsRepositoryImpl
 import com.wngud.allsleep.data.source.local.createDataStore
 import com.wngud.allsleep.domain.repository.AuthRepository
@@ -101,6 +104,7 @@ val appModule = module {
     // ── DataStore ─────────────────────────────────────────────────
     single { createDataStore() }
     singleOf(::SleepSettingsRepositoryImpl) bind SleepSettingsRepository::class
+    single<LocalBedtimeRepository> { LocalBedtimeRepositoryImpl(get()) }
 
     // ── UseCase ───────────────────────────────────────────────────
     factoryOf(::LoginWithKakaoUseCase)
@@ -133,6 +137,7 @@ val appModule = module {
     factoryOf(::SyncPremiumStatusUseCase)
 
     // ── ViewModel ─────────────────────────────────────────────────
+    viewModelOf(::LocalBedtimeViewModel)
     viewModelOf(::AppRootViewModel)
     viewModelOf(::HomeViewModel)
     viewModelOf(::AuthViewModel)

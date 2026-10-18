@@ -17,14 +17,18 @@ val OnPrimaryContainer = Color(0xFFFFFFFF)  // PrimaryContainer 위의 텍스트
 val Surface = Color(0xFF0B0E14)  // 메인 배경색 (다크 네이비)
 val OnSurface = Color(0xFFFFFFFF)  // Surface 위의 텍스트/아이콘
 val SurfaceVariant = Color(0xFF1A1C2E)  // 카드, 다이얼로그 등의 표면
-val OnSurfaceVariant = Color(0xFF94A3B8)  // SurfaceVariant 위의 보조 텍스트
+val OnSurfaceVariant = Color(0xFFA9B4C8)  // SurfaceVariant 위의 보조 텍스트
+val Lavender = Color(0xFFC3BAFF)
+val LavenderContainer = Color(0xFF2D2551)
+val Success = Color(0xFF8DD7B2)
+val Warning = Color(0xFFF0C98B)
 
 // Outline - 구분선
 val Outline = Color(0xFF2D3142)  // 구분선, 테두리
 
 // Error - 에러 상태
-val Error = Color(0xFFFF5252)  // 에러 색상
-val OnError = Color(0xFFFFFFFF)  // Error 위의 텍스트
+val Error = Color(0xFFFF8585)  // 에러 색상
+val OnError = Color(0xFF320A0A)  // Error 위의 텍스트
 
 // Additional Brand Colors (그라데이션용)
 val GradientStart = Color(0xFFA855F7)  // 그라데이션 시작 (밝은 보라)

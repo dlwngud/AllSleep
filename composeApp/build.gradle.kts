@@ -77,6 +77,11 @@ kotlin {
         androidUnitTest.dependencies {
             implementation(libs.kotlin.testJunit)
         }
+        androidInstrumentedTest.dependencies {
+            implementation(libs.androidx.testExt.junit)
+            implementation("androidx.test:runner:1.7.0")
+            implementation("androidx.compose.ui:ui-test-junit4:1.10.0")
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
@@ -101,6 +106,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 10
         versionName = "1.9"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // 카카오 로그인 콜백 scheme 주입 (kakao + 네이티브앱키)
         manifestPlaceholders["kakaoScheme"] = "kakaoc8924c995fe54b4b67404bb682347b95"
 
@@ -162,6 +168,7 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.10.0")
 
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
     implementation("com.google.firebase:firebase-auth")

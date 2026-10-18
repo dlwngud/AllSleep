@@ -16,6 +16,10 @@ private val DarkColorScheme = darkColorScheme(
     onPrimary = OnPrimary,
     primaryContainer = PrimaryContainer,
     onPrimaryContainer = OnPrimaryContainer,
+    secondary = Lavender,
+    onSecondary = Surface,
+    secondaryContainer = LavenderContainer,
+    onSecondaryContainer = Lavender,
     
     // Surface
     surface = Surface,
@@ -43,6 +47,9 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = OnPrimary,
     primaryContainer = PrimaryContainer,
     onPrimaryContainer = OnPrimaryContainer,
+    secondary = Color(0xFF514183),
+    secondaryContainer = Color(0xFFE9E3FF),
+    onSecondaryContainer = Color(0xFF30204F),
     
     surface = Color(0xFFF6F5F8),
     onSurface = Color(0xFF1A1C2E),
@@ -70,6 +77,7 @@ fun AllSleepTheme(
     
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = AllSleepTypography,
         content = content
     )
 }
