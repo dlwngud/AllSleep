@@ -19,7 +19,7 @@ fun AuthFooter(
 ) {
     val uriHandler = LocalUriHandler.current
     val termsUrl = "https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35"
-    val privacyUrl = "https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2"
+    val privacyUrl = "https://allsleep.web.app/privacy-policy"
 
     Row(
         modifier = modifier.fillMaxWidth(),

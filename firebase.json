@@ -1,4 +1,34 @@
 {
+    "hosting": {
+        "public": "public",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "headers": [
+            {
+                "source": "/privacy-policy",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "public, max-age=300"
+                    }
+                ]
+            },
+            {
+                "source": "/privacy-policy/**",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "public, max-age=300"
+                    }
+                ]
+            }
+        ],
+        "cleanUrls": true,
+        "trailingSlash": false
+    },
     "functions": [
         {
             "source": "functions",

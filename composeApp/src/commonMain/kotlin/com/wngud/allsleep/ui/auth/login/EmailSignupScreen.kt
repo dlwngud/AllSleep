@@ -195,7 +195,7 @@ fun EmailSignupScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                         textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
                         modifier = Modifier.clickable { 
-                            uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2")
+                            uriHandler.openUri("https://allsleep.web.app/privacy-policy")
                         }
                     )
                     Text(

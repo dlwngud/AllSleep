@@ -39,7 +39,7 @@ import allsleep.composeapp.generated.resources.character_phone
 import androidx.compose.ui.platform.LocalContext
 
 private const val TERMS_URL = "https://www.notion.so/AllSleep-33892d66363680faadc6e53cd5016e35"
-private const val PRIVACY_URL = "https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2"
+private const val PRIVACY_URL = "https://allsleep.web.app/privacy-policy"
 private const val FAQ_URL = "https://www.notion.so/AllSleep-FAQ-33892d663636805481d6ec75e097676c"
 
 @OptIn(ExperimentalMaterial3Api::class)

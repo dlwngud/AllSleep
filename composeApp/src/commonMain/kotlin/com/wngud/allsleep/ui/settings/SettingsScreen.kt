@@ -386,7 +386,7 @@ fun SettingsScreenContent(
             SettingsRowArrow(
                 emoji = "🛡️",
                 label = "개인정보 처리방침",
-                onClick = { uriHandler.openUri("https://www.notion.so/AllSleep-33892d66363680bb8c2de90e9a7cc4e2") }
+                onClick = { uriHandler.openUri("https://allsleep.web.app/privacy-policy") }
             )
             SettingsDivider()
             SettingsRowArrow(
