@@ -20,6 +20,7 @@ node_modules/
 # Firebase configuration
 **/google-services.json
 **/GoogleService-Info.plist
+.firebase/
 
 # Keystore
 *.jks
@@ -27,3 +28,12 @@ node_modules/
 /keystore/
 keystore.properties
 admob.properties
+
+# Local workspaces, backups, and generated distribution files
+/.worktrees/
+/app-icon-backups/
+/composeApp/release/
+/output/pdf/
+/design-previews/*.zip
+/design-previews/bedtime-product-v2/qa/pdf-renders/
+/design-previews/bedtime-product-v2/qa/final-pdf-renders/
