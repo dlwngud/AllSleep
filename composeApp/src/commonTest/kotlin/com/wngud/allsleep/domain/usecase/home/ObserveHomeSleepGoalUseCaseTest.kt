@@ -81,7 +81,6 @@ class ObserveHomeSleepGoalUseCaseTest {
         override val deviceName: Flow<String?> = flowOf(null)
         override val isPremium: Flow<Boolean> = flowOf(false)
         override val activeSleepStartAt: Flow<Long> = flowOf(0L)
-        override val lastAppOpenAdShownAt: Flow<Long> = flowOf(0L)
         override suspend fun saveWeekdaySchedule(bedtime: String, wakeTime: String) {}
         override suspend fun saveWeekdaySleepEnabled(enabled: Boolean) {}
         override suspend fun saveWeekdayWakeEnabled(enabled: Boolean) {}
@@ -92,7 +91,6 @@ class ObserveHomeSleepGoalUseCaseTest {
         override suspend fun saveDeviceName(name: String) {}
         override suspend fun savePremiumStatus(isPremium: Boolean) {}
         override suspend fun saveActiveSleepStartAt(startTime: Long) {}
-        override suspend fun saveLastAppOpenAdShownAt(time: Long) {}
         override suspend fun clear() {}
     }
 }

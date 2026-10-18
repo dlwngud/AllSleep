@@ -53,7 +53,6 @@ class ToggleSleepModeUseCaseTest {
         override val deviceName: Flow<String?> = flowOf(null)
         override val isPremium: Flow<Boolean> = flowOf(false)
         override val activeSleepStartAt: Flow<Long> = flowOf(0L)
-        override val lastAppOpenAdShownAt: Flow<Long> = flowOf(0L)
 
         var savedActiveSleepStartAt: Long = 0L
 
@@ -69,7 +68,6 @@ class ToggleSleepModeUseCaseTest {
         override suspend fun saveActiveSleepStartAt(startTime: Long) {
             savedActiveSleepStartAt = startTime
         }
-        override suspend fun saveLastAppOpenAdShownAt(time: Long) = Unit
         override suspend fun clear() = Unit
     }
 

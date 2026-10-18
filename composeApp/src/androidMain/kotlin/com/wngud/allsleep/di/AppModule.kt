@@ -23,7 +23,6 @@ import com.wngud.allsleep.domain.usecase.auth.ValidateSessionUseCase
 import com.wngud.allsleep.domain.usecase.auth.UpdateUserProfileUseCase
 import com.wngud.allsleep.domain.usecase.auth.LoginWithEmailUseCase
 import com.wngud.allsleep.domain.usecase.auth.SignUpWithEmailUseCase
-import com.wngud.allsleep.domain.usecase.ad.CanShowAppOpenAdUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.CompleteOnboardingUseCase
 import com.wngud.allsleep.domain.usecase.onboarding.ObserveOnboardingCompletedUseCase
 import com.wngud.allsleep.domain.usecase.sleep.ObserveRegisteredDevicesUseCase
@@ -41,8 +40,6 @@ import com.wngud.allsleep.domain.usecase.subscription.ObservePremiumStatusUseCas
 import com.wngud.allsleep.domain.usecase.subscription.PurchaseSubscriptionUseCase
 import com.wngud.allsleep.domain.usecase.subscription.RestorePurchasesUseCase
 import com.wngud.allsleep.domain.usecase.subscription.SyncPremiumStatusUseCase
-import com.wngud.allsleep.platform.AppOpenAdManager
-import com.wngud.allsleep.platform.AppOpenAdManagerImpl
 import com.wngud.allsleep.platform.DeviceInfoProvider
 import com.wngud.allsleep.platform.DeviceInfoProviderImpl
 import com.wngud.allsleep.platform.BillingProvider
@@ -99,7 +96,6 @@ val appModule = module {
     // ── Platform Services ──────────────────────────────────────────
     single<SleepScheduler> { SleepSchedulerImpl(androidContext()) }
     single<DeviceInfoProvider> { DeviceInfoProviderImpl(androidContext()) }
-    single<AppOpenAdManager> { AppOpenAdManagerImpl(androidApplication(), get(), get()) }
     single<BillingProvider> { BillingProviderImpl(androidApplication()) }
 
     // ── DataStore ─────────────────────────────────────────────────
@@ -125,7 +121,6 @@ val appModule = module {
     factoryOf(::ValidateSessionUseCase)
     factoryOf(::LoginWithEmailUseCase)
     factoryOf(::SignUpWithEmailUseCase)
-    factoryOf(::CanShowAppOpenAdUseCase)
     factoryOf(::RecordSleepSessionUseCase)
     factoryOf(::ToggleSleepModeUseCase)
     factoryOf(::GetMonthlyCalendarUseCase)

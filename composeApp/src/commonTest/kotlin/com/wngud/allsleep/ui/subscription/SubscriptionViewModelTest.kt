@@ -252,7 +252,6 @@ private class FakeSleepSettingsRepository : com.wngud.allsleep.domain.repository
     override val deviceName = flowOf(null)
     override val isPremium = flowOf(false)
     override val activeSleepStartAt = flowOf(0L)
-    override val lastAppOpenAdShownAt = flowOf(0L)
 
     override suspend fun saveWeekdaySchedule(bedtime: String, wakeTime: String) {}
     override suspend fun saveWeekdaySleepEnabled(enabled: Boolean) {}
@@ -266,7 +265,6 @@ private class FakeSleepSettingsRepository : com.wngud.allsleep.domain.repository
         savedPremiumStatuses += isPremium
     }
     override suspend fun saveActiveSleepStartAt(startTime: Long) {}
-    override suspend fun saveLastAppOpenAdShownAt(time: Long) {}
     override suspend fun clear() {}
 }
 
